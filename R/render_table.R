@@ -396,7 +396,7 @@ sft_records_table_data <- function(data,
 #'   city = c("London", "Helsinki")
 #' )
 #' records_datatable(records, form = contacts)
-#' @export
+#' @keywords internal
 records_datatable <- function(data,
                                   form,
                                   columns = NULL,
@@ -462,7 +462,7 @@ records_datatable <- function(data,
 #'   changed_by = "demo"
 #' )
 #' audit_datatable(audit)
-#' @export
+#' @keywords internal
 audit_datatable <- function(data,
                                 columns = NULL,
                                 selection = "none",

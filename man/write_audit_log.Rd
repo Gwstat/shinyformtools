@@ -65,3 +65,4 @@ write_audit_log(
 
 db_disconnect(conn)
 }
+\keyword{internal}

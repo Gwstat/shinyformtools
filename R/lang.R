@@ -255,7 +255,7 @@ german_table_labels <- function() {
 #' lang$paginate$previous
 #' # Use per table:
 #' # records_datatable(..., table_options = list(language = german_dt_language()))
-#' @export
+#' @keywords internal
 german_dt_language <- function() {
   list(
     search = "Suchen:",

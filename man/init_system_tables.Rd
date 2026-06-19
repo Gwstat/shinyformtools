@@ -21,3 +21,4 @@ init_system_tables(conn)
 DBI::dbExistsTable(conn, "sft_forms")
 db_disconnect(conn)
 }
+\keyword{internal}

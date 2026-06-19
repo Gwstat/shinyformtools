@@ -1,4 +1,6 @@
 testthat::test_that("sft_render_markdown renders Markdown formatting", {
+  testthat::skip_if_not_installed("commonmark")
+
   out <- sft_render_markdown("- one\n- two\n\n**b** _i_ `code` [ok](https://example.com)")
 
   testthat::expect_match(out, "<ul>")
@@ -10,6 +12,8 @@ testthat::test_that("sft_render_markdown renders Markdown formatting", {
 })
 
 testthat::test_that("sft_render_markdown neutralises raw HTML (stored XSS)", {
+  testthat::skip_if_not_installed("commonmark")
+
   testthat::expect_match(
     sft_render_markdown("hi <script>alert(1)</script> there"),
     "&lt;script&gt;alert(1)&lt;/script&gt;",
@@ -29,6 +33,8 @@ testthat::test_that("sft_render_markdown neutralises raw HTML (stored XSS)", {
 })
 
 testthat::test_that("sft_render_markdown scrubs unsafe link schemes", {
+  testthat::skip_if_not_installed("commonmark")
+
   for (payload in c(
     "[c](javascript:alert(1))",
     "[c](JaVaScRiPt:alert(1))",
@@ -50,6 +56,8 @@ testthat::test_that("sft_render_markdown scrubs unsafe link schemes", {
 })
 
 testthat::test_that("sft_render_markdown maps NA and empty to empty string", {
+  testthat::skip_if_not_installed("commonmark")
+
   testthat::expect_equal(sft_render_markdown(c(NA, "", "**b**"))[1:2], c("", ""))
 })
 
@@ -70,6 +78,8 @@ testthat::test_that("markdown is only allowed on input fields", {
 })
 
 testthat::test_that("records_datatable renders the markdown column raw and escapes the rest", {
+  testthat::skip_if_not_installed("commonmark")
+
   form <- form(
     form_id = "markdown_records",
     fields = list(
@@ -119,6 +129,8 @@ testthat::test_that("records_datatable escapes everything when no markdown field
 })
 
 testthat::test_that("versions datatable renders markdown snapshots raw", {
+  testthat::skip_if_not_installed("commonmark")
+
   form <- form(
     form_id = "markdown_versions",
     fields = list(

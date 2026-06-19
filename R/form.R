@@ -281,7 +281,7 @@ sft_validate_form <- function(form) {
 #'   )
 #' )
 #' field_ids(f)
-#' @export
+#' @keywords internal
 field_ids <- function(form) {
   if (!inherits(form, "sft_form")) {
     stop("form must be a form object.", call. = FALSE)
@@ -306,7 +306,7 @@ field_ids <- function(form) {
 #'   )
 #' )
 #' db_columns(f)
-#' @export
+#' @keywords internal
 db_columns <- function(form) {
   if (!inherits(form, "sft_form")) {
     stop("form must be a form object.", call. = FALSE)

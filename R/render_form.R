@@ -232,7 +232,7 @@ sft_render_output_field <- function(field,
 #' server <- function(input, output, session) {}
 #' shinyApp(ui, server)
 #' }
-#' @export
+#' @keywords internal
 render_field <- function(field,
                              ns = identity,
                              prefix = "",

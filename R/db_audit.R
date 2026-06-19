@@ -96,7 +96,7 @@ sft_changed_fields <- function(old_data, new_data) {
 #' )
 #'
 #' db_disconnect(conn)
-#' @export
+#' @keywords internal
 write_audit_log <- function(conn,
                                 form,
                                 action,

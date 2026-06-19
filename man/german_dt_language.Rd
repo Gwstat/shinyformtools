@@ -24,3 +24,4 @@ lang$paginate$previous
 # Use per table:
 # records_datatable(..., table_options = list(language = german_dt_language()))
 }
+\keyword{internal}

@@ -110,7 +110,7 @@ sft_system_table_types <- function(conn) {
 #' init_system_tables(conn)
 #' DBI::dbExistsTable(conn, "sft_forms")
 #' db_disconnect(conn)
-#' @export
+#' @keywords internal
 init_system_tables <- function(conn) {
   types <- sft_system_table_types(conn)
 

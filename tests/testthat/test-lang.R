@@ -1,4 +1,6 @@
 test_that("use_german switches UI labels, messages and table labels globally", {
+  testthat::skip_if_not_installed("withr")
+
   withr::local_options(list(
     shinyformtools.labels = NULL,
     shinyformtools.messages = NULL,
@@ -29,6 +31,8 @@ test_that("use_german switches UI labels, messages and table labels globally", {
 })
 
 test_that("use_german installs a German DataTables language for the table chrome", {
+  testthat::skip_if_not_installed("withr")
+
   withr::local_options(list(
     shinyformtools.labels = NULL,
     shinyformtools.messages = NULL,
@@ -55,6 +59,8 @@ test_that("use_german installs a German DataTables language for the table chrome
 })
 
 test_that("the deleted flag renders with the configured Yes/No labels", {
+  testthat::skip_if_not_installed("withr")
+
   withr::local_options(list(shinyformtools.table_labels = german_table_labels()))
 
   data <- data.frame(sft_is_deleted = c(1L, 0L))
@@ -64,6 +70,8 @@ test_that("the deleted flag renders with the configured Yes/No labels", {
 })
 
 test_that("explicit per-form labels and messages override the global option", {
+  testthat::skip_if_not_installed("withr")
+
   withr::local_options(list(
     shinyformtools.labels = german_labels(),
     shinyformtools.messages = german_messages()
