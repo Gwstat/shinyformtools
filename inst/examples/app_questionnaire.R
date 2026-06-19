@@ -34,8 +34,8 @@ db_path <- tempfile(fileext = ".sqlite")
 #> STEP: Describe the questionnaire as a slide form
 #> NOTE: Each question lives on its own slide via form_field(slide = N), and
 #> NOTE: shinyglide turns the slides into a Back/Next wizard. Fields that share a
-#> NOTE: slide are placed by col/pos, so slides 2 and 3 below carry two inputs.
-#> NOTE: slide_labels names each step.
+#> NOTE: slide are placed by col/pos: slides 0 and 3 carry two inputs side by side
+#> NOTE: (col 1 | col 2), slide 2 stacks two text areas. slide_labels names each step.
 survey_form <- form(
   form_id = "survey",
   form_name = "Reader survey",
@@ -43,13 +43,13 @@ survey_form <- form(
   db = db_sqlite(db_path),
   slide_labels = c("About you", "Overall", "What stood out", "Spread the word"),
   fields = list(
-    # Slide 0 - two inputs.
+    # Slide 0 - two inputs, side by side (col 1 | col 2).
     form_field(id = "name", label = "Your name (optional)", slide = 0, col = 1, pos = 1),
     form_field(
       id = "role", label = "Your role", input_type = "selectInput",
       args = list(choices = c("Student", "Analyst", "Developer", "Manager", "Other"),
                   selected = "Analyst"),
-      slide = 0, col = 1, pos = 2
+      slide = 0, col = 2, pos = 1
     ),
     # Slide 1 - one input.
     form_field(
@@ -57,7 +57,7 @@ survey_form <- form(
       input_type = "sliderInput", args = list(min = 1, max = 10, value = 7),
       mandatory = TRUE, slide = 1, col = 1, pos = 1
     ),
-    # Slide 2 - two inputs.
+    # Slide 2 - two inputs, stacked (text areas need the full width).
     form_field(
       id = "liked", label = "What did you like most?", input_type = "textAreaInput",
       args = list(rows = 3, value = ""), slide = 2, col = 1, pos = 1
@@ -66,14 +66,14 @@ survey_form <- form(
       id = "improve", label = "What should we improve?", input_type = "textAreaInput",
       args = list(rows = 3, value = ""), slide = 2, col = 1, pos = 2
     ),
-    # Slide 3 - two inputs.
+    # Slide 3 - two inputs, side by side (col 1 | col 2).
     form_field(
       id = "recommend", label = "Would you recommend us?", input_type = "radioButtons",
       args = list(choices = c("Yes", "Maybe", "No"), selected = "Yes", inline = TRUE),
       slide = 3, col = 1, pos = 1
     ),
     form_field(id = "email", label = "Email (optional, for follow-up)",
-               slide = 3, col = 1, pos = 2)
+               slide = 3, col = 2, pos = 1)
   )
 )
 #> END
