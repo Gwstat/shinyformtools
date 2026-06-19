@@ -39,6 +39,11 @@ Velden's write-up on
 - **Database-level uniqueness** via composite unique indexes, so a value can be
   reused after a soft delete while live duplicates are rejected.
 - **Configurable table views** with user-selectable, saveable column layouts.
+- **Flexible layout** — render the add/edit form in a modal or inline above the
+  table, or spread fields across a multi-step **slide wizard**
+  (`form_field(slide = ...)`, e.g. a questionnaire). Action buttons can stay in
+  the module or live anywhere via `form_buttons()` — for example a *Report a bug*
+  button in an app header.
 - **Dynamic and cross-referencing inputs** through `dynamic_choices()`,
   `dynamic_value()`, and `reference_choices()`, plus display-only derived columns
   via `display_transform`.
