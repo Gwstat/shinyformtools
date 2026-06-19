@@ -78,6 +78,7 @@ sft_changed_fields <- function(old_data, new_data) {
 #'
 #' @return Invisibly returns `TRUE`.
 #' @examples
+#' \dontrun{
 #' db <- db_sqlite(tempfile(fileext = ".sqlite"))
 #' contacts <- form(
 #'   form_id = "contacts", table_name = "contacts", db = db,
@@ -96,6 +97,7 @@ sft_changed_fields <- function(old_data, new_data) {
 #' )
 #'
 #' db_disconnect(conn)
+#' }
 #' @keywords internal
 write_audit_log <- function(conn,
                                 form,

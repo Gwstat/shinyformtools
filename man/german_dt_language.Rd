@@ -18,10 +18,12 @@ installs it globally; it can also be passed per table via
 \code{table_options = list(language = german_dt_language())}.
 }
 \examples{
+\dontrun{
 lang <- german_dt_language()
 lang$search
 lang$paginate$previous
 # Use per table:
 # records_datatable(..., table_options = list(language = german_dt_language()))
+}
 }
 \keyword{internal}

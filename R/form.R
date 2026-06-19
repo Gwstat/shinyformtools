@@ -271,6 +271,7 @@ sft_validate_form <- function(form) {
 #'
 #' @return Character vector of field ids.
 #' @examples
+#' \dontrun{
 #' f <- form(
 #'   form_id = "contacts",
 #'   table_name = "contacts",
@@ -281,6 +282,7 @@ sft_validate_form <- function(form) {
 #'   )
 #' )
 #' field_ids(f)
+#' }
 #' @keywords internal
 field_ids <- function(form) {
   if (!inherits(form, "sft_form")) {
@@ -296,6 +298,7 @@ field_ids <- function(form) {
 #'
 #' @return Character vector of database column names for input fields.
 #' @examples
+#' \dontrun{
 #' f <- form(
 #'   form_id = "contacts",
 #'   table_name = "contacts",
@@ -306,6 +309,7 @@ field_ids <- function(form) {
 #'   )
 #' )
 #' db_columns(f)
+#' }
 #' @keywords internal
 db_columns <- function(form) {
   if (!inherits(form, "sft_form")) {

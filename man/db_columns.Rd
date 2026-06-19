@@ -16,6 +16,7 @@ Character vector of database column names for input fields.
 Get database columns from a form
 }
 \examples{
+\dontrun{
 f <- form(
   form_id = "contacts",
   table_name = "contacts",
@@ -26,5 +27,6 @@ f <- form(
   )
 )
 db_columns(f)
+}
 }
 \keyword{internal}

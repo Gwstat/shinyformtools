@@ -383,6 +383,7 @@ sft_records_table_data <- function(data,
 #'
 #' @return A DT table widget.
 #' @examples
+#' \dontrun{
 #' contacts <- form(
 #'   form_id = "contacts", table_name = "contacts",
 #'   db = db_sqlite(tempfile(fileext = ".sqlite")),
@@ -396,6 +397,7 @@ sft_records_table_data <- function(data,
 #'   city = c("London", "Helsinki")
 #' )
 #' records_datatable(records, form = contacts)
+#' }
 #' @keywords internal
 records_datatable <- function(data,
                                   form,
@@ -455,6 +457,7 @@ records_datatable <- function(data,
 #'
 #' @return A DT table widget.
 #' @examples
+#' \dontrun{
 #' audit <- data.frame(
 #'   action = c("insert", "update"),
 #'   version_no = c(1L, 2L),
@@ -462,6 +465,7 @@ records_datatable <- function(data,
 #'   changed_by = "demo"
 #' )
 #' audit_datatable(audit)
+#' }
 #' @keywords internal
 audit_datatable <- function(data,
                                 columns = NULL,

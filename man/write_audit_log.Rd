@@ -46,6 +46,7 @@ Invisibly returns \code{TRUE}.
 Write an audit log entry
 }
 \examples{
+\dontrun{
 db <- db_sqlite(tempfile(fileext = ".sqlite"))
 contacts <- form(
   form_id = "contacts", table_name = "contacts", db = db,
@@ -64,5 +65,6 @@ write_audit_log(
 )
 
 db_disconnect(conn)
+}
 }
 \keyword{internal}

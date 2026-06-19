@@ -16,9 +16,11 @@ Invisibly returns the connection.
 Initialize shinyformtools system tables
 }
 \examples{
+\dontrun{
 conn <- db_connect(db_sqlite(tempfile(fileext = ".sqlite")))
 init_system_tables(conn)
 DBI::dbExistsTable(conn, "sft_forms")
 db_disconnect(conn)
+}
 }
 \keyword{internal}

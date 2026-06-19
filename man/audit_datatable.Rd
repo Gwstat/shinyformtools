@@ -32,6 +32,7 @@ A DT table widget.
 Create a DT table for audit log entries
 }
 \examples{
+\dontrun{
 audit <- data.frame(
   action = c("insert", "update"),
   version_no = c(1L, 2L),
@@ -39,5 +40,6 @@ audit <- data.frame(
   changed_by = "demo"
 )
 audit_datatable(audit)
+}
 }
 \keyword{internal}

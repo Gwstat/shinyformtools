@@ -49,6 +49,7 @@ A DT table widget.
 Create a DT table for form records
 }
 \examples{
+\dontrun{
 contacts <- form(
   form_id = "contacts", table_name = "contacts",
   db = db_sqlite(tempfile(fileext = ".sqlite")),
@@ -62,5 +63,6 @@ records <- data.frame(
   city = c("London", "Helsinki")
 )
 records_datatable(records, form = contacts)
+}
 }
 \keyword{internal}

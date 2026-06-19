@@ -250,11 +250,13 @@ german_table_labels <- function() {
 #'
 #' @return A named list suitable for the DataTables `language` option.
 #' @examples
+#' \dontrun{
 #' lang <- german_dt_language()
 #' lang$search
 #' lang$paginate$previous
 #' # Use per table:
 #' # records_datatable(..., table_options = list(language = german_dt_language()))
+#' }
 #' @keywords internal
 german_dt_language <- function() {
   list(

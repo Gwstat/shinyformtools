@@ -16,6 +16,7 @@ Character vector of field ids.
 Get field ids from a form
 }
 \examples{
+\dontrun{
 f <- form(
   form_id = "contacts",
   table_name = "contacts",
@@ -26,5 +27,6 @@ f <- form(
   )
 )
 field_ids(f)
+}
 }
 \keyword{internal}

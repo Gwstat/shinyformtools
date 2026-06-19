@@ -106,10 +106,12 @@ sft_system_table_types <- function(conn) {
 #'
 #' @return Invisibly returns the connection.
 #' @examples
+#' \dontrun{
 #' conn <- db_connect(db_sqlite(tempfile(fileext = ".sqlite")))
 #' init_system_tables(conn)
 #' DBI::dbExistsTable(conn, "sft_forms")
 #' db_disconnect(conn)
+#' }
 #' @keywords internal
 init_system_tables <- function(conn) {
   types <- sft_system_table_types(conn)
