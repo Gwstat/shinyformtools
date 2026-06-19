@@ -1,3 +1,20 @@
+# Shared front matter for the CRUD entry points: validate the form, resolve the
+# connection, and ensure the schema exists; returns the resolved connection.
+# `envir` is forwarded to sft_resolve_connection so that, when this helper opens
+# an owned connection, its db_disconnect() on.exit is registered in the calling
+# entry point's frame (not this helper's) and runs when that function returns.
+sft_prepare_mutation <- function(form, conn, user = NULL, envir = parent.frame()) {
+  if (!inherits(form, "sft_form")) {
+    stop("form must be a form object.", call. = FALSE)
+  }
+
+  conn <- sft_resolve_connection(form, conn, envir = envir)
+
+  sft_ensure_schema(conn, form, user = user)
+
+  conn
+}
+
 sft_record_field_values <- function(form,
                                     record,
                                     include_missing = FALSE,
@@ -104,13 +121,7 @@ sft_get_record <- function(conn,
 fetch_records <- function(form,
                               conn = NULL,
                               include_deleted = FALSE) {
-  if (!inherits(form, "sft_form")) {
-    stop("form must be a form object.", call. = FALSE)
-  }
-
-  conn <- sft_resolve_connection(form, conn)
-
-  sft_ensure_schema(conn, form)
+  conn <- sft_prepare_mutation(form, conn)
 
   sql <- paste0(
     "SELECT * FROM ",
@@ -155,13 +166,7 @@ insert_record <- function(form,
                               conn = NULL,
                               user = NULL,
                               reason = NULL) {
-  if (!inherits(form, "sft_form")) {
-    stop("form must be a form object.", call. = FALSE)
-  }
-
-  conn <- sft_resolve_connection(form, conn)
-
-  sft_ensure_schema(conn, form, user = user)
+  conn <- sft_prepare_mutation(form, conn, user = user)
 
   sft_db_with_transaction(conn, {
     validate_record(
@@ -295,13 +300,7 @@ update_record <- function(form,
                               conn = NULL,
                               user = NULL,
                               reason = NULL) {
-  if (!inherits(form, "sft_form")) {
-    stop("form must be a form object.", call. = FALSE)
-  }
-
-  conn <- sft_resolve_connection(form, conn)
-
-  sft_ensure_schema(conn, form, user = user)
+  conn <- sft_prepare_mutation(form, conn, user = user)
 
   sft_db_with_transaction(conn, {
     old_record <- sft_get_record(
@@ -504,13 +503,7 @@ soft_delete_record <- function(form,
                                    conn = NULL,
                                    user = NULL,
                                    reason = NULL) {
-  if (!inherits(form, "sft_form")) {
-    stop("form must be a form object.", call. = FALSE)
-  }
-
-  conn <- sft_resolve_connection(form, conn)
-
-  sft_ensure_schema(conn, form, user = user)
+  conn <- sft_prepare_mutation(form, conn, user = user)
 
   sft_db_with_transaction(conn, {
     old_record <- sft_get_record(
