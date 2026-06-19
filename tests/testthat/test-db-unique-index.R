@@ -1,7 +1,6 @@
 testthat::test_that("unique slot allows reuse after soft-delete and blocks unsafe restore", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- form(
     form_id = "people",
@@ -62,8 +61,7 @@ testthat::test_that("unique slot allows reuse after soft-delete and blocks unsaf
 
 testthat::test_that("empty values do not collide on a unique field", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- form(
     form_id = "optional",
@@ -93,8 +91,7 @@ testthat::test_that("empty values do not collide on a unique field", {
 
 testthat::test_that("changing unique = TRUE to FALSE drops the obsolete unique index", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form_v1 <- form(
     form_id = "accounts",
@@ -148,8 +145,7 @@ testthat::test_that("changing unique = TRUE to FALSE drops the obsolete unique i
 
 testthat::test_that("the migration planner manages unique indexes as actions", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form_v1 <- form(
     form_id = "members",

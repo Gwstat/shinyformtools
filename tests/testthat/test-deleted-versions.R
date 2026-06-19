@@ -4,8 +4,7 @@
 
 testthat::test_that("deleted-records and restore flow run end to end in the module", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- form(
     form_id = "dv_flow",
@@ -46,8 +45,7 @@ testthat::test_that("deleted-records and restore flow run end to end in the modu
 
 testthat::test_that("opening versions for a live record sets up the restore list", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- form(
     form_id = "dv_versions",

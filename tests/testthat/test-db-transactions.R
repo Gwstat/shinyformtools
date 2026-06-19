@@ -1,7 +1,6 @@
 testthat::test_that("insert rolls back when audit logging fails", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- form(
     form_id = "transaction_insert",
@@ -47,8 +46,7 @@ testthat::test_that("insert rolls back when audit logging fails", {
 
 testthat::test_that("update rolls back when audit logging fails", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- form(
     form_id = "transaction_update",
@@ -104,8 +102,7 @@ testthat::test_that("update rolls back when audit logging fails", {
 
 testthat::test_that("soft delete rolls back when audit logging fails", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- form(
     form_id = "transaction_delete",
@@ -154,8 +151,7 @@ testthat::test_that("soft delete rolls back when audit logging fails", {
 
 testthat::test_that("restore rolls back when audit logging fails", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- form(
     form_id = "transaction_restore",
@@ -211,8 +207,7 @@ testthat::test_that("restore rolls back when audit logging fails", {
 
 testthat::test_that("preference replacement rolls back when preference insert fails", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- form(
     form_id = "transaction_preferences",

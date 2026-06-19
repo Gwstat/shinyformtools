@@ -1,7 +1,6 @@
 testthat::test_that("sft_list_versions returns audit versions for a record", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- form(
     form_id = "simple",
@@ -44,8 +43,7 @@ testthat::test_that("sft_list_versions returns audit versions for a record", {
 
 testthat::test_that("sft_restore_record restores a deleted record to latest non-deleted version", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- form(
     form_id = "simple",
@@ -127,8 +125,7 @@ testthat::test_that("sft_restore_record restores a deleted record to latest non-
 
 testthat::test_that("sft_restore_record rejects a restore that collides on a unique field", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- form(
     form_id = "restore_unique",
@@ -206,8 +203,7 @@ testthat::test_that("sft_restore_record rejects a restore that collides on a uni
 
 testthat::test_that("sft_restore_record with reactivate = FALSE keeps the record deleted", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- form(
     form_id = "restore_keep_deleted",
@@ -286,8 +282,7 @@ testthat::test_that("sft_restore_record with reactivate = FALSE keeps the record
 
 testthat::test_that("sft_restore_record can restore a specific version", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- form(
     form_id = "simple",
@@ -347,8 +342,7 @@ testthat::test_that("sft_restore_record can restore a specific version", {
 
 testthat::test_that("sft_list_restorable_versions excludes delete actions", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- form(
     form_id = "simple",
@@ -410,8 +404,7 @@ testthat::test_that("sft_list_restorable_versions excludes delete actions", {
 
 testthat::test_that("audit log enforces a unique version per record", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- form(
     form_id = "audit_unique",

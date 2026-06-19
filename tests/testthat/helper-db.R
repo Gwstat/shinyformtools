@@ -3,11 +3,13 @@
 # mechanical setup only; tests still own any form whose definition is the
 # subject of the test.
 
-# A throwaway SQLite connection for one test, disconnected (and its file
-# removed) automatically when the calling test_that() block finishes. withr is
-# an imported dependency of testthat, so it is always available here.
-local_test_conn <- function(.local_envir = parent.frame()) {
-  path <- withr::local_tempfile(fileext = ".sqlite", .local_envir = .local_envir)
+# A SQLite connection for one test, disconnected automatically when the calling
+# test_that() block finishes (replacing the manual on.exit(db_disconnect())).
+# `path` defaults to a fresh tempfile; pass the test's own db_path when the form
+# is built with `db_path = db_path` so the form and connection share a file.
+# withr is an imported dependency of testthat, so it is always available here.
+local_test_conn <- function(path = tempfile(fileext = ".sqlite"),
+                            .local_envir = parent.frame()) {
   conn <- db_connect(path)
   withr::defer(db_disconnect(conn), envir = .local_envir)
   conn

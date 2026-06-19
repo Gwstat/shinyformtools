@@ -1,7 +1,6 @@
 testthat::test_that("sft_init_db creates system tables and the main table", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   fields <- list(
     form_field(
@@ -43,8 +42,7 @@ testthat::test_that("sft_init_db creates system tables and the main table", {
 
 testthat::test_that("sft_plan_migration detects a missing table", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   init_system_tables(conn)
 
@@ -71,8 +69,7 @@ testthat::test_that("sft_plan_migration detects a missing table", {
 
 testthat::test_that("sft_apply_migration adds a new field column", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form_v1 <- form(
     form_id = "simple",
@@ -120,8 +117,7 @@ testthat::test_that("sft_apply_migration adds a new field column", {
 
 testthat::test_that("sft_apply_migration retires removed fields without dropping columns", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form_v1 <- form(
     form_id = "simple",
@@ -184,8 +180,7 @@ testthat::test_that("sft_apply_migration retires removed fields without dropping
 })
 testthat::test_that("renamed fields reuse existing database columns without adding new columns", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form_v1 <- form(
     form_id = "rename_test",
@@ -254,8 +249,7 @@ testthat::test_that("renamed fields reuse existing database columns without addi
 
 testthat::test_that("a failed migration rolls back on a transactional-DDL backend", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form_v1 <- form(
     form_id = "mig_rollback",
