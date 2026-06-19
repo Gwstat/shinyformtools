@@ -1,0 +1,48 @@
+Package: shinyformtools
+Title: Declarative Database-Backed Shiny Forms
+Version: 0.1.0
+Authors@R: 
+    person("Georg", "Wiegleb", , "gwiestat@gmail.com", role = c("aut", "cre"))
+Description: Build database-backed 'Shiny' form modules from a single
+    declarative schema. A form is described once and the package derives the
+    database schema, the create, read, update and delete operations, the
+    rendering and the 'Shiny' module from that description. Features include
+    soft deletion with an audit log and record restore, additive schema
+    migrations, database-level uniqueness constraints, configurable table
+    views, dynamic and cross-referencing inputs, server-side validation and a
+    rights-table permission model. The 'SQLite', 'MariaDB' and 'DuckDB'
+    databases are supported behind a common interface.
+URL: https://github.com/Gwstat/shinyformtools
+BugReports: https://github.com/Gwstat/shinyformtools/issues
+License: MIT + file LICENSE
+Depends:
+    R (>= 4.1.0)
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 8.0.0
+Suggests:
+    commonmark,
+    dplyr,
+    duckdb,
+    RMariaDB,
+    openxlsx,
+    shinymanager,
+    shinyglide,
+    sf,
+    geojsonsf,
+    leaflet,
+    testthat (>= 3.0.0),
+    withr
+Config/testthat/edition: 3
+Imports:
+    DBI,
+    DT,
+    jsonlite,
+    RSQLite,
+    shiny,
+    shinyjs,
+    shinyTime,
+    shinyWidgets,
+    stats,
+    utils,
+    uuid

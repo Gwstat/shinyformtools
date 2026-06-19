@@ -1,0 +1,12 @@
+^shinyformtools\.Rproj$
+^\.Rproj\.user$
+^dev$
+^.*\.sqlite$
+^\.ai$
+^\.claude$
+^CLAUDE\.md$
+^\.vscode$
+^cran-comments\.md$
+^\.git$
+^\.gitignore$
+^\.github$

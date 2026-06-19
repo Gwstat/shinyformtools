@@ -1,0 +1,7 @@
+.Rproj.user
+.vscode/
+dev/*.sqlite
+*.sqlite
+.claude/
+.ai/
+CLAUDE.md
