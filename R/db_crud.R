@@ -15,6 +15,41 @@ sft_prepare_mutation <- function(form, conn, user = NULL, envir = parent.frame()
   conn
 }
 
+# Shared tail for the mutating CRUD operations: re-read the affected record
+# (including its soft-deleted state), write the audit-log entry, and return the
+# new record. Used as the last expression inside the transaction block, so its
+# return value becomes the operation's result.
+sft_finalize_mutation <- function(conn,
+                                  form,
+                                  record_id,
+                                  action,
+                                  old_data,
+                                  changed_fields,
+                                  user = NULL,
+                                  reason = NULL) {
+  new_record <- sft_get_record(
+    conn = conn,
+    form = form,
+    record_id = record_id,
+    include_deleted = TRUE
+  )
+
+  write_audit_log(
+    conn = conn,
+    form = form,
+    action = action,
+    record_id = new_record$sft_id[1],
+    record_uuid = new_record$sft_uuid[1],
+    old_data = old_data,
+    new_data = new_record,
+    changed_fields = changed_fields,
+    changed_by = user,
+    reason = reason
+  )
+
+  new_record
+}
+
 sft_record_field_values <- function(form,
                                     record,
                                     include_missing = FALSE,
@@ -241,27 +276,16 @@ insert_record <- function(form,
       params = list(new_easy_id, new_id)
     )
 
-    new_record <- sft_get_record(
+    sft_finalize_mutation(
       conn = conn,
       form = form,
       record_id = new_id,
-      include_deleted = TRUE
-    )
-
-    write_audit_log(
-      conn = conn,
-      form = form,
       action = "insert",
-      record_id = new_record$sft_id[1],
-      record_uuid = new_record$sft_uuid[1],
       old_data = NULL,
-      new_data = new_record,
       changed_fields = names(values),
-      changed_by = user,
+      user = user,
       reason = reason
     )
-
-    new_record
   })
 }
 
@@ -445,27 +469,16 @@ update_record <- function(form,
       )
     )
 
-    new_record <- sft_get_record(
+    sft_finalize_mutation(
       conn = conn,
       form = form,
       record_id = old_record$sft_id[1],
-      include_deleted = TRUE
-    )
-
-    write_audit_log(
-      conn = conn,
-      form = form,
       action = "update",
-      record_id = new_record$sft_id[1],
-      record_uuid = new_record$sft_uuid[1],
       old_data = old_record,
-      new_data = new_record,
       changed_fields = names(field_values),
-      changed_by = user,
+      user = user,
       reason = reason
     )
-
-    new_record
   })
 }
 
@@ -539,30 +552,19 @@ soft_delete_record <- function(form,
       )
     )
 
-    new_record <- sft_get_record(
+    sft_finalize_mutation(
       conn = conn,
       form = form,
       record_id = old_record$sft_id[1],
-      include_deleted = TRUE
-    )
-
-    write_audit_log(
-      conn = conn,
-      form = form,
       action = "delete",
-      record_id = new_record$sft_id[1],
-      record_uuid = new_record$sft_uuid[1],
       old_data = old_record,
-      new_data = new_record,
       changed_fields = c(
         "sft_is_deleted",
         "sft_deleted_at",
         "sft_deleted_by"
       ),
-      changed_by = user,
+      user = user,
       reason = reason
     )
-
-    new_record
   })
 }
