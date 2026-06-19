@@ -1,5 +1,12 @@
+# Lightweight core check across OSes and R versions.
+#
+# Installs the hard dependencies plus only the light / pure-R Suggests. The
+# heavy / system-library Suggests (sf, geojsonsf, leaflet, duckdb, RMariaDB) are
+# installed and exercised in the separate integration-check workflow; here their
+# tests skip themselves via skip_if_not_installed() guards, and
+# _R_CHECK_FORCE_SUGGESTS_=false stops R CMD check requiring them.
+#
 # Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
-# Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
 on:
   push:
     branches: [main, master]
@@ -19,15 +26,16 @@ jobs:
       fail-fast: false
       matrix:
         config:
+          - {os: ubuntu-latest,  r: 'release'}
+          - {os: ubuntu-latest,  r: 'devel', http-user-agent: 'release'}
+          - {os: ubuntu-latest,  r: 'oldrel-1'}
           - {os: macos-latest,   r: 'release'}
           - {os: windows-latest, r: 'release'}
-          - {os: ubuntu-latest,   r: 'devel', http-user-agent: 'release'}
-          - {os: ubuntu-latest,   r: 'release'}
-          - {os: ubuntu-latest,   r: 'oldrel-1'}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
+      _R_CHECK_FORCE_SUGGESTS_: "false"
 
     steps:
       - uses: actions/checkout@v6
@@ -39,12 +47,22 @@ jobs:
           r-version: ${{ matrix.config.r }}
           http-user-agent: ${{ matrix.config.http-user-agent }}
 
+      # Hard dependencies only, plus the light/pure-R Suggests. The heavy
+      # Suggests (sf/geojsonsf/leaflet/duckdb/RMariaDB) are intentionally omitted.
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::rcmdcheck
+          dependencies: '"hard"'
+          extra-packages: >-
+            any::rcmdcheck
+            any::testthat
+            any::withr
+            any::commonmark
+            any::dplyr
+            any::shinyglide
+            any::openxlsx
           needs: check
 
       - uses: r-lib/actions/check-r-package@v2
         with:
           upload-snapshots: true
-          build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
+          build_args: 'c("--no-manual")'
