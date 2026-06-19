@@ -1,4 +1,4 @@
-# shinyformtools <img src="inst/img/shinyformtools-hex.png" align="right" height="139" alt="shinyformtools hex logo" />
+# shinyformtools <img src="inst/img/shinyformtools-hex.svg" align="right" height="139" alt="shinyformtools hex logo" />
 
 <!-- badges: start -->
 [![R-CMD-check](https://github.com/Gwstat/shinyformtools/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/Gwstat/shinyformtools/actions/workflows/R-CMD-check.yaml)
