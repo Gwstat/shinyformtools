@@ -19,6 +19,15 @@ multi-line text, select / selectize, radio and checkbox groups, multi-select,
 numeric, slider, date and date-range, time, IBAN, ...) and every field is
 customizable.
 
+## Background
+
+shinyformtools started back in 2021, and I finally found the time to refactor it
+into a proper, tested package — with the help of
+[Claude Code](https://claude.com/claude-code). Early role models were Dean
+Attali's [shinyforms](https://github.com/daattali/shinyforms) and Niels van der
+Velden's write-up on
+[editable DataTables in Shiny backed by SQL](https://www.nielsvandervelden.com/blog/editable-datatables-in-r-shiny-using-sql/).
+
 ## Features
 
 - **Declarative core** — describe a form once with `form()` / `form_field()`;
@@ -158,38 +167,47 @@ is locked in by regression tests in
 
 ## Example apps
 
-List and run the bundled examples:
+Thirteen self-contained demo apps ship with the package; each shows a
+**"How it is built"** walkthrough beside the running form. List and run them:
 
 ```r
 list_examples()
-run_example("app_shape_map")          # shape fields + a leaflet map
-run_example("app_cascading_inputs")   # cascading inputs + cross-table references
-run_example("app_shinymanager")       # shinymanager login + a rights table
+run_example("app_crud_basic")
 ```
 
-Each example is documented in
+- **app_crud_basic** — the smallest complete app: one `form()` drives the schema,
+  the add/edit/delete dialogs, the records table, soft-delete with restore, and
+  the audit log. **Start here.**
+- **app_input_types** — a tour of every supported input type, plus the
+  `html_field()` and `output_field()` field kinds and a server-fed live preview.
+- **app_field_control** — constraining fields: per-user `editable`, locked/derived
+  fields, hidden-but-stored columns (`show = FALSE`), and conditional inputs
+  (`dynamic_visibility()`).
+- **app_cascading_inputs** — chained inputs via `dynamic_choices()` /
+  `dynamic_value()` (street → house number → suffix → derived ZIP), no
+  hand-written observers. Needs `dplyr`.
+- **app_calculated_columns** — render-time derived columns with
+  `display_transform()`, both within a row and joined from another table (live via
+  `refresh_triggers`).
+- **app_inline_forms** — `form_layout = "inline"`: the add/edit form sits in a
+  panel above the table instead of a modal dialog.
+- **app_table_style** — style and transform the records table through
+  `table_options` / `table_filter` / `table_format` (`DT::formatStyle()`).
+- **app_markdown** — `form_field(markdown = TRUE)` renders stored text as
+  (HTML-sanitized) Markdown in the table. Needs `commonmark`.
+- **app_backends** — one form, two backends side by side: **SQLite** and
+  **DuckDB** (the DuckDB tab appears when `duckdb` is installed).
+- **app_mariadb** — the same form on a **MariaDB / MySQL** server, with an in-app
+  setup tutorial (copy-paste Docker command) when no server is reachable. Needs
+  `RMariaDB`.
+- **app_shinymanager** — a support desk with per-user CRUD across two tables,
+  driven by an editable rights table (`permissions_form()` /
+  `rights_permissions()`) on top of a `shinymanager` login. Needs `shinymanager`.
+- **app_german** — a fully German UI from one `use_german()` switch (English stays
+  the default), overridable per form.
+- **app_shape_map** — records with a fixed, non-editable geometry:
+  `shape_field()` + `attach_shapes()` drawn on a leaflet map via `decode_shape()`.
+  Needs `sf` and `leaflet`.
+
+Each example is documented in more detail in
 [`inst/examples/README.md`](inst/examples/README.md).
-
-## Development
-
-```r
-devtools::document()
-devtools::load_all()
-devtools::test()
-devtools::check()
-```
-
-- DuckDB tests run only when the `duckdb` package is installed.
-- MariaDB tests run only when the `SFT_MARIADB_USER` / `SFT_MARIADB_PASSWORD`
-  environment variables are set.
-
-## Background
-
-shinyformtools started back in 2021, and I finally found the time to refactor it
-into a proper, tested package — with the help of
-[Claude Code](https://claude.com/claude-code).
-
-Early role models were Dean Attali's
-[shinyforms](https://github.com/daattali/shinyforms) and Niels van der Velden's
-write-up on
-[editable DataTables in Shiny backed by SQL](https://www.nielsvandervelden.com/blog/editable-datatables-in-r-shiny-using-sql/).
