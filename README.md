@@ -211,3 +211,9 @@ run_example("app_crud_basic")
 
 Each example is documented in more detail in
 [`inst/examples/README.md`](inst/examples/README.md).
+
+## Contributing
+
+Bug reports, ideas, and pull requests are welcome — see
+[CONTRIBUTING](.github/CONTRIBUTING.md) for the development workflow and
+conventions.
