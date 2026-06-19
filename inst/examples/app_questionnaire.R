@@ -95,43 +95,62 @@ how_to <- function() {
     shiny::tags$p(
       style = "margin: 0.4rem 0 0;",
       "The questions are right here - no Add button. Step through the slides with ",
-      shiny::tags$em("Back / Next"), ", then ", shiny::tags$em("Submit response"),
-      ". The form clears itself for the next respondent."
+      shiny::tags$em("Back / Next"), "; the ", shiny::tags$em("Submit response"),
+      " button appears on the last slide. Submitting closes the form."
     )
   )
 }
 
-#> STEP: Render the form directly, so it is always visible
-#> NOTE: render_form_fields() turns the form description into the input controls
-#> NOTE: (here a shinyglide wizard, because the fields use slides). We wrap it in
-#> NOTE: a div we can reset, and add our own Submit button - no add/edit module,
-#> NOTE: no records table, the form is simply on the page.
-survey_panel <- function() {
-  shiny::tagList(
-    shiny::div(
-      id = "survey_fields",
-      render_form_fields(survey_form, prefix = "q_")
-    ),
-    shiny::actionButton("submit", "Submit response", class = "btn-primary"),
-    shiny::div(
-      style = "margin-top: 0.6rem; color: #586069; font-size: 0.85rem;",
-      shiny::textOutput("count", inline = TRUE)
-    )
+#> STEP: Build the slide wizard, with Submit only on the last slide
+#> NOTE: We build the shinyglide carousel ourselves so we control the controls:
+#> NOTE: render_form_fields() draws one slide's fields (a per-slide copy of the
+#> NOTE: form), each wrapped in a shinyglide screen. The Submit button lives
+#> NOTE: INSIDE the last screen, so it only shows on the final slide (shinyglide
+#> NOTE: hides its own Next arrow there).
+slide_panel <- function(full_form, slide_value, prefix) {
+  one_slide <- full_form
+  one_slide$fields <- lapply(
+    Filter(function(f) identical(as.integer(f$slide), slide_value), full_form$fields),
+    function(f) {
+      f$slide <- 0L
+      f
+    }
+  )
+  render_form_fields(one_slide, prefix = prefix)
+}
+
+survey_wizard <- function() {
+  slides <- sort(unique(vapply(survey_form$fields, function(f) as.integer(f$slide), integer(1))))
+  screens <- lapply(seq_along(slides), function(i) {
+    body <- slide_panel(survey_form, slides[i], "q_")
+    if (i == length(slides)) {
+      body <- shiny::tagList(
+        body,
+        shiny::actionButton("submit", "Submit response",
+                            class = "btn-primary", style = "margin-top: 1rem;")
+      )
+    }
+    shinyglide::screen(body)
+  })
+  do.call(shinyglide::glide, c(list(height = "460px"), screens))
+}
+
+thank_you <- function() {
+  shiny::div(
+    style = "padding: 1.5rem 1rem; text-align: center;",
+    shiny::tags$h4("Thanks - your response was recorded."),
+    shiny::actionButton("again", "Submit another response", class = "btn-default")
   )
 }
 #> END
 
-#> STEP: Store each response on Submit
-#> NOTE: collect_input_values() reads the answers (matched by the "q_" prefix),
-#> NOTE: insert_record() writes the response to the database (it validates the
-#> NOTE: mandatory rating and throws on a problem, which we surface), and
-#> NOTE: shinyjs::reset() clears the inputs for the next person.
+#> STEP: Store the response and close the form on Submit
+#> NOTE: collect_input_values() reads the answers (matched by the "q_" prefix)
+#> NOTE: and insert_record() writes the response (it validates the mandatory
+#> NOTE: rating and throws on a problem, which we surface). On success we hide the
+#> NOTE: wizard and show a thank-you; "Submit another response" reloads a fresh
+#> NOTE: survey.
 server <- function(input, output, session) {
-  responses <- shiny::reactiveVal(0L)
-  output$count <- shiny::renderText({
-    sprintf("%d response(s) recorded this session.", responses())
-  })
-
   shiny::observeEvent(input$submit, {
     values <- collect_input_values(survey_form, input, prefix = "q_")
 
@@ -146,11 +165,12 @@ server <- function(input, output, session) {
     })
 
     if (isTRUE(ok)) {
-      responses(responses() + 1L)
-      shiny::showNotification("Thanks for your response!", type = "message")
-      shinyjs::reset("survey_fields")
+      shinyjs::hide("survey_wrap")
+      shinyjs::show("thanks_wrap")
     }
   })
+
+  shiny::observeEvent(input$again, session$reload())
 }
 #> END
 
@@ -273,7 +293,8 @@ ui <- demo_page(
   shiny::tagList(
     shinyjs::useShinyjs(),
     how_to(),
-    survey_panel()
+    shiny::div(id = "survey_wrap", survey_wizard()),
+    shinyjs::hidden(shiny::div(id = "thanks_wrap", thank_you()))
   )
 )
 

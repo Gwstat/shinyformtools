@@ -84,13 +84,15 @@ Start with **app_crud_basic**; the rest each focus on one capability.
   a modal dialog, with add and edit mutually exclusive.
 
 - **app_questionnaire** — a survey / questionnaire. Each question carries a
-  `slide` index (`form_field(slide = N)`), so the package renders the form as a
-  **shinyglide** Back/Next wizard; fields sharing a slide (laid out by `col` /
+  `slide` index (`form_field(slide = N)`); the slides are shown as a
+  **shinyglide** Back/Next wizard, and fields sharing a slide (laid out by `col` /
   `pos`) put two inputs on one slide. There is no records table and no Add
-  button: the form is rendered directly with `render_form_fields()` so it is
-  always visible, `collect_input_values()` reads the answers on Submit,
-  `insert_record()` stores the response, and `shinyjs::reset()` clears it for the
-  next respondent. Requires the optional `shinyglide` package.
+  button: the fields are rendered directly with `render_form_fields()` (one slide
+  per shinyglide screen), so the form is just on the page. The **Submit** button
+  lives in the last screen, so it only appears on the final slide;
+  `collect_input_values()` reads the answers, `insert_record()` stores the
+  response, and the form then **closes** to a thank-you ("Submit another
+  response" reloads a fresh survey). Requires the optional `shinyglide` package.
 
 - **app_bug_report** — a "Report a bug" button living in an application's
   **header** rather than a records toolbar. `form_buttons("bugs", ...)` renders
