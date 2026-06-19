@@ -175,9 +175,9 @@ because every identifier originates from a form or field definition, they are
 additionally validated at definition time against a strict allowlist
 (`^[A-Za-z][A-Za-z0-9_]*$`, with the `sft_` prefix reserved). The two DDL spots
 that cannot be parameterized (a `PRAGMA table_info()` table name and a column
-`DEFAULT` clause) use `DBI::dbQuoteString()` on developer-defined metadata. As a
-result, neither a user-entered value nor a form definition can inject SQL. This
-is locked in by regression tests in
+`DEFAULT` clause) use `DBI::dbQuoteString()` on developer-defined metadata. The
+package is designed so that user-entered values and form definitions are not
+interpolated into SQL, and SQL-injection regressions are covered by tests in
 [`tests/testthat/test-sql-injection.R`](tests/testthat/test-sql-injection.R).
 
 ## Example apps

@@ -20,8 +20,8 @@ License: MIT + file LICENSE
 Depends:
     R (>= 4.1.0)
 Encoding: UTF-8
-Roxygen: list(markdown = TRUE)
-RoxygenNote: 8.0.0
+Config/roxygen2/markdown: TRUE
+Config/roxygen2/version: 8.0.0
 Suggests:
     commonmark,
     dplyr,

@@ -98,7 +98,7 @@ how_to <- function() {
 #> NOTE: form_server() with the same id renders the records table and runs every
 #> NOTE: CRUD action. The markdown = TRUE field is rendered as formatted Markdown
 #> NOTE: in the table; the value is HTML-escaped and URL-sanitized first, so
-#> NOTE: user-entered HTML cannot execute.
+#> NOTE: user-entered HTML is rendered as inert text rather than live markup.
 server <- function(input, output, session) {
   form_server(
     id = "notes",

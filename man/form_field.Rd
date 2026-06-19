@@ -63,9 +63,9 @@ input field. Errors in the function are treated as not editable
 \item{markdown}{Logical. When \code{TRUE}, the field's stored value is rendered as
 Markdown in the records and versions tables instead of being shown as plain
 text. The value is HTML-escaped before rendering and the output is
-URL-sanitized, so user-entered content cannot inject scripts or unsafe
-links. Editing still shows the raw Markdown source. Only input fields may be
-markdown. Requires the \pkg{commonmark} package.}
+URL-sanitized so that user-entered content is not rendered as active scripts
+or unsafe links. Editing still shows the raw Markdown source. Only input
+fields may be markdown. Requires the \pkg{commonmark} package.}
 
 \item{show}{Logical. Whether the field is shown in the form.}
 

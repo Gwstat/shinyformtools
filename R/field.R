@@ -81,9 +81,9 @@ sft_check_optional_label <- function(value, name) {
 #' @param markdown Logical. When `TRUE`, the field's stored value is rendered as
 #'   Markdown in the records and versions tables instead of being shown as plain
 #'   text. The value is HTML-escaped before rendering and the output is
-#'   URL-sanitized, so user-entered content cannot inject scripts or unsafe
-#'   links. Editing still shows the raw Markdown source. Only input fields may be
-#'   markdown. Requires the \pkg{commonmark} package.
+#'   URL-sanitized so that user-entered content is not rendered as active scripts
+#'   or unsafe links. Editing still shows the raw Markdown source. Only input
+#'   fields may be markdown. Requires the \pkg{commonmark} package.
 #' @param show Logical. Whether the field is shown in the form.
 #' @param tab Integer-like layout tab position.
 #' @param tab_label Optional label for the tab this field belongs to.

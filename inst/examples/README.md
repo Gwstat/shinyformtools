@@ -75,9 +75,10 @@ Start with **app_crud_basic**; the rest each focus on one capability.
   whenever the data changes.
 
 - **app_markdown** — `form_field(markdown = TRUE)` renders a field's stored text
-  as Markdown in the records table. Safe for user input: values are HTML-escaped
-  and URL-sanitized, so a pasted `<script>` or `javascript:` link cannot execute.
-  Requires the optional `commonmark` package.
+  as Markdown in the records table. Designed for user input: values are
+  HTML-escaped and URL-sanitized, so a pasted `<script>` or `javascript:` link is
+  rendered as inert text rather than executed. Requires the optional `commonmark`
+  package.
 
 - **app_inline_forms** — `form_layout = "inline"` on `form_ui()` and
   `form_server()` renders the add/edit form in a panel above the table instead of

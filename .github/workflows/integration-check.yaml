@@ -10,9 +10,11 @@
 # the names the package reads (SFT_MARIADB_USER / SFT_MARIADB_PASSWORD, plus the
 # _DB / _HOST / _PORT convention used by the bundled example).
 on:
-  push:
-    branches: [main, master]
   pull_request:
+  workflow_dispatch:
+  schedule:
+    # Weekly, Mondays at 06:00 UTC.
+    - cron: '0 6 * * 1'
 
 name: integration-check.yaml
 
