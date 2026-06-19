@@ -12,6 +12,13 @@ rendering, and the Shiny module from that one description. It is aimed at
 production-style workflows where records are created, edited, audited, restored,
 and displayed through configurable table views.
 
+It is not limited to classic data-entry forms: the same declarative description
+drives **questionnaires and surveys, feedback boxes, and admin tables** — anything
+backed by records. A wide range of input types is built in (text, password,
+multi-line text, select / selectize, radio and checkbox groups, multi-select,
+numeric, slider, date and date-range, time, IBAN, ...) and every field is
+customizable.
+
 ## Features
 
 - **Declarative core** — describe a form once with `form()` / `form_field()`;
@@ -175,3 +182,14 @@ devtools::check()
 - DuckDB tests run only when the `duckdb` package is installed.
 - MariaDB tests run only when the `SFT_MARIADB_USER` / `SFT_MARIADB_PASSWORD`
   environment variables are set.
+
+## Background
+
+shinyformtools started back in 2021, and I finally found the time to refactor it
+into a proper, tested package — with the help of
+[Claude Code](https://claude.com/claude-code).
+
+Early role models were Dean Attali's
+[shinyforms](https://github.com/daattali/shinyforms) and Niels van der Velden's
+write-up on
+[editable DataTables in Shiny backed by SQL](https://www.nielsvandervelden.com/blog/editable-datatables-in-r-shiny-using-sql/).
