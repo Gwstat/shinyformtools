@@ -28,6 +28,17 @@ Attali's [shinyforms](https://github.com/daattali/shinyforms) and Niels van der
 Velden's write-up on
 [editable DataTables in Shiny backed by SQL](https://www.nielsvandervelden.com/blog/editable-datatables-in-r-shiny-using-sql/).
 
+## Related work
+
+Several packages address parts of the Shiny form / editing space:
+[shinyforms](https://github.com/daattali/shinyforms),
+[shinysurveys](https://github.com/jdtrat/shinysurveys),
+[shinyvalidate](https://github.com/rstudio/shinyvalidate),
+[datamods](https://github.com/dreamRs/datamods), and
+[editbl](https://github.com/openanalytics/editbl). shinyformtools focuses on
+schema-driven, database-backed CRUD forms with validation, audit/restore
+workflows, and permission-aware administrative use cases.
+
 ## Features
 
 - **Declarative core** — describe a form once with `form()` / `form_field()`;
