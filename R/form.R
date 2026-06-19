@@ -284,7 +284,7 @@ sft_validate_form <- function(form) {
 #' @export
 field_ids <- function(form) {
   if (!inherits(form, "sft_form")) {
-    stop("form must be an form object.", call. = FALSE)
+    stop("form must be a form object.", call. = FALSE)
   }
 
   vapply(form$fields, function(x) x$id, character(1))
@@ -309,7 +309,7 @@ field_ids <- function(form) {
 #' @export
 db_columns <- function(form) {
   if (!inherits(form, "sft_form")) {
-    stop("form must be an form object.", call. = FALSE)
+    stop("form must be a form object.", call. = FALSE)
   }
 
   input_fields <- Filter(sft_is_input_field, form$fields)

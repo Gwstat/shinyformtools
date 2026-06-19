@@ -333,7 +333,7 @@ sft_records_table_data <- function(data,
                                    datetime_format = sft_default_datetime_format(),
                                    display_column_labels = NULL) {
   if (!inherits(form, "sft_form")) {
-    stop("form must be an form object.", call. = FALSE)
+    stop("form must be a form object.", call. = FALSE)
   }
 
   if (!is.data.frame(data)) {
@@ -408,7 +408,7 @@ records_datatable <- function(data,
                                   display_column_labels = NULL,
                                   filter = "none") {
   if (!inherits(form, "sft_form")) {
-    stop("form must be an form object.", call. = FALSE)
+    stop("form must be a form object.", call. = FALSE)
   }
 
   if (!is.data.frame(data)) {
@@ -543,7 +543,7 @@ sft_versions_datatable <- function(data,
                                    options = list(),
                                    datetime_format = sft_default_datetime_format()) {
   if (!inherits(form, "sft_form")) {
-    stop("form must be an form object.", call. = FALSE)
+    stop("form must be a form object.", call. = FALSE)
   }
 
   if (!is.data.frame(data) || nrow(data) == 0L) {

@@ -284,7 +284,7 @@ sft_apply_validation_rule <- function(rule,
                                       current_id = NULL,
                                       context = NULL) {
   if (!inherits(rule, "sft_validation_rule")) {
-    stop("rule must be an validation_rule object.", call. = FALSE)
+    stop("rule must be a validation_rule object.", call. = FALSE)
   }
 
   active <- TRUE

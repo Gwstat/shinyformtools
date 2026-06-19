@@ -10,3 +10,16 @@
 ^\.git$
 ^\.gitignore$
 ^\.github$
+^\.gitattributes$
+^LICENSE\.md$
+^README\.Rmd$
+^\.Rhistory$
+^\.RData$
+^\.DS_Store$
+^.*\.Rcheck$
+^.*\.tar\.gz$
+^.*\.sqlite-wal$
+^.*\.sqlite-shm$
+^.*\.duckdb$
+^.*\.duckdb\.wal$
+^.*\.db$

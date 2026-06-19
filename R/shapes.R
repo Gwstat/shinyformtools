@@ -163,7 +163,7 @@ attach_shapes <- function(form,
                               shape_field = NULL,
                               user = NULL) {
   if (!inherits(form, "sft_form")) {
-    stop("form must be an form object.", call. = FALSE)
+    stop("form must be a form object.", call. = FALSE)
   }
 
   sft_require_shape_package("sf")

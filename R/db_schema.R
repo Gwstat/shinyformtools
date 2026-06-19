@@ -45,7 +45,7 @@ sft_field_db_definition <- function(field, conn = NULL) {
 
 sft_expected_columns <- function(form, conn = NULL) {
   if (!inherits(form, "sft_form")) {
-    stop("form must be an form object.", call. = FALSE)
+    stop("form must be a form object.", call. = FALSE)
   }
 
   stored_fields <- Filter(sft_is_stored_field, form$fields)
@@ -529,7 +529,7 @@ init_db <- function(form,
                         apply = TRUE,
                         user = NULL) {
   if (!inherits(form, "sft_form")) {
-    stop("form must be an form object.", call. = FALSE)
+    stop("form must be a form object.", call. = FALSE)
   }
 
   conn <- sft_resolve_connection(form, conn)

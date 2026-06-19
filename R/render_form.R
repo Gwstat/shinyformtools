@@ -239,7 +239,7 @@ render_field <- function(field,
                              value = NULL,
                              read_only = FALSE) {
   if (!inherits(field, "sft_field")) {
-    stop("field must be an form_field object.", call. = FALSE)
+    stop("field must be a form_field object.", call. = FALSE)
   }
 
   if (!isTRUE(field$show)) {
@@ -500,7 +500,7 @@ render_form_fields <- function(form,
                                    read_only = FALSE,
                                    editable_fields = NULL) {
   if (!inherits(form, "sft_form")) {
-    stop("form must be an form object.", call. = FALSE)
+    stop("form must be a form object.", call. = FALSE)
   }
 
   # Per-user field editing: lock every input field not in editable_fields by
@@ -594,7 +594,7 @@ collect_input_values <- function(form,
                                      prefix = "",
                                      editable_only = FALSE) {
   if (!inherits(form, "sft_form")) {
-    stop("form must be an form object.", call. = FALSE)
+    stop("form must be a form object.", call. = FALSE)
   }
 
   fields <- if (isTRUE(editable_only)) {

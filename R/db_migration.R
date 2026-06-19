@@ -179,7 +179,7 @@ sft_add_migration_action <- function(actions,
 #' @export
 inspect_schema <- function(conn, form) {
   if (!inherits(form, "sft_form")) {
-    stop("form must be an form object.", call. = FALSE)
+    stop("form must be a form object.", call. = FALSE)
   }
 
   expected_columns <- sft_expected_columns(form, conn = conn)
@@ -270,7 +270,7 @@ comparable_columns <- intersect(
 #' @export
 plan_migration <- function(conn, form) {
   if (!inherits(form, "sft_form")) {
-    stop("form must be an form object.", call. = FALSE)
+    stop("form must be a form object.", call. = FALSE)
   }
 
   inspection <- inspect_schema(conn, form)

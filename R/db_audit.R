@@ -108,7 +108,7 @@ write_audit_log <- function(conn,
                                 changed_by = NULL,
                                 reason = NULL) {
   if (!inherits(form, "sft_form")) {
-    stop("form must be an form object.", call. = FALSE)
+    stop("form must be a form object.", call. = FALSE)
   }
 
   if (!sft_is_scalar_character(action)) {

@@ -1,6 +1,6 @@
 sft_active_fields <- function(form) {
   if (!inherits(form, "sft_form")) {
-    stop("form must be an form object.", call. = FALSE)
+    stop("form must be a form object.", call. = FALSE)
   }
 
   Filter(
@@ -230,7 +230,7 @@ validate_record <- function(form,
                                 current_id = NULL,
                                 require_all_mandatory = TRUE) {
   if (!inherits(form, "sft_form")) {
-    stop("form must be an form object.", call. = FALSE)
+    stop("form must be a form object.", call. = FALSE)
   }
 
   if (is.data.frame(record)) {
@@ -301,7 +301,7 @@ validate_record <- function(form,
 
 sft_supplied_empty_mandatory_fields <- function(form, record) {
   if (!inherits(form, "sft_form")) {
-    stop("form must be an form object.", call. = FALSE)
+    stop("form must be a form object.", call. = FALSE)
   }
 
   if (is.data.frame(record)) {

@@ -300,7 +300,7 @@ form_server <- function(id,
                             refresh_triggers = NULL,
                             form_layout = c("modal", "inline")) {
   if (!inherits(form, "sft_form")) {
-    stop("form must be an form object.", call. = FALSE)
+    stop("form must be a form object.", call. = FALSE)
   }
 
   form_layout <- match.arg(form_layout)

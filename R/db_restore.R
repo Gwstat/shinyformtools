@@ -181,7 +181,7 @@ fetch_audit_log <- function(form,
                                 record_id = NULL,
                                 record_uuid = NULL) {
   if (!inherits(form, "sft_form")) {
-    stop("form must be an form object.", call. = FALSE)
+    stop("form must be a form object.", call. = FALSE)
   }
 
   conn <- sft_resolve_connection(form, conn)
@@ -326,7 +326,7 @@ restore_record <- function(form,
                                reason = NULL,
                                reactivate = TRUE) {
   if (!inherits(form, "sft_form")) {
-    stop("form must be an form object.", call. = FALSE)
+    stop("form must be a form object.", call. = FALSE)
   }
 
   if (is.null(record_id) && is.null(record_uuid)) {
