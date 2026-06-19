@@ -29,14 +29,14 @@ The project started as a personal side project and was delayed several times bec
 
 ## Related work
 
-Several packages address parts of the Shiny form / editing space:
 [shinyforms](https://github.com/daattali/shinyforms),
 [shinysurveys](https://github.com/jdtrat/shinysurveys),
 [shinyvalidate](https://github.com/rstudio/shinyvalidate),
 [datamods](https://github.com/dreamRs/datamods), and
-[editbl](https://github.com/openanalytics/editbl). shinyformtools focuses on
-schema-driven, database-backed CRUD forms with validation, audit/restore
-workflows, and permission-aware administrative use cases.
+[editbl](https://github.com/openanalytics/editbl) address related parts of the
+Shiny form / editing space. shinyformtools focuses on schema-driven,
+database-backed CRUD forms with validation, audit/restore workflows, and
+permission-aware administrative use cases.
 
 ## Features
 
