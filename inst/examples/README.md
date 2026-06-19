@@ -83,6 +83,22 @@ Start with **app_crud_basic**; the rest each focus on one capability.
   `form_server()` renders the add/edit form in a panel above the table instead of
   a modal dialog, with add and edit mutually exclusive.
 
+- **app_questionnaire** — a survey / questionnaire. Each question carries a
+  `slide` index (`form_field(slide = N)`), so the package renders the form as a
+  **shinyglide** Back/Next wizard; fields sharing a slide (laid out by `col` /
+  `pos`) put two inputs on one slide. There is no records table and no Add
+  button: the form is rendered directly with `render_form_fields()` so it is
+  always visible, `collect_input_values()` reads the answers on Submit,
+  `insert_record()` stores the response, and `shinyjs::reset()` clears it for the
+  next respondent. Requires the optional `shinyglide` package.
+
+- **app_bug_report** — a "Report a bug" button living in an application's
+  **header** rather than a records toolbar. `form_buttons("bugs", ...)` renders
+  the form module's Add button (relabelled) using the same module id, so it opens
+  the very same dialog that `form_server()` drives; the module's own button row
+  is hidden with `form_ui(button_options = list(placement = "none"))`. Submitted
+  reports appear in the table below.
+
 - **app_cascading_inputs** — chained inputs driven by binding declarations.
   Street drives the house-number choices, the house number drives the suffix
   choices, and the ZIP is derived from the chosen address

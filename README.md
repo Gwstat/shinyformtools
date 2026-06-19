@@ -167,7 +167,7 @@ is locked in by regression tests in
 
 ## Example apps
 
-Thirteen self-contained demo apps ship with the package; each shows a
+Fifteen self-contained demo apps ship with the package; each shows a
 **"How it is built"** walkthrough beside the running form. List and run them:
 
 ```r
@@ -191,6 +191,12 @@ run_example("app_crud_basic")
   `refresh_triggers`).
 - **app_inline_forms** — `form_layout = "inline"`: the add/edit form sits in a
   panel above the table instead of a modal dialog.
+- **app_questionnaire** — a survey rendered as a `shinyglide` slide wizard (one
+  or two questions per slide), shown always-open with `render_form_fields()` +
+  `collect_input_values()` — no records table, no Add button. Needs `shinyglide`.
+- **app_bug_report** — a "Report a bug" button placed in the app header with
+  `form_buttons()` (the same module id, so it opens the report form); submitted
+  reports land in the table below.
 - **app_table_style** — style and transform the records table through
   `table_options` / `table_filter` / `table_format` (`DT::formatStyle()`).
 - **app_markdown** — `form_field(markdown = TRUE)` renders stored text as
