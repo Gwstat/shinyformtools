@@ -1,7 +1,6 @@
 testthat::test_that("validation_rule blocks contradictory records on insert", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- form(
     form_id = "rules_test",
@@ -41,8 +40,7 @@ testthat::test_that("validation_rule blocks contradictory records on insert", {
 
 testthat::test_that("validation_rule is evaluated on merged update records", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- form(
     form_id = "update_rules_test",
@@ -84,8 +82,7 @@ testthat::test_that("validation_rule is evaluated on merged update records", {
 
 testthat::test_that("validation warnings do not block persistence", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- form(
     form_id = "warning_rules_test",

@@ -30,8 +30,7 @@ testthat::test_that("sft_is_retryable_conflict recognises backend constraint mes
 
 testthat::test_that("sft_db_with_transaction retries a racing-writer conflict and both succeed", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   attempts <- 0L
 
@@ -51,8 +50,7 @@ testthat::test_that("sft_db_with_transaction retries a racing-writer conflict an
 
 testthat::test_that("sft_db_with_transaction surfaces the conflict after exhausting retries", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   attempts <- 0L
 
@@ -73,8 +71,7 @@ testthat::test_that("sft_db_with_transaction surfaces the conflict after exhaust
 
 testthat::test_that("sft_db_with_transaction does not retry a non-conflict error", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   attempts <- 0L
 

@@ -1,7 +1,6 @@
 testthat::test_that("shared column views are available across users", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- form(
     form_id = "column_views",
@@ -43,8 +42,7 @@ testthat::test_that("shared column views are available across users", {
 
 testthat::test_that("sft_column_view_names lists Standard and shared views", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- form(
     form_id = "view_names",
@@ -89,8 +87,7 @@ testthat::test_that("sft_column_view_names lists Standard and shared views", {
 
 testthat::test_that("sft_resolve_column_view_columns honours saved views and falls back", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- form(
     form_id = "resolve_columns",

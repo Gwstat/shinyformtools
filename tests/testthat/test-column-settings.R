@@ -4,8 +4,7 @@
 
 testthat::test_that("column-settings widget, save, and load run in the module", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- form(
     form_id = "cs_flow",
@@ -59,8 +58,7 @@ testthat::test_that("column-settings widget, save, and load run in the module", 
 
 testthat::test_that("the Standard view cannot be overwritten via save", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- form(
     form_id = "cs_standard",

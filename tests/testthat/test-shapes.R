@@ -37,8 +37,7 @@ testthat::test_that("sft_shape_field creates a stored, non-editable, non-input c
 
 testthat::test_that("a shape field becomes a database column in the schema", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- make_district_form(db_path)
   init_db(form, conn = conn)
@@ -49,8 +48,7 @@ testthat::test_that("a shape field becomes a database column in the schema", {
 
 testthat::test_that("sft_attach_shapes stores geometry that round-trips, and reports unmatched features", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- make_district_form(db_path)
   init_db(form, conn = conn)
@@ -94,8 +92,7 @@ testthat::test_that("sft_attach_shapes stores geometry that round-trips, and rep
 
 testthat::test_that("editing input fields leaves the fixed geometry untouched", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- make_district_form(db_path)
   init_db(form, conn = conn)
@@ -127,8 +124,7 @@ testthat::test_that("editing input fields leaves the fixed geometry untouched", 
 
 testthat::test_that("shape columns are not offered as record-table columns", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- make_district_form(db_path)
   init_db(form, conn = conn)
