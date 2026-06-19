@@ -21,12 +21,11 @@ customizable.
 
 ## Background
 
-shinyformtools started back in 2021, and I finally found the time to refactor it
-into a proper, tested package — with the help of
-[Claude Code](https://claude.com/claude-code). Early role models were Dean
-Attali's [shinyforms](https://github.com/daattali/shinyforms) and Niels van der
-Velden's write-up on
-[editable DataTables in Shiny backed by SQL](https://www.nielsvandervelden.com/blog/editable-datatables-in-r-shiny-using-sql/).
+`shinyformtools` grew out of recurring applied Shiny use cases where forms needed to be connected to data workflows in R: feedback forms, simple data queries, questionnaires, rating forms, and coordinated data collection processes. These projects often required the same components repeatedly: declarative form definitions, validation, database-backed storage, record editing, auditability, and reusable Shiny modules.
+
+The original idea was inspired in part by existing Shiny form tooling, especially Dean Attali's [`shinyforms`](https://github.com/daattali/shinyforms), and by Niels van der Velden's article [“Editable DataTables in R Shiny using SQL”](https://www.nielsvandervelden.com/blog/editable-datatables-in-r-shiny-using-sql/). What started as a relatively small modular form idea gradually expanded to support a wider range of use cases, including schema-driven CRUD workflows, validation, permissions, audit logs, restore workflows, and multiple database backends.
+
+The project started as a personal side project and was delayed several times because it needed substantial refactoring, stronger tests, and clearer release hygiene. More recently, Claude Code was used as an AI-assisted development tool for refactoring, testing, security hardening, and implementation cleanup. The package is maintained by me and is still at an early stage. Suggestions and bug reports are very welcome.
 
 ## Related work
 
