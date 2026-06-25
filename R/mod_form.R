@@ -91,6 +91,7 @@ form_ui <- function(id,
   shiny::tagList(
     shinyjs::useShinyjs(),
     sft_button_css(),
+    sft_highlight_css(),
 
     if (!is.null(title)) {
       shiny::h3(title)
@@ -234,6 +235,21 @@ form_ui <- function(id,
 #'   table should re-fetch on. Pass another form's returned `changed` reactive to
 #'   make this table react to changes in that table, so dependent tables and
 #'   downstream outputs (maps, summaries) stay in sync.
+#' @param highlight_fields Optional character vector of field ids to highlight
+#'   with a glow in the add and edit forms, or a function/reactive returning one.
+#'   Use it to draw attention to specific inputs reactively (for example fields
+#'   that still need input). The set is re-applied whenever the reactive changes;
+#'   return an empty vector to clear the highlight.
+#' @param highlight_tab Logical. When `TRUE` (default), the tab that contains a
+#'   highlighted or changed field is highlighted too, so the relevant tab stands
+#'   out in a multi-tab form. Has no effect on single-tab forms.
+#' @param highlight_color Glow colour used for `highlight_fields`. Any CSS colour
+#'   string. Defaults to a red (`"#dc3545"`).
+#' @param show_changed Logical. When `TRUE` (default), an edit-form field whose
+#'   current value differs from the stored record value is glowed automatically,
+#'   so it is clear which fields were actually changed before saving.
+#' @param changed_color Glow colour used for `show_changed`. Any CSS colour
+#'   string. Defaults to a blue (`"#2b8cff"`).
 #' @param form_layout Where the add/edit forms render. `"modal"` (default) opens
 #'   them in a dialog; `"inline"` renders them in a panel above the records table,
 #'   with add and edit mutually exclusive. Must match the `form_layout` passed to
@@ -298,6 +314,11 @@ form_server <- function(id,
                             deleted_records_options = list(),
                             datetime_format = sft_default_datetime_format(),
                             refresh_triggers = NULL,
+                            highlight_fields = NULL,
+                            highlight_tab = TRUE,
+                            highlight_color = "#dc3545",
+                            show_changed = TRUE,
+                            changed_color = "#2b8cff",
                             form_layout = c("modal", "inline")) {
   if (!inherits(form, "sft_form")) {
     stop("form must be a form object.", call. = FALSE)
@@ -508,6 +529,18 @@ form_server <- function(id,
       input = input,
       session = session,
       context = display_context
+    )
+
+    sft_register_highlight(
+      input = input,
+      session = session,
+      form = form,
+      current_edit_row = current_edit_row,
+      highlight_fields = highlight_fields,
+      highlight_tab = highlight_tab,
+      highlight_color = highlight_color,
+      show_changed = show_changed,
+      changed_color = changed_color
     )
 
     if (!is.null(modal_header)) {

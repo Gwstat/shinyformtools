@@ -276,6 +276,7 @@ render_field <- function(field,
 
   shiny::div(
     id = ns(paste0("sft_field_container_", prefix, field$id)),
+    class = "sft-field-container",
     field_ui
   )
 }

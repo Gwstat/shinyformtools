@@ -45,6 +45,11 @@ form_server(
   deleted_records_options = list(),
   datetime_format = sft_default_datetime_format(),
   refresh_triggers = NULL,
+  highlight_fields = NULL,
+  highlight_tab = TRUE,
+  highlight_color = "#dc3545",
+  show_changed = TRUE,
+  changed_color = "#2b8cff",
   form_layout = c("modal", "inline")
 )
 }
@@ -181,6 +186,26 @@ for example \code{function(table) DT::formatStyle(table, "Status", ...)}.}
 table should re-fetch on. Pass another form's returned \code{changed} reactive to
 make this table react to changes in that table, so dependent tables and
 downstream outputs (maps, summaries) stay in sync.}
+
+\item{highlight_fields}{Optional character vector of field ids to highlight
+with a glow in the add and edit forms, or a function/reactive returning one.
+Use it to draw attention to specific inputs reactively (for example fields
+that still need input). The set is re-applied whenever the reactive changes;
+return an empty vector to clear the highlight.}
+
+\item{highlight_tab}{Logical. When \code{TRUE} (default), the tab that contains a
+highlighted or changed field is highlighted too, so the relevant tab stands
+out in a multi-tab form. Has no effect on single-tab forms.}
+
+\item{highlight_color}{Glow colour used for \code{highlight_fields}. Any CSS colour
+string. Defaults to a red (\code{"#dc3545"}).}
+
+\item{show_changed}{Logical. When \code{TRUE} (default), an edit-form field whose
+current value differs from the stored record value is glowed automatically,
+so it is clear which fields were actually changed before saving.}
+
+\item{changed_color}{Glow colour used for \code{show_changed}. Any CSS colour
+string. Defaults to a blue (\code{"#2b8cff"}).}
 
 \item{form_layout}{Where the add/edit forms render. \code{"modal"} (default) opens
 them in a dialog; \code{"inline"} renders them in a panel above the records table,
