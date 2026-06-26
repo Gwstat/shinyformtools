@@ -91,7 +91,7 @@ form_ui <- function(id,
   shiny::tagList(
     shinyjs::useShinyjs(),
     sft_button_css(),
-    sft_highlight_css(),
+    sft_highlight_css(ns),
 
     if (!is.null(title)) {
       shiny::h3(title)
@@ -533,6 +533,7 @@ form_server <- function(id,
 
     sft_register_highlight(
       input = input,
+      output = output,
       session = session,
       form = form,
       current_edit_row = current_edit_row,

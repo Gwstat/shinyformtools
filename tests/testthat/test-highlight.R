@@ -59,11 +59,88 @@ test_that("sft_highlight_container_ids namespaces both add and edit containers",
     character()
   )
 
-  # The result must be unnamed: a named vector serialises to a JSON object in
-  # the custom message and the client handler iterates it as an array, so names
-  # would silently disable the glow (regression guard).
+  # Unnamed so the ids paste cleanly into a CSS selector list.
   expect_null(names(ids))
   expect_null(names(sft_highlight_container_ids(ns, "age", c("add_", "edit_"))))
+})
+
+test_that("sft_field_tab_positions maps fields to their 1-based tab positions", {
+  multi_tab <- form(
+    form_id = "tabbed",
+    table_name = "tabbed",
+    db = db_sqlite(tempfile(fileext = ".sqlite")),
+    fields = list(
+      form_field(id = "a", label = "A", tab = 1L),
+      form_field(id = "b", label = "B", tab = 2L),
+      form_field(id = "c", label = "C", tab = 2L)
+    )
+  )
+
+  expect_identical(sft_field_tab_positions(multi_tab, "a"), 1L)
+  expect_identical(sft_field_tab_positions(multi_tab, "c"), 2L)
+  expect_identical(sft_field_tab_positions(multi_tab, c("a", "c")), c(1L, 2L))
+  expect_identical(sft_field_tab_positions(multi_tab, character()), integer())
+
+  # A single-tab form renders no tabset, so there is nothing to glow.
+  single_tab <- form(
+    form_id = "flat",
+    table_name = "flat",
+    db = db_sqlite(tempfile(fileext = ".sqlite")),
+    fields = list(form_field(id = "a", label = "A"))
+  )
+  expect_identical(sft_field_tab_positions(single_tab, "a"), integer())
+})
+
+test_that("sft_highlight_style_block emits selectors per channel and clears when empty", {
+  ns <- shiny::NS("mod")
+
+  multi_tab <- form(
+    form_id = "tabbed",
+    table_name = "tabbed",
+    db = db_sqlite(tempfile(fileext = ".sqlite")),
+    fields = list(
+      form_field(id = "a", label = "A", tab = 1L),
+      form_field(id = "b", label = "B", tab = 2L)
+    )
+  )
+
+  html <- as.character(
+    sft_highlight_style_block(
+      ns = ns,
+      form = multi_tab,
+      highlight_field_ids = "a",
+      changed_field_ids = "b",
+      highlight_color = "#ff0000",
+      changed_color = "#0000ff"
+    )
+  )
+
+  # Highlight channel targets both add and edit containers for field "a".
+  expect_true(grepl("#mod-sft_field_container_add_a", html, fixed = TRUE))
+  expect_true(grepl("#mod-sft_field_container_edit_a", html, fixed = TRUE))
+  # Changed channel targets only the edit container for field "b".
+  expect_true(grepl("#mod-sft_field_container_edit_b", html, fixed = TRUE))
+  expect_false(grepl("#mod-sft_field_container_add_b", html, fixed = TRUE))
+  # Owning tabs glow (a -> position 1, b -> position 2).
+  expect_true(grepl(".nav-tabs > li:nth-child(1) > a", html, fixed = TRUE))
+  expect_true(grepl(".nav-tabs > li:nth-child(2) > a", html, fixed = TRUE))
+  # Server-controlled colours are written inline.
+  expect_true(grepl("#ff0000", html, fixed = TRUE))
+  expect_true(grepl("#0000ff", html, fixed = TRUE))
+
+  # Nothing highlighted -> an empty stylesheet, which clears any prior glow.
+  empty <- as.character(sft_highlight_style_block(ns = ns, form = multi_tab))
+  expect_false(grepl("box-shadow", empty, fixed = TRUE))
+
+  # highlight_tab = FALSE suppresses the tab rules but keeps the field glow.
+  no_tabs <- as.character(
+    sft_highlight_style_block(
+      ns = ns, form = multi_tab,
+      highlight_field_ids = "a", highlight_tab = FALSE
+    )
+  )
+  expect_true(grepl("#mod-sft_field_container_add_a", no_tabs, fixed = TRUE))
+  expect_false(grepl("nav-tabs", no_tabs, fixed = TRUE))
 })
 
 test_that("render_field wraps each field in a sft-field-container", {
@@ -75,7 +152,7 @@ test_that("render_field wraps each field in a sft-field-container", {
   expect_true(grepl("sft_field_container_add_name", html, fixed = TRUE))
 })
 
-test_that("highlight observers run without error in form_server", {
+test_that("form_server renders a reactive highlight stylesheet", {
   skip_if_not_installed("DT")
 
   db_path <- tempfile(fileext = ".sqlite")
@@ -103,11 +180,16 @@ test_that("highlight observers run without error in form_server", {
     {
       session$flushReact()
 
-      # changing the highlight set re-runs the observer cleanly
+      style <- as.character(output$sft_highlight_style$html)
+      expect_true(grepl("sft_field_container_add_name", style, fixed = TRUE))
+      expect_true(grepl("sft_field_container_edit_name", style, fixed = TRUE))
+
+      # clearing the highlight set empties the stylesheet
       highlight(character())
       session$flushReact()
 
-      expect_true(TRUE)
+      cleared <- as.character(output$sft_highlight_style$html)
+      expect_false(grepl("box-shadow", cleared, fixed = TRUE))
     }
   )
 })

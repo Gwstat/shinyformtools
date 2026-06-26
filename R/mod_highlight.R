@@ -1,164 +1,28 @@
 # Reactive field/tab highlighting for add/edit forms.
 #
-# Two independent channels share one client-side handler:
-#   * "highlight" - a caller-driven red glow on chosen fields (and, optionally,
-#     the tab that holds them). Active in both the add and edit forms.
-#   * "changed"   - an automatic blue glow on edit-form fields whose current
-#     value differs from the stored record value.
+# The highlight is driven entirely by a single, reactively re-rendered <style>
+# block (the "sft_highlight_style" uiOutput injected by form_ui()). It carries
+# CSS rules that target each field's container element by id and, optionally, the
+# nav tab that holds it by position. Because the browser re-evaluates CSS as the
+# DOM changes, the glow lands on the right fields whenever the add/edit dialog
+# opens - there is no custom-message timing to get wrong, no client-side caching,
+# and no modal-shown hooks. The add/edit form bodies are built once at showModal
+# time (not inside a renderUI), so an approach that depends on the elements being
+# present when a message arrives is fragile; a global, reactive stylesheet is not.
 #
-# Each channel owns its own CSS class and CSS custom property, so they coexist
-# on the same field without interfering. The colour is pushed inline by the
-# client handler (via the custom property), so it is fully controlled from the
-# server with no UI-side argument.
+# Two channels share the one style block:
+#   * highlight - a caller-driven glow (highlight_color) on chosen fields, in
+#     both the add and edit forms.
+#   * changed   - an automatic glow (changed_color) on edit-form fields whose
+#     current value differs from the stored record value.
+#
+# Colours and the highlighted set are resolved server-side, so the whole feature
+# is controlled from R with no UI-side argument.
 
-sft_highlight_field_class <- "sft-field-highlight"
-sft_highlight_tab_class <- "sft-tab-highlight"
-sft_highlight_css_var <- "--sft-highlight-color"
-
-sft_changed_field_class <- "sft-field-changed"
-sft_changed_tab_class <- "sft-tab-changed"
-sft_changed_css_var <- "--sft-changed-color"
-
-# Static class definitions plus the one-time custom-message handler. Injected by
-# form_ui(); the colour comes through the CSS custom property set inline by the
-# handler, so the defaults below are only fallbacks.
-sft_highlight_css <- function() {
-  shiny::tagList(
-    shiny::tags$style(shiny::HTML(
-      "
-      .sft-field-highlight {
-        box-shadow: 0 0 0 2px var(--sft-highlight-color, #dc3545),
-                    0 0 8px 3px var(--sft-highlight-color, #dc3545);
-        border-radius: 4px;
-        transition: box-shadow 0.15s ease-in-out;
-      }
-      .sft-field-changed {
-        box-shadow: 0 0 0 2px var(--sft-changed-color, #2b8cff),
-                    0 0 8px 3px var(--sft-changed-color, #2b8cff);
-        border-radius: 4px;
-        transition: box-shadow 0.15s ease-in-out;
-      }
-      .nav-tabs > li > a.sft-tab-highlight,
-      .nav-tabs > li > a.sft-tab-changed {
-        font-weight: 700;
-      }
-      .nav-tabs > li > a.sft-tab-highlight {
-        box-shadow: inset 0 -3px 0 var(--sft-highlight-color, #dc3545);
-      }
-      .nav-tabs > li > a.sft-tab-changed {
-        box-shadow: inset 0 -3px 0 var(--sft-changed-color, #2b8cff);
-      }
-      "
-    )),
-    shiny::tags$script(shiny::HTML(
-      "
-      (function() {
-        // Cache the latest payload per channel (keyed by field class), so the
-        // highlight can be re-applied to add/edit form elements that only enter
-        // the DOM when a dialog opens - the control that drives it usually lives
-        // on the page behind the (modal) dialog and is chosen beforehand.
-        window.sftHighlightState = window.sftHighlightState || {};
-
-        function clearClass(cls, cssVar) {
-          if (!cls) return;
-          var nodes = document.querySelectorAll('.' + cls);
-          for (var i = 0; i < nodes.length; i++) {
-            nodes[i].classList.remove(cls);
-            if (cssVar) nodes[i].style.removeProperty(cssVar);
-          }
-        }
-
-        function tabLinkForPane(pane) {
-          if (!pane || !pane.id) return null;
-          return document.querySelector(
-            '.nav-tabs a[data-toggle=\"tab\"][href=\"#' + pane.id + '\"]'
-          ) || document.querySelector('.nav-tabs a[href=\"#' + pane.id + '\"]');
-        }
-
-        function applyHighlight(message) {
-          if (!message) return;
-
-          var ids = message.ids || [];
-          var fieldClass = message.fieldClass;
-          var tabClass = message.tabClass;
-          var cssVar = message.cssVar;
-          var color = message.color;
-          var highlightTab = message.highlightTab;
-
-          clearClass(fieldClass, cssVar);
-          clearClass(tabClass, cssVar);
-
-          for (var i = 0; i < ids.length; i++) {
-            var el = document.getElementById(ids[i]);
-            if (!el) continue;
-
-            if (color && cssVar) el.style.setProperty(cssVar, color);
-            el.classList.add(fieldClass);
-
-            if (highlightTab && tabClass) {
-              var pane = el.closest ? el.closest('.tab-pane') : null;
-              var link = tabLinkForPane(pane);
-              if (link) {
-                if (color && cssVar) link.style.setProperty(cssVar, color);
-                link.classList.add(tabClass);
-              }
-            }
-          }
-        }
-
-        function reapplyAll() {
-          var state = window.sftHighlightState;
-          for (var key in state) {
-            if (Object.prototype.hasOwnProperty.call(state, key)) {
-              applyHighlight(state[key]);
-            }
-          }
-        }
-
-        var reapplyScheduled = false;
-        function scheduleReapply() {
-          if (reapplyScheduled) return;
-          reapplyScheduled = true;
-          window.setTimeout(function() {
-            reapplyScheduled = false;
-            reapplyAll();
-          }, 30);
-        }
-
-        function registerSftHighlightHandler() {
-          if (window.sftHighlightHandlerRegistered) return;
-
-          if (!window.Shiny) {
-            window.setTimeout(registerSftHighlightHandler, 100);
-            return;
-          }
-
-          window.sftHighlightHandlerRegistered = true;
-
-          Shiny.addCustomMessageHandler('sftHighlight', function(message) {
-            // Only persistent channels (the caller-driven highlight) are cached
-            // for re-application on dialog open; the live 'changed' channel is
-            // recomputed by the server while the dialog is open, so caching it
-            // would risk flashing a stale glow on the next open.
-            if (message && message.fieldClass && message.persist) {
-              window.sftHighlightState[message.fieldClass] = message;
-            }
-            applyHighlight(message);
-          });
-
-          // Re-apply cached highlights once a dialog is shown (modal layout) or
-          // when an inline form re-renders, since those elements appear late.
-          if (window.jQuery) {
-            jQuery(document).on('shown.bs.modal', scheduleReapply);
-            jQuery(document).on('shiny:value', scheduleReapply);
-          }
-        }
-
-        registerSftHighlightHandler();
-      })();
-      "
-    ))
-  )
+# Placeholder injected by form_ui(): the reactive style block. Filled in by
+# sft_register_highlight() via output$sft_highlight_style.
+sft_highlight_css <- function(ns) {
+  shiny::uiOutput(ns("sft_highlight_style"))
 }
 
 # Best-effort scalar/vector normalisation for change detection. Values arrive
@@ -176,7 +40,7 @@ sft_norm_value <- function(x) {
     return("")
   }
 
-  sep <- ""
+  sep <- ""
 
   if (is.logical(x)) {
     return(paste(as.integer(x), collapse = sep))
@@ -193,9 +57,8 @@ sft_values_differ <- function(current, original) {
   !identical(sft_norm_value(current), sft_norm_value(original))
 }
 
-# Map a set of field ids to the namespaced container element ids the client
-# handler targets. add/edit forms wrap each field in
-# "sft_field_container_<prefix><id>".
+# Map a set of field ids to the namespaced container element ids the CSS targets.
+# add/edit forms wrap each field in "sft_field_container_<prefix><id>".
 sft_highlight_container_ids <- function(ns, field_ids, prefixes) {
   if (length(field_ids) == 0L) {
     return(character())
@@ -215,9 +78,7 @@ sft_highlight_container_ids <- function(ns, field_ids, prefixes) {
     )
   }
 
-  # Keep the result unnamed: a named vector serialises to a JSON *object* in the
-  # custom message, and the client handler iterates it as an array (ids.length /
-  # ids[i]), so names would silently break the highlight.
+  # Keep the result unnamed so it pastes cleanly into a CSS selector list.
   unname(ids)
 }
 
@@ -234,9 +95,132 @@ sft_resolve_highlight_fields <- function(highlight_fields) {
   as.character(value %||% character())
 }
 
-# Register the two highlight observers on the module session. Non-namespaced
+# One CSS box-shadow rule glowing a set of element ids. position/z-index keep the
+# shadow drawing above neighbouring fields instead of being covered by them.
+sft_glow_rule <- function(ids, color) {
+  if (length(ids) == 0L) {
+    return(character())
+  }
+
+  selector <- paste0("#", ids, collapse = ",\n")
+
+  paste0(
+    selector, " {\n",
+    "  box-shadow: 0 0 0 2px ", color, ", 0 0 8px 3px ", color, ";\n",
+    "  border-radius: 4px;\n",
+    "  position: relative;\n",
+    "  z-index: 2;\n",
+    "}"
+  )
+}
+
+# One CSS rule glowing the nav tabs at the given 1-based positions. nth-child on
+# the tab list maps directly to tab order in both Bootstrap 3 (shiny default) and
+# Bootstrap 4/5 (bslib) markup.
+sft_tab_glow_rule <- function(positions, color) {
+  if (length(positions) == 0L) {
+    return(character())
+  }
+
+  selector <- paste0(
+    ".nav-tabs > li:nth-child(", positions, ") > a",
+    collapse = ",\n"
+  )
+
+  paste0(
+    selector, " {\n",
+    "  box-shadow: inset 0 -3px 0 ", color, ";\n",
+    "  font-weight: 700;\n",
+    "}"
+  )
+}
+
+# 1-based positions of the tabs that contain any of `field_ids`, among the form's
+# sorted unique tabs. Empty when the form has at most one tab (no tabset is
+# rendered, so there is nothing to glow).
+sft_field_tab_positions <- function(form, field_ids) {
+  if (length(field_ids) == 0L) {
+    return(integer())
+  }
+
+  fields <- sft_active_input_fields(form)
+  tabs <- sort(unique(vapply(fields, function(field) field$tab, integer(1))))
+
+  if (length(tabs) <= 1L) {
+    return(integer())
+  }
+
+  owners <- Filter(function(field) field$id %in% field_ids, fields)
+  positions <- vapply(owners, function(field) match(field$tab, tabs), integer(1))
+  sort(unique(positions))
+}
+
+# Build the combined <style> block for both channels. An empty result (no fields
+# highlighted) yields an empty stylesheet, which clears any previous glow.
+sft_highlight_style_block <- function(ns,
+                                      form,
+                                      highlight_field_ids = character(),
+                                      changed_field_ids = character(),
+                                      highlight_tab = TRUE,
+                                      highlight_color = "#dc3545",
+                                      changed_color = "#2b8cff") {
+  rules <- c(
+    # Channel 1: caller-driven glow on chosen fields, in add and edit.
+    sft_glow_rule(
+      sft_highlight_container_ids(ns, highlight_field_ids, c("add_", "edit_")),
+      highlight_color
+    ),
+    # Channel 2: automatic glow on changed edit fields.
+    sft_glow_rule(
+      sft_highlight_container_ids(ns, changed_field_ids, "edit_"),
+      changed_color
+    )
+  )
+
+  if (isTRUE(highlight_tab)) {
+    rules <- c(
+      rules,
+      sft_tab_glow_rule(
+        sft_field_tab_positions(form, highlight_field_ids), highlight_color
+      ),
+      sft_tab_glow_rule(
+        sft_field_tab_positions(form, changed_field_ids), changed_color
+      )
+    )
+  }
+
+  shiny::tags$style(shiny::HTML(paste(rules, collapse = "\n")))
+}
+
+# Field ids whose current edit-form input differs from the stored record value.
+sft_changed_field_ids <- function(input, form, row) {
+  if (is.null(row)) {
+    return(character())
+  }
+
+  changed <- character()
+
+  for (field in sft_active_input_fields(form)) {
+    input_value <- input[[paste0("edit_", field$id)]]
+
+    if (is.null(input_value)) {
+      next
+    }
+
+    original <- sft_field_value_from_record(row, field)
+
+    if (sft_values_differ(input_value, original)) {
+      changed <- c(changed, field$id)
+    }
+  }
+
+  changed
+}
+
+# Register the reactive highlight stylesheet on the module session. Non-namespaced
 # registrar, called from form_server(); covered by testServer tests.
 sft_register_highlight <- function(input,
+                                   output,
                                    session,
                                    form,
                                    current_edit_row,
@@ -247,72 +231,29 @@ sft_register_highlight <- function(input,
                                    changed_color = "#2b8cff") {
   ns <- session$ns
 
-  send_highlight <- function(ids, field_class, tab_class, css_var, color, do_tab, persist) {
-    session$sendCustomMessage(
-      type = "sftHighlight",
-      # unname() so the ids serialise to a JSON array (the client iterates them
-      # by index); as.list() forces an array even for a single id.
-      message = list(
-        ids = as.list(unname(ids)),
-        fieldClass = field_class,
-        tabClass = tab_class,
-        cssVar = css_var,
-        color = color,
-        highlightTab = isTRUE(do_tab),
-        persist = isTRUE(persist)
-      )
+  output$sft_highlight_style <- shiny::renderUI({
+    highlight_ids <- if (is.null(highlight_fields)) {
+      character()
+    } else {
+      sft_resolve_highlight_fields(highlight_fields)
+    }
+
+    changed_ids <- if (isTRUE(show_changed)) {
+      sft_changed_field_ids(input, form, current_edit_row())
+    } else {
+      character()
+    }
+
+    sft_highlight_style_block(
+      ns = ns,
+      form = form,
+      highlight_field_ids = highlight_ids,
+      changed_field_ids = changed_ids,
+      highlight_tab = highlight_tab,
+      highlight_color = highlight_color,
+      changed_color = changed_color
     )
-  }
+  })
 
-  # Channel 1: caller-driven red glow on chosen fields, in both add and edit.
-  if (!is.null(highlight_fields)) {
-    shiny::observe({
-      field_ids <- sft_resolve_highlight_fields(highlight_fields)
-
-      send_highlight(
-        ids = sft_highlight_container_ids(ns, field_ids, c("add_", "edit_")),
-        field_class = sft_highlight_field_class,
-        tab_class = sft_highlight_tab_class,
-        css_var = sft_highlight_css_var,
-        color = highlight_color,
-        do_tab = highlight_tab,
-        persist = TRUE
-      )
-    })
-  }
-
-  # Channel 2: automatic blue glow on edit fields whose value changed.
-  if (isTRUE(show_changed)) {
-    shiny::observe({
-      row <- current_edit_row()
-
-      changed_ids <- character()
-
-      if (!is.null(row)) {
-        for (field in sft_active_input_fields(form)) {
-          input_value <- input[[paste0("edit_", field$id)]]
-
-          if (is.null(input_value)) {
-            next
-          }
-
-          original <- sft_field_value_from_record(row, field)
-
-          if (sft_values_differ(input_value, original)) {
-            changed_ids <- c(changed_ids, field$id)
-          }
-        }
-      }
-
-      send_highlight(
-        ids = sft_highlight_container_ids(ns, changed_ids, "edit_"),
-        field_class = sft_changed_field_class,
-        tab_class = sft_changed_tab_class,
-        css_var = sft_changed_css_var,
-        color = changed_color,
-        do_tab = highlight_tab,
-        persist = FALSE
-      )
-    })
-  }
+  invisible(NULL)
 }
