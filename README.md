@@ -65,6 +65,9 @@ permission-aware administrative use cases.
   `shinymanager` adapter.
 - **Shape fields** — attach a fixed, non-editable geometry to each record with
   `shape_field()` / `attach_shapes()`, stored backend-neutrally as text.
+- **Field highlighting** — `form_server(highlight_fields = ...)` glows chosen
+  inputs (and their tab) to draw the eye; `show_changed` auto-glows edit fields
+  that have changed since the record was created.
 - **Three backends** — `SQLite`, `MariaDB`, and `DuckDB` behind one interface.
 
 ## Installation
@@ -229,6 +232,11 @@ run_example("app_crud_basic")
 - **app_shape_map** — records with a fixed, non-editable geometry:
   `shape_field()` + `attach_shapes()` drawn on a leaflet map via `decode_shape()`.
   Needs `sf` and `leaflet`.
+
+- **app_highlight** — reactive field/tab highlighting on a two-tab form:
+  `highlight_fields` red-glows chosen inputs (and their tab) live, and
+  `show_changed` blue-glows edit fields that have changed since the record was
+  added.
 
 Each example is documented in more detail in
 [`inst/examples/README.md`](inst/examples/README.md).

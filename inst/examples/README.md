@@ -147,11 +147,13 @@ Start with **app_crud_basic**; the rest each focus on one capability.
   optional `sf` and `leaflet` packages.
 
 - **app_highlight** — reactively glowing inputs to draw the eye. A two-tab form
-  (`form_field(tab = ...)`) with two highlight channels on `form_server()`. A
-  **red glow** flags chosen fields: `highlight_fields` takes a reactive (here a
-  checkbox group), so the glow tracks the selection live in both the add and edit
-  forms, and `highlight_tab = TRUE` glows the tab that holds a flagged field too.
-  A **blue glow** is automatic (`show_changed = TRUE`): in the edit form a field
-  lights up as soon as its value differs from the stored one (a type-tolerant
-  compare, so `5` vs `"5"` does not false-positive) and stops when set back.
-  Colours are overridable via `highlight_color` / `changed_color`.
+  (`form_field(tab = ...)`) with two highlight channels on `form_server()`. The
+  glow lands on the input control only, not its label. A **red glow** flags chosen
+  fields: `highlight_fields` takes a reactive (here a checkbox group), so the glow
+  tracks the selection live in both the add and edit forms, and
+  `highlight_tab = TRUE` glows the tab that holds a flagged field too. A **blue
+  glow** is automatic (`show_changed = TRUE`): in the edit form a field lights up
+  when its current value differs from what it was when the record was first added
+  — i.e. it has been edited at some point since creation (a type-tolerant compare,
+  so `5` vs `"5"` does not false-positive). Colours are overridable via
+  `highlight_color` / `changed_color`.
