@@ -121,6 +121,9 @@ test_that("sft_highlight_style_block emits selectors per channel and clears when
   # Changed channel targets only the edit container for field "b".
   expect_true(grepl("#mod-sft_field_container_edit_b", html, fixed = TRUE))
   expect_false(grepl("#mod-sft_field_container_add_b", html, fixed = TRUE))
+  # The glow targets the input control, not the container/label/row.
+  expect_true(grepl("#mod-sft_field_container_add_a .form-control", html, fixed = TRUE))
+  expect_true(grepl("#mod-sft_field_container_add_a .selectize-input", html, fixed = TRUE))
   # Owning tabs glow (a -> position 1, b -> position 2).
   expect_true(grepl(".nav-tabs > li:nth-child(1) > a", html, fixed = TRUE))
   expect_true(grepl(".nav-tabs > li:nth-child(2) > a", html, fixed = TRUE))
@@ -150,6 +153,49 @@ test_that("render_field wraps each field in a sft-field-container", {
 
   expect_true(grepl("sft-field-container", html, fixed = TRUE))
   expect_true(grepl("sft_field_container_add_name", html, fixed = TRUE))
+})
+
+test_that("sft_changed_since_creation_ids flags only fields edited since add", {
+  db_path <- tempfile(fileext = ".sqlite")
+
+  people <- form(
+    form_id = "people",
+    table_name = "people",
+    db = db_sqlite(db_path),
+    fields = list(
+      form_field(id = "name", label = "Name"),
+      form_field(id = "city", label = "City"),
+      form_field(id = "age", label = "Age", input_type = "numericInput")
+    )
+  )
+
+  conn <- db_connect(db_sqlite(db_path))
+  on.exit(db_disconnect(conn), add = TRUE)
+  init_db(people, conn = conn, user = "t")
+
+  rec <- insert_record(
+    people, list(name = "Ada", city = "London", age = 36),
+    conn = conn, user = "t"
+  )
+  rid <- rec$sft_id[1]
+
+  # Before any edit, nothing has changed since creation.
+  row0 <- fetch_records(people, conn = conn)
+  row0 <- row0[row0$sft_id == rid, , drop = FALSE]
+  expect_identical(sft_changed_since_creation_ids(conn, people, row0), character())
+
+  # Edit one field; only that field is "changed since creation".
+  update_record(
+    people, list(name = "Ada", city = "Cambridge", age = 36),
+    record_id = rid, conn = conn, user = "t"
+  )
+  row1 <- fetch_records(people, conn = conn)
+  row1 <- row1[row1$sft_id == rid, , drop = FALSE]
+  expect_identical(sft_changed_since_creation_ids(conn, people, row1), "city")
+
+  # A NULL row (no edit dialog open) or NULL connection yields nothing.
+  expect_identical(sft_changed_since_creation_ids(conn, people, NULL), character())
+  expect_identical(sft_changed_since_creation_ids(NULL, people, row1), character())
 })
 
 test_that("form_server renders a reactive highlight stylesheet", {

@@ -532,11 +532,11 @@ form_server <- function(id,
     )
 
     sft_register_highlight(
-      input = input,
       output = output,
       session = session,
       form = form,
       current_edit_row = current_edit_row,
+      conn = conn,
       highlight_fields = highlight_fields,
       highlight_tab = highlight_tab,
       highlight_color = highlight_color,

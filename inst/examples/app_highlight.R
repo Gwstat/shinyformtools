@@ -10,10 +10,11 @@
 #      live; clearing the box clears the glow.
 #
 #   2. Automatic blue "changed" glow - show_changed (on by default):
-#      Open Edit on a row and change a value: that field glows blue as soon as it
-#      differs from the stored value, and stops glowing if you set it back. The
-#      comparison is type-tolerant (5 vs "5", TRUE vs 1, a date vs its string do
-#      not false-positive), so only real edits light up.
+#      Open Edit on a row: any field whose current value differs from the value
+#      it had when the record was first added (its original audit-log version)
+#      glows blue. It marks fields that have been edited at some point since
+#      creation. The comparison is type-tolerant (5 vs "5", TRUE vs 1, a date vs
+#      its string do not false-positive), so only real changes light up.
 #
 # The form is laid out over two tabs (form_field(tab = ...)) so the tab glow has
 # something to point at. Colours are overridable via highlight_color /
@@ -69,12 +70,18 @@ local({
   init_db(profile_form, conn = conn, user = "demo")
 
   if (nrow(fetch_records(profile_form, conn = conn)) == 0L) {
-    insert_record(profile_form, list(name = "Ada Lovelace", email = "ada@example.org",
+    ada <- insert_record(profile_form, list(name = "Ada Lovelace", email = "ada@example.org",
                   age = 36, city = "London", postcode = "EC1", country = "UK"),
                   conn = conn, user = "demo")
     insert_record(profile_form, list(name = "Guido van Rossum", email = "guido@example.org",
                   age = 70, city = "Haarlem", postcode = "2011", country = "NL"),
                   conn = conn, user = "demo")
+
+    # Edit Ada's City after creation, so the blue "changed since add" glow has
+    # something to point at the first time you open her Edit dialog.
+    update_record(profile_form, list(name = "Ada Lovelace", email = "ada@example.org",
+                  age = 36, city = "Manchester", postcode = "EC1", country = "UK"),
+                  record_id = ada$sft_id[1], conn = conn, user = "demo")
   }
 })
 
@@ -92,8 +99,9 @@ how_to <- function() {
         "open Add or Edit - the chosen inputs glow red, and the tab holding a ",
         "flagged field glows too. Untick to clear."),
       shiny::tags$li(shiny::tags$b("Blue changed: "),
-        "Open Edit on a row and change a value - it glows blue once it differs ",
-        "from the stored value, and stops if you set it back.")
+        "Open Edit on a row - any field that has been changed since the record ",
+        "was first added glows blue (Ada's City was edited below, so it glows). ",
+        "Edit and save another field to see it light up too.")
     )
   )
 }

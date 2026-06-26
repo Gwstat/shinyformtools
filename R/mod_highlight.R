@@ -95,14 +95,24 @@ sft_resolve_highlight_fields <- function(highlight_fields) {
   as.character(value %||% character())
 }
 
-# One CSS box-shadow rule glowing a set of element ids. position/z-index keep the
-# shadow drawing above neighbouring fields instead of being covered by them.
-sft_glow_rule <- function(ids, color) {
-  if (length(ids) == 0L) {
+# One CSS box-shadow rule glowing the input control inside a set of field
+# containers. We target the control (not the container) so only the input box
+# glows - the label and the surrounding row are left alone. .form-control covers
+# text/number/date/textarea/plain-select inputs; .selectize-input covers
+# selectize dropdowns. position/z-index keep the shadow drawing above
+# neighbouring fields instead of being covered by them.
+sft_glow_rule <- function(container_ids, color) {
+  if (length(container_ids) == 0L) {
     return(character())
   }
 
-  selector <- paste0("#", ids, collapse = ",\n")
+  selector <- paste(
+    c(
+      paste0("#", container_ids, " .form-control"),
+      paste0("#", container_ids, " .selectize-input")
+    ),
+    collapse = ",\n"
+  )
 
   paste0(
     selector, " {\n",
@@ -192,24 +202,43 @@ sft_highlight_style_block <- function(ns,
   shiny::tags$style(shiny::HTML(paste(rules, collapse = "\n")))
 }
 
-# Field ids whose current edit-form input differs from the stored record value.
-sft_changed_field_ids <- function(input, form, row) {
-  if (is.null(row)) {
+# Field ids whose current stored value differs from the record's ORIGINAL value
+# at creation - i.e. fields that have been edited at some point since the record
+# was first added. The original values come from the earliest audit-log version
+# (the insert snapshot); fetch_audit_log() orders by version_no, so row 1 is it.
+sft_changed_since_creation_ids <- function(conn, form, row) {
+  if (is.null(row) || is.null(conn)) {
+    return(character())
+  }
+
+  record_id <- if (is.data.frame(row)) row[["sft_id"]][1] else row[["sft_id"]]
+  if (is.null(record_id) || length(record_id) == 0L || is.na(record_id)) {
+    return(character())
+  }
+
+  audit <- tryCatch(
+    fetch_audit_log(form, conn = conn, record_id = record_id),
+    error = function(e) NULL
+  )
+  if (is.null(audit) || nrow(audit) == 0L) {
+    return(character())
+  }
+
+  original <- tryCatch(
+    sft_json_to_record(audit$new_data_json[1]),
+    error = function(e) NULL
+  )
+  if (is.null(original)) {
     return(character())
   }
 
   changed <- character()
 
   for (field in sft_active_input_fields(form)) {
-    input_value <- input[[paste0("edit_", field$id)]]
+    current_value <- sft_field_value_from_record(row, field)
+    original_value <- sft_field_value_from_record(original, field)
 
-    if (is.null(input_value)) {
-      next
-    }
-
-    original <- sft_field_value_from_record(row, field)
-
-    if (sft_values_differ(input_value, original)) {
+    if (sft_values_differ(current_value, original_value)) {
       changed <- c(changed, field$id)
     }
   }
@@ -219,11 +248,11 @@ sft_changed_field_ids <- function(input, form, row) {
 
 # Register the reactive highlight stylesheet on the module session. Non-namespaced
 # registrar, called from form_server(); covered by testServer tests.
-sft_register_highlight <- function(input,
-                                   output,
+sft_register_highlight <- function(output,
                                    session,
                                    form,
                                    current_edit_row,
+                                   conn = NULL,
                                    highlight_fields = NULL,
                                    highlight_tab = TRUE,
                                    highlight_color = "#dc3545",
@@ -239,7 +268,7 @@ sft_register_highlight <- function(input,
     }
 
     changed_ids <- if (isTRUE(show_changed)) {
-      sft_changed_field_ids(input, form, current_edit_row())
+      sft_changed_since_creation_ids(conn, form, current_edit_row())
     } else {
       character()
     }
