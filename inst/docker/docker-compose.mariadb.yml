@@ -1,0 +1,17 @@
+services:
+  mariadb:
+    image: mariadb:11
+    container_name: shinyformtools-mariadb
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: shinyformtools
+      MARIADB_USER: sft
+      MARIADB_PASSWORD: sft
+    ports:
+      - "3306:3306"
+    volumes:
+      - shinyformtools_mariadb:/var/lib/mysql
+
+volumes:
+  shinyformtools_mariadb:
