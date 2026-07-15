@@ -156,6 +156,65 @@ sft_add_migration_action <- function(actions,
   rbind(actions, row)
 }
 
+#' Fetch the schema migration history for a form
+#'
+#' Returns every schema action the package has applied to a form's table: the
+#' table being created, columns added or retired, indexes created or dropped,
+#' each with the versions it moved between, when it happened and which user
+#' triggered it.
+#'
+#' This is the structural counterpart of [fetch_audit_log()]: the audit log
+#' records changes to the data, this records changes to the shape of it. It
+#' answers questions the current schema cannot, because a database does not
+#' explain itself -- most usefully "where does this column nobody declares come
+#' from?". Retiring a field does not drop its column (that would throw data
+#' away), so a retired column stays behind, and this log is the only record of
+#' why.
+#'
+#' `from_version` is `NA` for the first action against a form, when there is no
+#' version to come from.
+#'
+#' @param form Object created with [form()].
+#' @param conn Optional DBI connection.
+#'
+#' @return A data frame with one row per applied schema action, oldest first.
+#' @examples
+#' db <- db_sqlite(tempfile(fileext = ".sqlite"))
+#' contacts <- form(
+#'   form_id = "contacts", table_name = "contacts", db = db,
+#'   fields = list(form_field(id = "name", label = "Name"))
+#' )
+#' conn <- db_connect(db)
+#' init_db(contacts, conn = conn, user = "demo")
+#'
+#' fetch_schema_migrations(contacts, conn = conn)[, c("action", "db_column")]
+#'
+#' db_disconnect(conn)
+#' @export
+fetch_schema_migrations <- function(form, conn = NULL) {
+  if (!inherits(form, "sft_form")) {
+    stop("form must be a form object.", call. = FALSE)
+  }
+
+  conn <- sft_resolve_connection(form, conn)
+
+  # Probe-gated exactly like fetch_audit_log(): reading a history must not
+  # reconcile the schema on every call.
+  sft_ensure_schema(conn, form)
+
+  DBI::dbGetQuery(
+    conn,
+    "
+    SELECT *
+    FROM sft_schema_migrations
+    WHERE form_id = ?
+      AND table_name = ?
+    ORDER BY migration_id
+    ",
+    params = list(form$form_id, form$table_name)
+  )
+}
+
 #' Inspect the database schema for a form
 #'
 #' @param conn A DBI connection.
@@ -420,6 +479,28 @@ plan_migration <- function(conn, form) {
   )
 }
 
+# The form version the database is on right now, i.e. the one a migration is
+# coming FROM. Readable until sft_register_form_schema() writes the new version,
+# which happens after the action loop. NA when the form has never been
+# registered (first contact: there is no version to come from).
+sft_stored_form_version <- function(conn, form) {
+  if (!sft_table_exists(conn, "sft_forms")) {
+    return(NA_integer_)
+  }
+
+  row <- DBI::dbGetQuery(
+    conn,
+    "SELECT active_version FROM sft_forms WHERE form_id = ?",
+    params = list(form$form_id)
+  )
+
+  if (nrow(row) == 0L) {
+    return(NA_integer_)
+  }
+
+  as.integer(row$active_version[1])
+}
+
 sft_log_schema_migration <- function(conn, form, action_row, user = NULL) {
   columns <- c(
     "form_id",
@@ -437,7 +518,7 @@ sft_log_schema_migration <- function(conn, form, action_row, user = NULL) {
   values <- list(
     form$form_id,
     form$table_name,
-    NA_integer_,
+    sft_stored_form_version(conn, form),
     form$version,
     action_row$action,
     sft_db_param(action_row$field_id),

@@ -222,10 +222,31 @@ The remaining three:
 - **`sft_audit_log`** -- one row per mutation, with the full before/after
   snapshots (`old_data_json`, `new_data_json`), the changed field names, the
   user, a reason, and a per-record `version_no`. Restore reads from here.
-- **`sft_schema_migrations`** -- every schema action the package applied, with
-  its `from_version`/`to_version` and a timestamp.
+- **`sft_schema_migrations`** -- one row per schema action, read with
+  `fetch_schema_migrations()`. See below.
 - **`sft_user_preferences`** -- per-user UI state, such as saved column views.
   Nothing about your data.
+
+### The schema has a history too
+
+`sft_audit_log` records changes to your data; `sft_schema_migrations` records
+changes to its shape. `fetch_schema_migrations()` reads it:
+
+```{r schema-history}
+fetch_schema_migrations(contacts, conn = conn)[
+  , c("from_version", "to_version", "action", "db_column", "applied_by")
+]
+```
+
+One row so far -- the table being created. It earns its keep later. Suppose you
+drop a field from the form: the package will *not* drop its column, because that
+would throw the data away. It marks the column retired and leaves it in place. A
+year on, you find a column no form declares, holding data nobody asked for, and
+the database cannot tell you where it came from. This log can: which version
+added it, which retired it, and who ran each.
+
+`from_version` is `NA` for the first action, since there is no version to come
+from.
 
 ## 4. Read the database without the app
 
