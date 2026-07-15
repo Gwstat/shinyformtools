@@ -23,6 +23,25 @@ test_that("the schema diagram draws every system column", {
   }
 })
 
+test_that("the schema diagram draws no column the package does not create", {
+  # The mirror of the test above. Without this, a column removed from
+  # sft_system_columns() keeps being drawn and the diagram quietly describes a
+  # database that no longer exists.
+  svg <- diagram_text()
+
+  drawn <- unique(unlist(regmatches(svg, gregexpr(">sft_[a-z_]+<", svg))))
+  drawn <- gsub("^>|<$", "", drawn)
+
+  known <- c(
+    names(sft_system_columns()),
+    # The system tables are drawn by name too.
+    "sft_forms", "sft_fields", "sft_audit_log",
+    "sft_schema_migrations", "sft_user_preferences"
+  )
+
+  expect_equal(setdiff(drawn, known), character(0))
+})
+
 test_that("the schema diagram draws every system table", {
   svg <- diagram_text()
 

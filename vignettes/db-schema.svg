@@ -65,7 +65,7 @@
   <text class="cm" x="44" y="437">args_json, layout, ...</text>
 
   <!-- ============ data table ============ -->
-  <rect class="boxd" x="355" y="30" width="270" height="420" rx="6"/>
+  <rect class="boxd" x="355" y="30" width="270" height="390" rx="6"/>
   <path class="hdrd" d="M355 36 a6 6 0 0 1 6 -6 h258 a6 6 0 0 1 6 6 v22 h-270 z"/>
   <line class="sep" x1="355" y1="58" x2="625" y2="58"/>
   <text class="t"  x="369" y="48">contacts</text>
@@ -73,25 +73,22 @@
   <text class="c"  x="369" y="78">sft_id</text><text class="tag" x="611" y="78" text-anchor="end">PK</text>
   <text class="c"  x="369" y="94">sft_uuid</text><text class="tag" x="611" y="94" text-anchor="end">UNIQUE</text>
   <text class="c"  x="369" y="110">sft_easy_id</text>
-  <text class="c"  x="369" y="126">sft_form_id</text>
-  <text class="c"  x="369" y="142">sft_form_version</text>
-  <text class="c"  x="369" y="158">sft_schema_hash</text>
-  <text class="c"  x="369" y="174">sft_created_at</text>
-  <text class="c"  x="369" y="190">sft_created_by</text>
-  <text class="c"  x="369" y="206">sft_updated_at</text>
-  <text class="c"  x="369" y="222">sft_updated_by</text>
-  <text class="c"  x="369" y="238">sft_deleted_at</text>
-  <text class="c"  x="369" y="254">sft_deleted_by</text>
-  <text class="c"  x="369" y="270">sft_is_deleted</text><text class="tag" x="611" y="270" text-anchor="end">0 = live</text>
-  <text class="c"  x="369" y="286">sft_unique_slot</text><text class="tag" x="611" y="286" text-anchor="end">0 = live</text>
-  <line class="sep" x1="369" y1="300" x2="611" y2="300"/>
-  <text class="tag" x="369" y="316">your declared fields</text>
-  <text class="c"  x="369" y="336">name</text>
-  <text class="c"  x="369" y="352">email</text><text class="tag" x="611" y="352" text-anchor="end">UNIQUE (email, sft_unique_slot)</text>
-  <text class="c"  x="369" y="368">role</text>
-  <text class="c"  x="369" y="384">joined</text>
-  <text class="lbli" x="369" y="410">One table per form. Several forms</text>
-  <text class="lbli" x="369" y="424">may share one, split by sft_form_id.</text>
+  <text class="c"  x="369" y="126">sft_form_version</text>
+  <text class="c"  x="369" y="142">sft_created_at</text>
+  <text class="c"  x="369" y="158">sft_created_by</text>
+  <text class="c"  x="369" y="174">sft_updated_at</text>
+  <text class="c"  x="369" y="190">sft_updated_by</text>
+  <text class="c"  x="369" y="206">sft_deleted_at</text>
+  <text class="c"  x="369" y="222">sft_deleted_by</text>
+  <text class="c"  x="369" y="238">sft_is_deleted</text><text class="tag" x="611" y="238" text-anchor="end">0 = live</text>
+  <text class="c"  x="369" y="254">sft_unique_slot</text><text class="tag" x="611" y="254" text-anchor="end">0 = live</text>
+  <line class="sep" x1="369" y1="268" x2="611" y2="268"/>
+  <text class="tag" x="369" y="284">your declared fields</text>
+  <text class="c"  x="369" y="304">name</text>
+  <text class="c"  x="369" y="320">email</text><text class="tag" x="611" y="320" text-anchor="end">UNIQUE (email, sft_unique_slot)</text>
+  <text class="c"  x="369" y="336">role</text>
+  <text class="c"  x="369" y="352">joined</text>
+  <text class="lbli" x="369" y="378">One table per form.</text>
 
   <!-- ============ sft_audit_log ============ -->
   <rect class="box" x="700" y="30" width="230" height="250" rx="6"/>
@@ -142,18 +139,18 @@
   <text class="lbli" x="714" y="668">views), keyed by form_id.</text>
 
   <!-- ============ relations ============ -->
-  <!-- sft_forms.form_id -> data.sft_form_id -->
-  <path class="rel" d="M280 100 H 355" marker-end="url(#arrow)"/>
-  <text class="lbl" x="318" y="92" text-anchor="middle">1:N</text>
-  <text class="lbl" x="318" y="118" text-anchor="middle">form_id</text>
+  <!-- sft_forms.table_name names the data table. No column links a data row
+       back to sft_forms: one table belongs to one form. -->
+  <path class="reld" d="M280 100 H 355" marker-end="url(#arrowm)"/>
+  <text class="lbl" x="318" y="92" text-anchor="middle">table_name</text>
 
   <!-- sft_forms.form_id -> sft_fields.form_id -->
   <path class="rel" d="M155 205 V 245" marker-end="url(#arrow)"/>
   <text class="lbl" x="163" y="230">1:N  form_id</text>
 
   <!-- sft_fields.db_column names a column in the data table -->
-  <path class="reld" d="M280 325 C 318 325, 318 336, 355 336" marker-end="url(#arrowm)"/>
-  <text class="lbl" x="318" y="316" text-anchor="middle">db_column</text>
+  <path class="reld" d="M280 325 C 318 325, 318 304, 355 304" marker-end="url(#arrowm)"/>
+  <text class="lbl" x="318" y="345" text-anchor="middle">db_column</text>
 
   <!-- data.sft_id -> audit.record_id -->
   <path class="rel" d="M625 126 H 700" marker-end="url(#arrow)"/>
