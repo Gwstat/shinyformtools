@@ -28,7 +28,9 @@ sft_default_record_columns <- function(form,
     )
   } else {
     columns <- c(
-      "sft_easy_id",
+      # sft_easy_id only exists when the form opts into it; fall back to the
+      # primary key so the table always shows an id.
+      sft_display_id_column(form),
       field_columns,
       "sft_updated_at",
       "sft_updated_by",

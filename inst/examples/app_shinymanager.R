@@ -260,7 +260,7 @@ server <- function(input, output, session) {
   rights <- form_server(
     "permissions", rights_form, conn = conn, user = current_user,
     display_transform = pretty_forms,
-    table_columns = c("sft_easy_id", "user", "forms",
+    table_columns = c("sft_id", "user", "forms",
                       "can_add", "can_edit", "can_delete", "can_view_record"),
     can_add = is_admin, can_edit = is_admin, can_delete = is_admin,
     can_view_record = is_admin, can_view_versions = is_admin,
@@ -296,9 +296,9 @@ server <- function(input, output, session) {
   for (fid in form_ids) {
     f <- if (fid == "tickets") tickets_form else agents_form
     cols <- if (fid == "tickets") {
-      c("sft_easy_id", "subject", "status", "priority", "sft_updated_at")
+      c("sft_id", "subject", "status", "priority", "sft_updated_at")
     } else {
-      c("sft_easy_id", "name", "email", "team", "sft_updated_at")
+      c("sft_id", "name", "email", "team", "sft_updated_at")
     }
     perms <- rights_permissions(rights$records, user = current_user,
                                 form_id = fid, superuser = is_admin)

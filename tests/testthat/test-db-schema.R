@@ -1,3 +1,59 @@
+testthat::test_that("uuid and easy_id are opt-in and populated when asked for", {
+  db_path <- tempfile(fileext = ".sqlite")
+  conn <- local_test_conn(db_path)
+
+  form <- form(
+    form_id = "opt_in_ids",
+    table_name = "opt_in_ids",
+    db_path = db_path,
+    uuid = TRUE,
+    easy_id = TRUE,
+    fields = list(form_field(id = "name", label = "Name"))
+  )
+
+  init_db(form, conn = conn, apply = TRUE)
+  table_info <- DBI::dbGetQuery(conn, "PRAGMA table_info(opt_in_ids)")
+
+  testthat::expect_true("sft_uuid" %in% table_info$name)
+  testthat::expect_true("sft_easy_id" %in% table_info$name)
+
+  inserted <- insert_record(form, list(name = "Ada"), conn = conn)
+
+  testthat::expect_true(nzchar(inserted$sft_uuid[1]))
+  testthat::expect_true(nzchar(inserted$sft_easy_id[1]))
+  # easy_id derives from the primary key the database assigned.
+  testthat::expect_true(
+    startsWith(inserted$sft_easy_id[1], paste0(inserted$sft_id[1], "-"))
+  )
+
+  # The uuid is a usable alternative key only when the form stores one.
+  by_uuid <- sft_get_record(
+    conn = conn, form = form, record_uuid = inserted$sft_uuid[1]
+  )
+  testthat::expect_equal(by_uuid$name[1], "Ada")
+})
+
+testthat::test_that("record_uuid is rejected for a form that stores no uuid", {
+  db_path <- tempfile(fileext = ".sqlite")
+  conn <- local_test_conn(db_path)
+
+  form <- form(
+    form_id = "no_uuid",
+    table_name = "no_uuid",
+    db_path = db_path,
+    fields = list(form_field(id = "name", label = "Name"))
+  )
+
+  init_db(form, conn = conn, apply = TRUE)
+  insert_record(form, list(name = "Ada"), conn = conn)
+
+  # Must be a clear message, not "no such column: sft_uuid".
+  testthat::expect_error(
+    sft_get_record(conn = conn, form = form, record_uuid = "whatever"),
+    "does not store record UUIDs"
+  )
+})
+
 testthat::test_that("sft_init_db creates system tables and the main table", {
   db_path <- tempfile(fileext = ".sqlite")
   conn <- local_test_conn(db_path)
@@ -34,8 +90,10 @@ testthat::test_that("sft_init_db creates system tables and the main table", {
   table_info <- DBI::dbGetQuery(conn, "PRAGMA table_info(simple)")
 
   testthat::expect_true("sft_id" %in% table_info$name)
-  testthat::expect_true("sft_uuid" %in% table_info$name)
   testthat::expect_true("sft_is_deleted" %in% table_info$name)
+  # uuid and easy_id are opt-in, so a plain form must not pay for them.
+  testthat::expect_false("sft_uuid" %in% table_info$name)
+  testthat::expect_false("sft_easy_id" %in% table_info$name)
   testthat::expect_true("name" %in% table_info$name)
   testthat::expect_true("email" %in% table_info$name)
 })

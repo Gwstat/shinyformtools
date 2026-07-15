@@ -100,7 +100,7 @@ server <- function(input, output, session) {
     id = "contacts",
     form = contacts_form,
     user = "demo",
-    table_columns = c("sft_easy_id", "name", "email", "team", "sft_is_deleted", "sft_updated_at"),
+    table_columns = c("sft_id", "name", "email", "team", "sft_is_deleted", "sft_updated_at"),
     persist_column_settings = FALSE
   )
 
@@ -111,7 +111,7 @@ server <- function(input, output, session) {
     form = contacts_form,
     user = "demo",
     labels = list(open_edit = "Editieren"),
-    table_columns = c("sft_easy_id", "name", "team"),
+    table_columns = c("sft_id", "name", "team"),
     persist_column_settings = FALSE
   )
 }

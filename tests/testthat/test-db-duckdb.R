@@ -9,6 +9,7 @@ testthat::test_that("DuckDB backend supports CRUD, audit and preferences", {
     form_id = "duckdb_simple",
     table_name = "duckdb_simple",
     db = db_duckdb(db_path),
+    easy_id = TRUE,
     fields = list(
       form_field(
         id = "name",

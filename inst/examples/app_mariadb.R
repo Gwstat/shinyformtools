@@ -111,7 +111,7 @@ employees_form_server <- function() {
     id = "employees",
     form = employees_form,
     user = "demo",
-    table_columns = c("sft_easy_id", "staff_no", "name", "department", "salary", "full_time"),
+    table_columns = c("sft_id", "staff_no", "name", "department", "salary", "full_time"),
     persist_column_settings = FALSE
   )
 }

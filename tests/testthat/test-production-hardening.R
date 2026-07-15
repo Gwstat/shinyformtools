@@ -71,6 +71,7 @@ testthat::test_that("editable = FALSE fields are visible but not collected for e
 testthat::test_that("records table data uses display formatting without rebuilding the widget", {
   form <- form(
     form_id = "records_table_data_test",
+    easy_id = TRUE,
     fields = list(
       form_field(
         id = "topics",
@@ -92,6 +93,6 @@ testthat::test_that("records table data uses display formatting without rebuildi
     columns = c("sft_easy_id", "topics")
   )
 
-  testthat::expect_equal(names(out), c("ID", "Themen"))
+  testthat::expect_equal(names(out), c("Short ID", "Themen"))
   testthat::expect_equal(out$Themen, "A; B")
 })

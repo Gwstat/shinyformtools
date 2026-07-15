@@ -211,7 +211,7 @@ server <- function(input, output, session) {
     id = "tour",
     form = tour_form,
     user = "demo",
-    table_columns = c("sft_easy_id", "name", "age", "team", "city", "active", "skills"),
+    table_columns = c("sft_id", "name", "age", "team", "city", "active", "skills"),
     modal_header = preview_header,
     modal_sizes = list(
       add = list(size = "l", width = "92vw", max_height = "80vh"),

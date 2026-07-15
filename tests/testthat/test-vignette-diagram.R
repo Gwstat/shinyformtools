@@ -13,6 +13,7 @@ diagram_text <- function() {
 }
 
 test_that("the schema diagram draws every system column", {
+  # Defaults: the columns every form pays for, which the diagram must show.
   svg <- diagram_text()
 
   for (column in names(sft_system_columns())) {
@@ -33,7 +34,9 @@ test_that("the schema diagram draws no column the package does not create", {
   drawn <- gsub("^>|<$", "", drawn)
 
   known <- c(
-    names(sft_system_columns()),
+    # Every column the package can create, including the opt-in ones - the
+    # diagram is allowed to show sft_uuid / sft_easy_id as optional.
+    names(sft_system_columns(uuid = TRUE, easy_id = TRUE)),
     # The system tables are drawn by name too.
     "sft_forms", "sft_fields", "sft_audit_log",
     "sft_schema_migrations", "sft_user_preferences"

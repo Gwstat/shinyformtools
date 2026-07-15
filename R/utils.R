@@ -82,6 +82,51 @@ sft_as_json_snapshot <- function(x) {
   )
 }
 
+# Does this form store a per-record UUID? Opt-in via form(uuid = TRUE); a form
+# list built before the option existed has no $uuid, so default to FALSE.
+sft_form_has_uuid <- function(form) {
+  isTRUE(form$uuid)
+}
+
+# Does this form store the short quotable id? Opt-in via form(easy_id = TRUE).
+sft_form_has_easy_id <- function(form) {
+  isTRUE(form$easy_id)
+}
+
+# Looking a record up by record_uuid only works when the form stores one. Say so
+# plainly instead of letting the query fail with "no such column: sft_uuid".
+sft_check_record_uuid_supported <- function(form, record_uuid) {
+  if (is.null(record_uuid) || sft_form_has_uuid(form)) {
+    return(invisible(TRUE))
+  }
+
+  stop(
+    "form '", form$form_id, "' does not store record UUIDs, so record_uuid ",
+    "cannot be used. Identify the record by record_id, or create the form with ",
+    "form(uuid = TRUE).",
+    call. = FALSE
+  )
+}
+
+# The id column a user is shown: sft_easy_id when the form stores one, else the
+# primary key. Everything user-facing (records table, dialog titles) must go
+# through this rather than naming sft_easy_id, which may not exist.
+sft_display_id_column <- function(form) {
+  if (sft_form_has_easy_id(form)) "sft_easy_id" else "sft_id"
+}
+
+# The display id of one record row, for dialog titles and messages. Derived from
+# the row rather than the form, because the modal helpers do not all carry the
+# form. Also covers a database whose sft_easy_id column exists but was never
+# populated (written before the form opted in).
+sft_row_display_id <- function(row) {
+  if ("sft_easy_id" %in% names(row) && !is.na(row$sft_easy_id[1])) {
+    return(row$sft_easy_id[1])
+  }
+
+  row$sft_id[1]
+}
+
 sft_quote_identifier <- function(conn, x) {
   as.character(DBI::dbQuoteIdentifier(conn, x))
 }

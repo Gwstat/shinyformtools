@@ -95,6 +95,8 @@ sft_get_record <- function(conn,
     stop("record_id or record_uuid must be supplied.", call. = FALSE)
   }
 
+  sft_check_record_uuid_supported(form, record_uuid)
+
   if (!is.null(record_id)) {
     sql <- paste0(
       "SELECT * FROM ",
@@ -225,15 +227,17 @@ insert_record <- function(form,
       NULL
     }
 
-    system_values <- list(
-      sft_uuid = uuid::UUIDgenerate(),
-      sft_form_version = form$version,
-      sft_created_at = now,
-      sft_created_by = sft_db_param(user),
-      sft_updated_at = now,
-      sft_updated_by = sft_db_param(user),
-      sft_is_deleted = 0L,
-      sft_unique_slot = 0L
+    system_values <- c(
+      if (sft_form_has_uuid(form)) list(sft_uuid = uuid::UUIDgenerate()),
+      list(
+        sft_form_version = form$version,
+        sft_created_at = now,
+        sft_created_by = sft_db_param(user),
+        sft_updated_at = now,
+        sft_updated_by = sft_db_param(user),
+        sft_is_deleted = 0L,
+        sft_unique_slot = 0L
+      )
     )
 
     if (!is.null(explicit_sft_id)) {
@@ -262,17 +266,21 @@ insert_record <- function(form,
     DBI::dbExecute(conn, sql, params = unname(values))
 
     new_id <- explicit_sft_id %||% sft_last_insert_id(conn)
-    new_easy_id <- paste0(new_id, "-", sft_random_letters())
 
-    DBI::dbExecute(
-      conn,
-      paste0(
-        "UPDATE ",
-        sft_quote_identifier(conn, form$table_name),
-        " SET sft_easy_id = ? WHERE sft_id = ?"
-      ),
-      params = list(new_easy_id, new_id)
-    )
+    # sft_easy_id derives from the id the database just assigned, so it can only
+    # be written once that id is known - hence the follow-up UPDATE. Skipped
+    # entirely when the form does not store one.
+    if (sft_form_has_easy_id(form)) {
+      DBI::dbExecute(
+        conn,
+        paste0(
+          "UPDATE ",
+          sft_quote_identifier(conn, form$table_name),
+          " SET sft_easy_id = ? WHERE sft_id = ?"
+        ),
+        params = list(paste0(new_id, "-", sft_random_letters()), new_id)
+      )
+    }
 
     sft_finalize_mutation(
       conn = conn,

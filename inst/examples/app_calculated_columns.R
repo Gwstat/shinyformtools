@@ -10,7 +10,7 @@
 #
 #   Locations table (cross-table / table-extending):
 #     A location stores only a *reference* to a person (their generated
-#     sft_easy_id, picked with reference_choices()). The table shows that
+#     sft_id, picked with reference_choices()). The table shows that
 #     person's name and city by looking them up in the People records at render
 #     time - the columns live in neither table's schema. Editing a person
 #     updates the Locations table live, because the Locations form depends on the
@@ -45,7 +45,7 @@ db_path <- tempfile(fileext = ".sqlite")
 
 #> STEP: Describe the two forms
 #> NOTE: People stores first/last name, birthday and city. A Location stores only
-#> NOTE: a reference (contact_id) to a person's generated sft_easy_id.
+#> NOTE: a reference (contact_id) to a person's generated sft_id.
 people_form <- form(
   form_id = "people_calc",
   form_name = "People",
@@ -99,7 +99,7 @@ local({
 
   if (nrow(fetch_records(locations_form, conn = conn)) == 0L) {
     ppl <- fetch_records(people_form, conn = conn)
-    ada_id <- ppl$sft_easy_id[match("Ada", ppl$first_name)]
+    ada_id <- ppl$sft_id[match("Ada", ppl$first_name)]
     insert_record(locations_form, list(location_name = "Analytical Engine Lab",
                   contact_id = ada_id), conn = conn, user = "demo")
   }
@@ -140,8 +140,8 @@ server <- function(input, output, session) {
     id = "people",
     form = people_form,
     user = "demo",
-    table_columns = c("sft_easy_id", "full_name", "birthday", "age", "city"),
-    display_column_labels = c(sft_easy_id = "Person ID", full_name = "Full name", age = "Age"),
+    table_columns = c("sft_id", "full_name", "birthday", "age", "city"),
+    display_column_labels = c(sft_id = "Person ID", full_name = "Full name", age = "Age"),
     display_transform = function(data) {
       data$full_name <- full_name_of(data$first_name, data$last_name)
       data$age <- age_in_years(data$birthday)
@@ -156,13 +156,13 @@ server <- function(input, output, session) {
     user = "demo",
     # Re-derive the displayed contact name/city whenever a person changes.
     refresh_triggers = list(people$changed),
-    table_columns = c("sft_easy_id", "location_name", "contact_name", "contact_city"),
+    table_columns = c("sft_id", "location_name", "contact_name", "contact_city"),
     display_column_labels = c(
-      sft_easy_id = "Location ID", contact_name = "Contact", contact_city = "Contact city"
+      sft_id = "Location ID", contact_name = "Contact", contact_city = "Contact city"
     ),
     display_transform = function(data, context) {
       ppl <- people$records()
-      idx <- match(data$contact_id, ppl$sft_easy_id)
+      idx <- match(data$contact_id, ppl$sft_id)
       data$contact_name <- ifelse(
         is.na(idx), NA_character_,
         full_name_of(ppl$first_name[idx], ppl$last_name[idx])
@@ -177,7 +177,7 @@ server <- function(input, output, session) {
           ppl <- people$records()
           ppl$full_name <- full_name_of(ppl$first_name, ppl$last_name)
           reference_choices(
-            data = ppl, value = "sft_easy_id", label = "full_name",
+            data = ppl, value = "sft_id", label = "full_name",
             extra = "city", include_empty = TRUE
           )
         },

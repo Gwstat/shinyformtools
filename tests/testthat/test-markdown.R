@@ -82,6 +82,7 @@ testthat::test_that("records_datatable renders the markdown column raw and escap
 
   form <- form(
     form_id = "markdown_records",
+    easy_id = TRUE,
     fields = list(
       form_field(id = "name", label = "Name"),
       form_field(id = "notes", label = "Notes", markdown = TRUE)

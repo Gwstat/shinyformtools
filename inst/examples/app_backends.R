@@ -140,7 +140,7 @@ backend_panel <- function(id, title) {
 #> NOTE: The two form_server() calls are identical apart from the form they are
 #> NOTE: given - the backend never leaks into the module code.
 server <- function(input, output, session) {
-  shown_columns <- c("sft_easy_id", "sku", "name", "category", "price", "in_stock")
+  shown_columns <- c("sft_id", "sku", "name", "category", "price", "in_stock")
 
   form_server(
     id = "sqlite",

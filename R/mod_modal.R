@@ -249,7 +249,7 @@ sft_show_edit_modal <- function(form,
       title = sft_ui_label(
         labels = labels,
         key = "edit_title",
-        values = list(id = row$sft_easy_id[1])
+        values = list(id = sft_row_display_id(row))
       ),
       size = sft_modal_size(modal_sizes, "edit"),
       easyClose = TRUE,
@@ -287,7 +287,7 @@ sft_show_delete_modal <- function(session, row, labels, modal_sizes) {
       sft_ui_label(
         labels = labels,
         key = "delete_question",
-        values = list(id = row$sft_easy_id[1])
+        values = list(id = sft_row_display_id(row))
       ),
       footer = shiny::tagList(
         sft_modal_button_if_label(labels, "cancel"),
@@ -371,7 +371,7 @@ sft_show_versions_modal <- function(session, row, labels, modal_sizes, can_resto
       title = sft_ui_label(
         labels = labels,
         key = "versions_title",
-        values = list(id = row$sft_easy_id[1])
+        values = list(id = sft_row_display_id(row))
       ),
       size = sft_modal_size(modal_sizes, "versions"),
       easyClose = TRUE,

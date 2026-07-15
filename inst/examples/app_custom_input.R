@@ -116,7 +116,7 @@ server <- function(input, output, session) {
     id = "tracks",
     form = tracks_form,
     user = "demo",
-    table_columns = c("sft_easy_id", "title", "rating", "genres"),
+    table_columns = c("sft_id", "title", "rating", "genres"),
     persist_column_settings = FALSE
   )
 }
