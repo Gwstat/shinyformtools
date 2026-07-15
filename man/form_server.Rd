@@ -10,7 +10,7 @@ form_server(
   conn = NULL,
   user = NULL,
   include_deleted_default = FALSE,
-  show_audit = TRUE,
+  show_audit = FALSE,
   table_columns = NULL,
   table_views = NULL,
   default_column_view = "Standard",
@@ -64,7 +64,9 @@ form_server(
 
 \item{include_deleted_default}{Logical default for including deleted records.}
 
-\item{show_audit}{Logical. Whether audit output should be rendered.}
+\item{show_audit}{Logical. Whether audit output should be rendered. Off by
+default, matching \code{form_ui(show_audit = FALSE)}; set both to \code{TRUE} to show
+the audit log. Mutations are recorded regardless.}
 
 \item{table_columns}{Optional columns shown in the records table.}
 
@@ -127,7 +129,8 @@ control visible and rely on the warning that a denied action shows.}
 user may edit (or a function/reactive returning one). When supplied, every
 other input field in the edit dialog is rendered read-only and is ignored on
 save, so a user can be allowed to edit only specific inputs. \code{NULL} (default)
-keeps each field's own \code{editable} setting.}
+keeps each field's own \code{editable} setting; an empty vector locks every
+input field.}
 
 \item{labels}{Optional named list overriding UI labels, modal texts and
 notification messages. Set individual entries to \code{NULL} to hide the

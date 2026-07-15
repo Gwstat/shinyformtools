@@ -40,7 +40,10 @@ sft_norm_value <- function(x) {
     return("")
   }
 
-  sep <- ""
+  # A non-empty separator so multi-valued fields do not collapse ambiguously
+  # (c("a", "b") must not canonicalise to the same string as "ab"). The unit
+  # separator (U+001F) is used because it will not occur in real field values.
+  sep <- intToUtf8(31L)
 
   if (is.logical(x)) {
     return(paste(as.integer(x), collapse = sep))
@@ -124,16 +127,34 @@ sft_glow_rule <- function(container_ids, color) {
   )
 }
 
-# One CSS rule glowing the nav tabs at the given 1-based positions. nth-child on
+# The namespaced wrapper-div ids that scope each form's tabset (see
+# sft_render_form_tabs). One per add/edit prefix.
+sft_highlight_tab_wrapper_ids <- function(ns, prefixes) {
+  vapply(
+    prefixes,
+    function(prefix) ns(paste0("sft_form_tabs_", prefix)),
+    character(1),
+    USE.NAMES = FALSE
+  )
+}
+
+# One CSS rule glowing the nav tabs at the given 1-based positions, scoped to
+# this form's tab wrappers only (never every .nav-tabs on the page). nth-child on
 # the tab list maps directly to tab order in both Bootstrap 3 (shiny default) and
 # Bootstrap 4/5 (bslib) markup.
-sft_tab_glow_rule <- function(positions, color) {
-  if (length(positions) == 0L) {
+sft_tab_glow_rule <- function(wrapper_ids, positions, color) {
+  if (length(positions) == 0L || length(wrapper_ids) == 0L) {
     return(character())
   }
 
-  selector <- paste0(
-    ".nav-tabs > li:nth-child(", positions, ") > a",
+  selector <- paste(
+    as.vector(outer(
+      wrapper_ids,
+      positions,
+      function(wrapper, pos) {
+        paste0("#", wrapper, " .nav-tabs > li:nth-child(", pos, ") > a")
+      }
+    )),
     collapse = ",\n"
   )
 
@@ -190,10 +211,13 @@ sft_highlight_style_block <- function(ns,
   if (isTRUE(highlight_tab)) {
     rules <- c(
       rules,
+      # highlight applies to both the add and edit forms; changed only to edit.
       sft_tab_glow_rule(
+        sft_highlight_tab_wrapper_ids(ns, c("add_", "edit_")),
         sft_field_tab_positions(form, highlight_field_ids), highlight_color
       ),
       sft_tab_glow_rule(
+        sft_highlight_tab_wrapper_ids(ns, "edit_"),
         sft_field_tab_positions(form, changed_field_ids), changed_color
       )
     )

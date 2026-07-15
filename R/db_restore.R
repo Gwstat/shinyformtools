@@ -186,7 +186,10 @@ fetch_audit_log <- function(form,
 
   conn <- sft_resolve_connection(form, conn)
 
-  init_db(form, conn = conn, apply = TRUE)
+  # Probe-gated: an audit read must not run a full reconciliation (and its
+  # writes to sft_forms/sft_fields) on every call - that would also fail on a
+  # read-only connection. sft_ensure_schema only migrates on genuine drift.
+  sft_ensure_schema(conn, form)
 
   sql <- "
     SELECT *
@@ -335,7 +338,9 @@ restore_record <- function(form,
 
   conn <- sft_resolve_connection(form, conn)
 
-  init_db(form, conn = conn, apply = TRUE, user = user)
+  # Probe-gated (see fetch_audit_log): reconcile only on genuine drift, not on
+  # every restore.
+  sft_ensure_schema(conn, form, user = user)
 
   sft_db_with_transaction(conn, {
     current_record <- sft_get_record(

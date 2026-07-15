@@ -283,7 +283,14 @@ sft_input_value_args <- function(input_type, value) {
 }
 
 sft_parse_json_vector <- function(value) {
-  if (!is.character(value) || length(value) != 1L || !grepl("^\\s*\\[", value)) {
+  if (!is.character(value) || length(value) != 1L) {
+    return(value)
+  }
+
+  # "[...]" arrays are the canonical multi-value encoding. Bare JSON string
+  # scalars ("\"a\"") exist in databases written before single selections were
+  # forced to arrays, so parse those too.
+  if (!grepl("^\\s*\\[", value) && !grepl("^\\s*\"", value)) {
     return(value)
   }
 
@@ -319,7 +326,7 @@ sft_field_db_value <- function(field, value) {
       return(NA_character_)
     }
 
-    return(as.character(sft_as_json(as.character(as.Date(value)))))
+    return(as.character(sft_as_json_array(as.character(as.Date(value)))))
   }
 
   if (identical(field$input_type, "timeInput")) {
@@ -347,17 +354,17 @@ sft_field_db_value <- function(field, value) {
       return(NA_character_)
     }
 
-    return(as.character(sft_as_json(as.character(value))))
+    return(as.character(sft_as_json_array(as.character(value))))
   }
 
   if (field$input_type %in% c("selectInput", "selectizeInput")) {
     if (length(value) > 1L) {
-      return(as.character(sft_as_json(as.character(value))))
+      return(as.character(sft_as_json_array(as.character(value))))
     }
   }
 
   if (identical(field$input_type, "sliderInput") && length(value) > 1L) {
-    return(as.character(sft_as_json(as.numeric(value))))
+    return(as.character(sft_as_json_array(as.numeric(value))))
   }
 
   reg <- sft_registered_input(field$input_type)
@@ -382,7 +389,7 @@ sft_field_db_value <- function(field, value) {
         return(NA_character_)
       }
 
-      return(as.character(sft_as_json(as.character(value))))
+      return(as.character(sft_as_json_array(as.character(value))))
     }
   }
 

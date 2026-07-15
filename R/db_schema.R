@@ -558,7 +558,10 @@ init_db <- function(form,
 # when the form version was not bumped.
 sft_schema_signature <- function(form) {
   payload <- list(
-    columns = sft_expected_columns(form, conn = NULL),
+    # as.list() keeps the column names in the JSON (a named object). A named
+    # character vector serialises as an unnamed array of type definitions,
+    # which made same-type renames invisible to the drift probe.
+    columns = as.list(sft_expected_columns(form, conn = NULL)),
     indexes = lapply(
       sft_expected_indexes(form, conn = NULL),
       function(index) index$columns

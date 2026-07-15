@@ -644,6 +644,68 @@ sft_drop_hidden_field_values <- function(input_bindings, form, values) {
   values
 }
 
+# Field ids targeted by a dynamic_value binding.
+sft_value_binding_fields <- function(input_bindings) {
+  if (is.null(input_bindings) || length(input_bindings) == 0L) {
+    return(character(0))
+  }
+
+  bound <- Filter(
+    function(binding) inherits(binding, "sft_input_binding") &&
+      identical(binding$type, "value"),
+    input_bindings
+  )
+
+  vapply(bound, function(binding) binding$field, character(1))
+}
+
+# Re-evaluate dynamic_value bindings server-side for the given (non-editable)
+# fields on save. The dialog fills such derived fields via updateXInput, but
+# the submitted value still arrives from the client; recomputing it here keeps
+# the derived-field pattern working while making the value tamper-proof. A
+# binding that cannot be evaluated without a live session (e.g. one reading
+# `input` directly) keeps the submitted value instead of failing the save.
+sft_recompute_locked_value_bindings <- function(input_bindings,
+                                                form,
+                                                values,
+                                                field_ids) {
+  if (is.null(input_bindings) || length(input_bindings) == 0L ||
+      length(field_ids) == 0L) {
+    return(values)
+  }
+
+  for (binding in input_bindings) {
+    if (!inherits(binding, "sft_input_binding") ||
+        !identical(binding$type, "value") ||
+        !binding$field %in% field_ids) {
+      next
+    }
+
+    field <- sft_find_input_field(form, binding$field)
+
+    value <- tryCatch(
+      sft_call_input_binding_fun(
+        fun = binding$value,
+        input = NULL,
+        context = list(form = form),
+        field = field,
+        prefix = "",
+        values = values,
+        current = values[[field$id]]
+      ),
+      error = function(err) values[[field$id]]
+    )
+
+    if (is.null(value) || length(value) == 0L) {
+      values[[binding$field]] <- NULL
+    } else {
+      values[[binding$field]] <- value
+    }
+  }
+
+  values
+}
+
 sft_register_one_input_binding <- function(binding,
                                            form,
                                            input,

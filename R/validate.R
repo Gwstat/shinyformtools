@@ -92,6 +92,30 @@ sft_user_locked_input_fields <- function(form, user) {
   vapply(locked, function(field) field$id, character(1))
 }
 
+# Declared default values of statically non-editable input fields, keyed by
+# field id (NULL when the field declares no default). On add these fields are
+# rendered disabled, which is client-side only: a tampered client can still
+# submit any value. The stored value must therefore come from the field
+# definition, never from the client.
+sft_static_locked_input_defaults <- function(form) {
+  locked <- Filter(
+    function(field) !is.function(field$editable) && !isTRUE(field$editable),
+    sft_active_input_fields(form)
+  )
+
+  defaults <- lapply(locked, function(field) {
+    value_arg <- sft_input_value_argument(field$input_type)
+
+    if (is.null(value_arg)) {
+      return(NULL)
+    }
+
+    field$args[[value_arg]]
+  })
+
+  stats::setNames(defaults, vapply(locked, function(field) field$id, character(1)))
+}
+
 sft_record_has_value <- function(record, field) {
   field$id %in% names(record) || field$db_column %in% names(record)
 }
@@ -170,7 +194,11 @@ sft_validate_unique_fields <- function(form,
       " = ? AND sft_is_deleted = 0"
     )
 
-    params <- list(sft_clean_db_value(value))
+    # Compare against the stored representation, not the raw value: insert/update
+    # store via sft_field_db_value (IBAN normalized, time formatted, multi-values
+    # JSON), so a raw comparison never matched for those types and the friendly
+    # pre-check silently fell through to the DB constraint error.
+    params <- list(sft_field_db_value(field, value))
 
     if (!is.null(current_id)) {
       sql <- paste0(sql, " AND sft_id <> ?")

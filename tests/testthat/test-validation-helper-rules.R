@@ -83,3 +83,17 @@ test_that("must_be_unique validates compound uniqueness", {
     fixed = TRUE
   )
 })
+
+test_that("compare_fields compares numbers stored as text numerically", {
+  # Values arriving from TEXT columns are character; a lexicographic compare
+  # would wrongly rank "9" > "18".
+  expect_true(sft_compare_values("9", "<", "18"))
+  expect_false(sft_compare_values("9", ">", "18"))
+  expect_true(sft_compare_values("5", "==", "5.0"))
+  expect_true(sft_compare_values(5, "==", "5"))
+  expect_false(sft_compare_values("5", "!=", "5.0"))
+
+  # Non-numeric values still compare as characters.
+  expect_true(sft_compare_values("abc", "==", "abc"))
+  expect_true(sft_compare_values("apple", "<", "banana"))
+})

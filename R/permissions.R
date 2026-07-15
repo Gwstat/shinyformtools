@@ -29,8 +29,22 @@ sft_permission_fields <- function() {
     "can_view_deleted_records",
     "can_change_column_settings",
     "can_select_column_view",
-    "can_view_audit"
+    "can_view_audit",
+    "can_view_table",
+    "can_reset_table"
   )
+}
+
+# Fallback used when the credential/rule column for a permission is absent.
+# The two table-level permissions default to granted: they were added after
+# the first credential tables and rights forms shipped, so an absent column
+# (or an absent rule) must keep tables visible instead of hiding them.
+sft_permission_missing_default <- function(perm, default) {
+  if (perm %in% c("can_view_table", "can_reset_table")) {
+    return(TRUE)
+  }
+
+  isTRUE(default)
 }
 
 #' Map a shinymanager auth object to form_server() permissions
@@ -49,9 +63,14 @@ sft_permission_fields <- function() {
 #' The result is a named list whose names match the arguments of
 #' [form_server()] (`user`, `can_add`, `can_view_record`, `can_edit`,
 #' `can_delete`, `can_restore`, `can_view_versions`, `can_view_deleted_records`,
-#' `can_change_column_settings`, `can_select_column_view`, `can_view_audit`), so
-#' it can be spread directly:
+#' `can_change_column_settings`, `can_select_column_view`, `can_view_audit`,
+#' `can_view_table`, `can_reset_table`), so it can be spread directly:
 #' `do.call(form_server, c(list(id = "x", form = form), perms))`.
+#'
+#' The two table-level permissions (`can_view_table`, `can_reset_table`) fall
+#' back to `TRUE` instead of `default` when their credential column is absent,
+#' so credential tables created before these permissions existed keep their
+#' tables visible.
 #'
 #' To drive several tables from one login, call the adapter once and spread the
 #' same `perms` into each form. For table-specific rights, pass a `mapping` that
@@ -113,9 +132,10 @@ shinymanager_permissions <- function(auth,
 
   permission_fn <- function(field) {
     column <- column_for(field)
+    fallback <- sft_permission_missing_default(field, default)
     force(column)
     function() {
-      sft_truthy(auth[[column]], default = default)
+      sft_truthy(auth[[column]], default = fallback)
     }
   }
 
@@ -150,7 +170,9 @@ sft_permission_labels <- function() {
     can_view_deleted_records = "View deleted",
     can_change_column_settings = "Manage columns",
     can_select_column_view = "Switch column view",
-    can_view_audit = "View audit"
+    can_view_audit = "View audit",
+    can_view_table = "View table",
+    can_reset_table = "Reset table"
   )
 }
 
@@ -225,10 +247,16 @@ permissions_form <- function(form_ids,
 
   for (i in seq_along(permissions)) {
     perm <- permissions[[i]]
+    # The table-level permissions are opt-out: they default to checked (and to
+    # 1 for rows migrated from before the columns existed), because an unchecked
+    # box hides the whole table rather than disabling one action.
+    granted_by_default <- perm %in% c("can_view_table", "can_reset_table")
     fields <- c(fields, list(
       form_field(
         id = perm, label = labels[[perm]] %||% perm,
-        input_type = "checkboxInput", args = list(value = FALSE),
+        input_type = "checkboxInput",
+        args = list(value = granted_by_default),
+        db_default = if (granted_by_default) 1L else NULL,
         col = 2, pos = i
       )
     ))
@@ -257,6 +285,11 @@ permissions_form <- function(form_ids,
 #' `rules` may be a reactive (or function) so the returned permissions stay live
 #' as rules are edited - which, together with `form_server(hide_forbidden =
 #' TRUE)`, updates the visible buttons immediately.
+#'
+#' The two table-level permissions (`can_view_table`, `can_reset_table`) fall
+#' back to `TRUE` instead of `default` when no rule matches or the rules table
+#' predates these columns, so upgrading never hides existing tables; a matching
+#' rule with the box unchecked still denies them.
 #'
 #' @param rules A data frame of rights records, or a reactive/function returning
 #'   one (for example the `records` element returned by [form_server()]).
@@ -343,7 +376,7 @@ rights_permissions <- function(rules,
       if (is_super()) return(TRUE)
       df <- matching_rules()
       if (is.null(df) || !(perm %in% names(df))) {
-        return(isTRUE(default))
+        return(sft_permission_missing_default(perm, default))
       }
       any(vapply(df[[perm]], function(x) sft_truthy(x, default = FALSE), logical(1)))
     }

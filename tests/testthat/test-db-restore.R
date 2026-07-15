@@ -449,3 +449,80 @@ testthat::test_that("audit log enforces a unique version per record", {
     )
   )
 })
+
+testthat::test_that("restore reinstates fields that were empty in the snapshot", {
+  db_path <- tempfile(fileext = ".sqlite")
+  conn <- local_test_conn(db_path)
+
+  form <- form(
+    form_id = "simple",
+    table_name = "simple",
+    db_path = db_path,
+    fields = list(
+      form_field(id = "name", label = "Name", mandatory = TRUE),
+      form_field(id = "phone", label = "Phone")
+    )
+  )
+
+  inserted <- insert_record(
+    form = form,
+    record = list(name = "Ada"),
+    conn = conn,
+    user = "tester"
+  )
+  record_id <- inserted$sft_id[1]
+
+  update_record(
+    form = form,
+    record_id = record_id,
+    values = list(phone = "12345"),
+    conn = conn,
+    user = "tester"
+  )
+
+  # Version 1 had no phone. Restoring it must clear the value again; snapshots
+  # used to drop NA fields entirely, so the restore silently kept "12345".
+  restore_record(
+    form = form,
+    record_id = record_id,
+    version_no = 1L,
+    conn = conn,
+    user = "tester"
+  )
+
+  records <- fetch_records(form, conn = conn)
+  row <- records[records$sft_id == record_id, , drop = FALSE]
+  testthat::expect_true(is.na(row$phone[1]))
+})
+
+
+testthat::test_that("reading the audit log does not re-reconcile the schema", {
+  db_path <- tempfile(fileext = ".sqlite")
+  conn <- local_test_conn(db_path)
+
+  form <- form(
+    form_id = "audit_probe",
+    table_name = "audit_probe",
+    db_path = db_path,
+    fields = list(form_field(id = "name", label = "Name", mandatory = TRUE))
+  )
+
+  inserted <- insert_record(form, list(name = "Ada"), conn = conn)
+
+  stamp <- function() {
+    DBI::dbGetQuery(
+      conn,
+      "SELECT updated_at FROM sft_forms WHERE form_id = ?",
+      params = list(form$form_id)
+    )$updated_at[1]
+  }
+
+  before <- stamp()
+
+  # A probe-gated read must not write to the schema tables (which would also
+  # fail on a read-only connection).
+  fetch_audit_log(form, conn = conn, record_id = inserted$sft_id[1])
+  list_versions(form, conn = conn, record_id = inserted$sft_id[1])
+
+  testthat::expect_identical(stamp(), before)
+})

@@ -326,3 +326,24 @@ testthat::test_that("vector-like input values are displayed as semicolon-separat
   testthat::expect_equal(out$topics, "A; C")
   testthat::expect_equal(out$period, "2026-01-01 - 2026-01-31")
 })
+
+testthat::test_that("a field id must not alias another field's database column", {
+  testthat::expect_error(
+    form(
+      form_id = "alias",
+      fields = list(
+        form_field(id = "a", label = "A", db_column = "y"),
+        form_field(id = "y", label = "Y", db_column = "z")
+      )
+    ),
+    "must not match another field's database column"
+  )
+
+  # A field's own id == its own db_column (the default) is fine.
+  testthat::expect_no_error(
+    form(
+      form_id = "alias_ok",
+      fields = list(form_field(id = "a", label = "A"))
+    )
+  )
+})

@@ -38,6 +38,23 @@ sft_module_value <- function(value, default = NULL) {
   out
 }
 
+# Resolve editable_fields. Unlike sft_module_value(), an empty vector is
+# meaningful here: NULL means "no restriction", character(0) means "no field
+# may be edited". A permission boundary must fail closed, so an empty result
+# from a function/reactive locks everything instead of unlocking everything.
+sft_module_editable_fields <- function(value) {
+  if (is.function(value)) {
+    value <- value()
+  }
+
+  if (is.null(value)) {
+    return(NULL)
+  }
+
+  value <- as.character(value)
+  value[!is.na(value)]
+}
+
 sft_table_view_columns <- function(table_views, view_name) {
   if (is.function(table_views)) {
     table_views <- table_views()

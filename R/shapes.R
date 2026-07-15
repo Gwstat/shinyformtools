@@ -217,6 +217,12 @@ attach_shapes <- function(form,
   unmatched <- 0L
 
   sft_db_with_transaction(conn, {
+    # Reset inside the block: sft_db_with_transaction re-runs this expression on
+    # a retryable conflict, so counters initialised outside would accumulate
+    # across attempts and be double-counted.
+    attached <- 0L
+    unmatched <- 0L
+
     for (i in seq_len(nrow(key_table))) {
       where_params <- lapply(
         sf_cols,

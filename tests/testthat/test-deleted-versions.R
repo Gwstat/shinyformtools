@@ -74,3 +74,48 @@ testthat::test_that("opening versions for a live record sets up the restore list
     }
   )
 })
+
+testthat::test_that("deleted records and versions are not served without permission", {
+  db_path <- tempfile(fileext = ".sqlite")
+  conn <- local_test_conn(db_path)
+
+  form <- form(
+    form_id = "dv_gate",
+    table_name = "dv_gate",
+    db_path = db_path,
+    fields = list(
+      form_field(id = "name", label = "Name")
+    )
+  )
+
+  init_db(form, conn = conn)
+
+  live <- insert_record(form, list(name = "live_v1"), conn = conn)
+  update_record(form, record_id = live$sft_id[1], values = list(name = "live_v2"), conn = conn)
+
+  gone <- insert_record(form, list(name = "secret_deleted"), conn = conn)
+  soft_delete_record(form, record_id = gone$sft_id[1], conn = conn)
+
+  shiny::testServer(
+    form_server,
+    args = list(
+      form = form,
+      conn = conn,
+      can_view_deleted_records = FALSE,
+      can_view_versions = FALSE
+    ),
+    {
+      # Outputs compute as soon as something subscribes, so a client-injected
+      # binding would receive whatever the renderers emit. With the permissions
+      # denied, neither payload may contain any record data.
+      session$setInputs(records_rows_selected = 1L)
+      session$setInputs(open_edit = 1L)
+
+      deleted_payload <- paste(unlist(output$deleted_records), collapse = " ")
+      testthat::expect_false(grepl("secret_deleted", deleted_payload, fixed = TRUE))
+
+      versions_payload <- paste(unlist(output$restore_versions), collapse = " ")
+      testthat::expect_false(grepl("live_v1", versions_payload, fixed = TRUE))
+    }
+  )
+})

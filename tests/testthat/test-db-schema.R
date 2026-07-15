@@ -295,3 +295,42 @@ testthat::test_that("a failed migration rolls back on a transactional-DDL backen
   info <- sft_table_info(conn, "mig_rollback")
   testthat::expect_false("city" %in% info$name)
 })
+
+testthat::test_that("schema signature distinguishes same-type field renames", {
+  make_form <- function(field_id) {
+    form(
+      form_id = "sig",
+      table_name = "sig",
+      db = db_sqlite(tempfile(fileext = ".sqlite")),
+      fields = list(form_field(id = field_id, label = "X"))
+    )
+  }
+
+  testthat::expect_false(identical(
+    sft_schema_signature(make_form("phone")),
+    sft_schema_signature(make_form("mobile"))
+  ))
+})
+
+testthat::test_that("a same-type rename without a version bump is detected as drift", {
+  db_path <- tempfile(fileext = ".sqlite")
+  conn <- local_test_conn(db_path)
+
+  f1 <- form(
+    form_id = "drift", table_name = "drift", db_path = db_path,
+    fields = list(form_field(id = "phone", label = "P"))
+  )
+  init_db(f1, conn = conn)
+  insert_record(f1, list(phone = "1"), conn = conn)
+
+  # Same column count and types, different column name - the exact drift the
+  # signature exists to catch even when `version` was not bumped.
+  f2 <- form(
+    form_id = "drift", table_name = "drift", db_path = db_path,
+    fields = list(form_field(id = "mobile", label = "M"))
+  )
+
+  testthat::expect_false(sft_schema_is_current(conn, f2))
+  inserted <- insert_record(f2, list(mobile = "2"), conn = conn)
+  testthat::expect_true(inserted$sft_id[1] > 0)
+})

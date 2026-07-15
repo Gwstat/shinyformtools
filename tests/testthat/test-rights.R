@@ -101,3 +101,38 @@ testthat::test_that("shinymanager_users reads a credentials data frame", {
                       stringsAsFactors = FALSE)
   testthat::expect_identical(shinymanager_users(creds), c("a", "b"))
 })
+
+testthat::test_that("table-level permissions default to granted until a rule denies them", {
+  rules <- data.frame(
+    user = "alice",
+    forms = '["people"]',
+    can_add = TRUE,
+    stringsAsFactors = FALSE
+  )
+
+  # Matching rule, but the rights table predates the table-level columns.
+  alice <- rights_permissions(rules, user = "alice", form_id = "people")
+  testthat::expect_true(alice$can_view_table())
+  testthat::expect_true(alice$can_reset_table())
+
+  # No matching rule at all keeps the table visible while actions stay denied.
+  bob <- rights_permissions(rules, user = "bob", form_id = "people")
+  testthat::expect_true(bob$can_view_table())
+  testthat::expect_false(bob$can_add())
+
+  # An explicit unchecked box still denies.
+  rules$can_view_table <- FALSE
+  denied <- rights_permissions(rules, user = "alice", form_id = "people")
+  testthat::expect_false(denied$can_view_table())
+})
+
+testthat::test_that("permissions_form defaults table-level checkboxes to granted", {
+  pf <- permissions_form(form_ids = "a", db_path = tempfile(fileext = ".sqlite"))
+  fields <- stats::setNames(pf$fields, vapply(pf$fields, function(f) f$id, character(1)))
+
+  testthat::expect_true(isTRUE(fields$can_view_table$args$value))
+  testthat::expect_identical(fields$can_view_table$db_default, 1L)
+  testthat::expect_true(isTRUE(fields$can_reset_table$args$value))
+  # Action permissions stay opt-in.
+  testthat::expect_false(isTRUE(fields$can_add$args$value))
+})

@@ -453,6 +453,20 @@ forbid_if <- function(id,
   )
 }
 
+# Coerce both sides to numeric when each is a valid number (including numbers
+# that arrived as text from a TEXT column). Returns NULL when either side is not
+# numeric, so the caller falls back to a character comparison. This stops a
+# lexicographic "9" > "18" (TRUE) and treats 5 == "5.0" as equal.
+sft_compare_as_numeric <- function(left, right) {
+  nums <- suppressWarnings(as.numeric(c(as.character(left), as.character(right))))
+
+  if (anyNA(nums)) {
+    return(NULL)
+  }
+
+  nums
+}
+
 sft_compare_values <- function(left, operator, right) {
   if (sft_is_empty_value(left) || sft_is_empty_value(right)) {
     return(TRUE)
@@ -461,10 +475,25 @@ sft_compare_values <- function(left, operator, right) {
   left <- left[[1L]]
   right <- right[[1L]]
 
+  numeric_pair <- sft_compare_as_numeric(left, right)
+
+  if (!is.null(numeric_pair)) {
+    left <- numeric_pair[[1L]]
+    right <- numeric_pair[[2L]]
+  }
+
   switch(
     operator,
-    `==` = identical(as.character(left), as.character(right)),
-    `!=` = !identical(as.character(left), as.character(right)),
+    `==` = if (is.null(numeric_pair)) {
+      identical(as.character(left), as.character(right))
+    } else {
+      left == right
+    },
+    `!=` = if (is.null(numeric_pair)) {
+      !identical(as.character(left), as.character(right))
+    } else {
+      left != right
+    },
     `<` = suppressWarnings(left < right),
     `<=` = suppressWarnings(left <= right),
     `>` = suppressWarnings(left > right),

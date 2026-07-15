@@ -51,7 +51,12 @@ sft_get_user_preference <- function(conn,
     return(NULL)
   }
 
-  jsonlite::fromJSON(rows$preference_json[1L], simplifyVector = TRUE)
+  # A single corrupted preference row must not permanently break column-view
+  # loading for that user; treat unparseable JSON as "no preference".
+  tryCatch(
+    jsonlite::fromJSON(rows$preference_json[1L], simplifyVector = TRUE),
+    error = function(err) NULL
+  )
 }
 
 sft_set_user_preference <- function(conn,

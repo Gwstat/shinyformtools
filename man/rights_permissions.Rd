@@ -46,6 +46,11 @@ ready to spread with \code{do.call()}, exactly like \code{\link[=shinymanager_pe
 \details{
 \code{rules} may be a reactive (or function) so the returned permissions stay live
 as rules are edited - which, together with \code{form_server(hide_forbidden = TRUE)}, updates the visible buttons immediately.
+
+The two table-level permissions (\code{can_view_table}, \code{can_reset_table}) fall
+back to \code{TRUE} instead of \code{default} when no rule matches or the rules table
+predates these columns, so upgrading never hides existing tables; a matching
+rule with the box unchecked still denies them.
 }
 \examples{
 # A rules table: each row grants permissions to a user across one or more
