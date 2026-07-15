@@ -10,6 +10,7 @@ testthat::test_that("column-settings widget, save, and load run in the module", 
     form_id = "cs_flow",
     table_name = "cs_flow",
     db_path = db_path,
+    easy_id = TRUE,
     fields = list(
       form_field(id = "name", label = "Name"),
       form_field(id = "city", label = "City")

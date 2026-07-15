@@ -871,7 +871,7 @@ form_server <- function(id,
 
       sft_inline_form_panel(
         ns = session$ns,
-        title = sft_ui_label(labels, "edit_title", values = list(id = row$sft_easy_id[1])),
+        title = sft_ui_label(labels, "edit_title", values = list(id = sft_row_display_id(row))),
         body = sft_edit_form_body(
           ns = session$ns,
           form = sft_resolve_editable(form, current_user),

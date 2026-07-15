@@ -132,7 +132,7 @@ server <- function(input, output, session) {
     form = contacts_form,
     user = "demo",
     show_audit = TRUE,
-    table_columns = c("sft_easy_id", "name", "email", "team", "gender", "active", "sft_updated_at"),
+    table_columns = c("sft_id", "name", "email", "team", "gender", "active", "sft_updated_at"),
     persist_column_settings = FALSE
   )
 }

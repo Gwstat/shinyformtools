@@ -117,7 +117,7 @@ server <- function(input, output, session) {
     form = profile_form,
     user = "demo",
     persist_column_settings = FALSE,
-    table_columns = c("sft_easy_id", "name", "email", "age",
+    table_columns = c("sft_id", "name", "email", "age",
                       "city", "postcode", "country"),
     # 1. Reactive red glow on the flagged fields, plus their tab.
     highlight_fields = reactive(input$flag),

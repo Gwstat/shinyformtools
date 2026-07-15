@@ -159,8 +159,6 @@ added by the package:
 | Column | Meaning |
 |---|---|
 | `sft_id` | Integer primary key; the record id used by the CRUD functions. |
-| `sft_uuid` | A UUID for the record; stable if rows move between databases. |
-| `sft_easy_id` | Human-quotable id, `<sft_id>-<two random letters>` (e.g. `1-QZ`). |
 | `sft_form_version` | The form's `version` when the record was created. |
 | `sft_created_at`, `sft_created_by` | When the record was inserted, and by which user. |
 | `sft_updated_at`, `sft_updated_by` | Same for the most recent edit. |
@@ -169,7 +167,18 @@ added by the package:
 | `sft_unique_slot` | `0` for live rows, `sft_id` once soft-deleted (see below). |
 
 Timestamps are ISO 8601 text, and `user` is whatever you passed to the CRUD call
-or to `form_server(user = ...)` -- the package does not invent an identity.
+or to `form_server(user = ...)` -- the package does not invent an identity. If
+you pass no user, the three `_by` columns stay `NULL` and cost nothing.
+
+The record's identity is `sft_id`: a primary key the *database* assigns, so it is
+unique under concurrent writes on every backend. Two further identifiers are
+available but off by default, because neither adds anything `sft_id` does not
+already guarantee:
+
+| Opt-in | What it buys |
+|---|---|
+| `form(uuid = TRUE)` | `sft_uuid`, an identifier that stays stable when records move between databases, and the `record_uuid` argument of the CRUD and audit functions. Costs 36 bytes per record -- often more than the record's own data. |
+| `form(easy_id = TRUE)` | `sft_easy_id`, a short quotable id (`sft_id` plus two random letters, e.g. `1-QZ`). Nicer to read out loud; not a stronger identifier. Shown instead of `sft_id` in the records table. |
 
 ### Uniqueness is a real index
 
@@ -254,7 +263,7 @@ for them:
 
 ```{r fetch}
 live <- fetch_records(contacts, conn = conn)
-live[, c("sft_easy_id", "name", "email", "role", "sft_updated_by")]
+live[, c("sft_id", "name", "email", "role", "sft_updated_by")]
 
 nrow(fetch_records(contacts, conn = conn))
 nrow(fetch_records(contacts, conn = conn, include_deleted = TRUE))
@@ -269,7 +278,7 @@ shinyformtools does not need to be installed to do so:
 ```{r raw-sql}
 DBI::dbGetQuery(
   conn,
-  "SELECT sft_easy_id, name, role, joined
+  "SELECT sft_id, name, role, joined
    FROM contacts
    WHERE sft_is_deleted = 0
    ORDER BY name"

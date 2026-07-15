@@ -14,9 +14,11 @@
 sft_default_table_labels <- function() {
   list(
     # System columns (keyed by the actual column name).
-    sft_id = "Internal ID",
+    # sft_id is the id shown by default; sft_easy_id only exists when a form opts
+    # in, and is then shown instead - so both need a label that reads well alone.
+    sft_id = "ID",
     sft_uuid = "UUID",
-    sft_easy_id = "ID",
+    sft_easy_id = "Short ID",
     sft_form_version = "Version",
     sft_created_at = "Created at",
     sft_created_by = "Created by",
@@ -204,9 +206,9 @@ german_messages <- function() {
 #' @export
 german_table_labels <- function() {
   list(
-    sft_id = "Interne ID",
+    sft_id = "ID",
     sft_uuid = "UUID",
-    sft_easy_id = "ID",
+    sft_easy_id = "Kurz-ID",
     sft_form_version = "Version",
     sft_created_at = "Erstellt am",
     sft_created_by = "Erstellt von",

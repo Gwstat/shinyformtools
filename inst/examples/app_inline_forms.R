@@ -90,7 +90,7 @@ server <- function(input, output, session) {
     form = tasks_form,
     user = "demo",
     form_layout = "inline",
-    table_columns = c("sft_easy_id", "title", "status", "priority", "sft_updated_at"),
+    table_columns = c("sft_id", "title", "status", "priority", "sft_updated_at"),
     persist_column_settings = FALSE
   )
 }

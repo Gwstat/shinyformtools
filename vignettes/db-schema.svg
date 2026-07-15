@@ -65,30 +65,32 @@
   <text class="cm" x="44" y="437">args_json, layout, ...</text>
 
   <!-- ============ data table ============ -->
-  <rect class="boxd" x="355" y="30" width="270" height="390" rx="6"/>
+  <rect class="boxd" x="355" y="30" width="270" height="425" rx="6"/>
   <path class="hdrd" d="M355 36 a6 6 0 0 1 6 -6 h258 a6 6 0 0 1 6 6 v22 h-270 z"/>
   <line class="sep" x1="355" y1="58" x2="625" y2="58"/>
   <text class="t"  x="369" y="48">contacts</text>
   <text class="tag" x="611" y="48" text-anchor="end">your data table</text>
   <text class="c"  x="369" y="78">sft_id</text><text class="tag" x="611" y="78" text-anchor="end">PK</text>
-  <text class="c"  x="369" y="94">sft_uuid</text><text class="tag" x="611" y="94" text-anchor="end">UNIQUE</text>
-  <text class="c"  x="369" y="110">sft_easy_id</text>
-  <text class="c"  x="369" y="126">sft_form_version</text>
-  <text class="c"  x="369" y="142">sft_created_at</text>
-  <text class="c"  x="369" y="158">sft_created_by</text>
-  <text class="c"  x="369" y="174">sft_updated_at</text>
-  <text class="c"  x="369" y="190">sft_updated_by</text>
-  <text class="c"  x="369" y="206">sft_deleted_at</text>
-  <text class="c"  x="369" y="222">sft_deleted_by</text>
-  <text class="c"  x="369" y="238">sft_is_deleted</text><text class="tag" x="611" y="238" text-anchor="end">0 = live</text>
-  <text class="c"  x="369" y="254">sft_unique_slot</text><text class="tag" x="611" y="254" text-anchor="end">0 = live</text>
-  <line class="sep" x1="369" y1="268" x2="611" y2="268"/>
-  <text class="tag" x="369" y="284">your declared fields</text>
-  <text class="c"  x="369" y="304">name</text>
-  <text class="c"  x="369" y="320">email</text><text class="tag" x="611" y="320" text-anchor="end">UNIQUE (email, sft_unique_slot)</text>
-  <text class="c"  x="369" y="336">role</text>
-  <text class="c"  x="369" y="352">joined</text>
-  <text class="lbli" x="369" y="378">One table per form.</text>
+  <text class="c"  x="369" y="94">sft_form_version</text>
+  <text class="c"  x="369" y="110">sft_created_at</text>
+  <text class="c"  x="369" y="126">sft_created_by</text>
+  <text class="c"  x="369" y="142">sft_updated_at</text>
+  <text class="c"  x="369" y="158">sft_updated_by</text>
+  <text class="c"  x="369" y="174">sft_deleted_at</text>
+  <text class="c"  x="369" y="190">sft_deleted_by</text>
+  <text class="c"  x="369" y="206">sft_is_deleted</text><text class="tag" x="611" y="206" text-anchor="end">0 = live</text>
+  <text class="c"  x="369" y="222">sft_unique_slot</text><text class="tag" x="611" y="222" text-anchor="end">0 = live</text>
+  <line class="sep" x1="369" y1="236" x2="611" y2="236"/>
+  <text class="tag" x="369" y="252">opt-in, off by default</text>
+  <text class="cm" x="369" y="272">sft_uuid</text><text class="tag" x="611" y="272" text-anchor="end">form(uuid = TRUE)</text>
+  <text class="cm" x="369" y="288">sft_easy_id</text><text class="tag" x="611" y="288" text-anchor="end">form(easy_id = TRUE)</text>
+  <line class="sep" x1="369" y1="302" x2="611" y2="302"/>
+  <text class="tag" x="369" y="318">your declared fields</text>
+  <text class="c"  x="369" y="338">name</text>
+  <text class="c"  x="369" y="354">email</text><text class="tag" x="611" y="354" text-anchor="end">UNIQUE (email, sft_unique_slot)</text>
+  <text class="c"  x="369" y="370">role</text>
+  <text class="c"  x="369" y="386">joined</text>
+  <text class="lbli" x="369" y="412">One table per form.</text>
 
   <!-- ============ sft_audit_log ============ -->
   <rect class="box" x="700" y="30" width="230" height="250" rx="6"/>
@@ -149,8 +151,8 @@
   <text class="lbl" x="163" y="230">1:N  form_id</text>
 
   <!-- sft_fields.db_column names a column in the data table -->
-  <path class="reld" d="M280 325 C 318 325, 318 304, 355 304" marker-end="url(#arrowm)"/>
-  <text class="lbl" x="318" y="345" text-anchor="middle">db_column</text>
+  <path class="reld" d="M280 325 C 318 325, 318 338, 355 338" marker-end="url(#arrowm)"/>
+  <text class="lbl" x="318" y="316" text-anchor="middle">db_column</text>
 
   <!-- data.sft_id -> audit.record_id -->
   <path class="rel" d="M625 126 H 700" marker-end="url(#arrow)"/>

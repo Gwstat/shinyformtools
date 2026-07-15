@@ -130,7 +130,7 @@ server <- function(input, output, session) {
     form = comp_form,
     # The current user drives the per-user `editable` function on Salary.
     user = function() input$act_as,
-    table_columns = c("sft_easy_id", "name", "level", "salary", "grade",
+    table_columns = c("sft_id", "name", "level", "salary", "grade",
                       "employment_type", "contract_end", "cost_center"),
     persist_column_settings = FALSE,
     input_bindings = list(

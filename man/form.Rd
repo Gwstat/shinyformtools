@@ -12,6 +12,8 @@ form(
   db = NULL,
   form_name = form_id,
   version = 1L,
+  uuid = FALSE,
+  easy_id = FALSE,
   schema_policy = c("safe", "manual"),
   on_edit_missing_required = c("warn", "require", "ignore"),
   tab_labels = NULL,
@@ -40,6 +42,23 @@ new code.}
 \item{form_name}{Optional user-facing form name.}
 
 \item{version}{Integer-like form schema version.}
+
+\item{uuid}{Store a UUID (\code{sft_uuid}) on every record? Defaults to \code{FALSE}.
+Records are identified by \code{sft_id}, a database-generated primary key that is
+unique under concurrent writes on every backend, so a UUID is not needed for
+correctness. It buys an identifier that stays stable when records move
+between databases (export, import, merging two instances), and it is what
+the \code{record_uuid} argument of \code{\link[=update_record]{update_record()}}, \code{\link[=soft_delete_record]{soft_delete_record()}},
+\code{\link[=fetch_audit_log]{fetch_audit_log()}}, \code{\link[=list_versions]{list_versions()}} and \code{\link[=restore_record]{restore_record()}} looks up.
+Set it to \code{TRUE} if you need either; it costs 36 bytes per record, which is
+more than many forms spend on their actual data.}
+
+\item{easy_id}{Store a short quotable id (\code{sft_easy_id}) on every record?
+Defaults to \code{FALSE}. It is \code{sft_id} plus two random letters (\code{"1-QZ"}),
+assigned by a follow-up \code{UPDATE} after the insert, so it adds nothing that
+\code{sft_id} does not already guarantee - it is a nicer thing to read out over
+the phone, not a stronger identifier. With it disabled, \code{sft_id} is the id
+shown in the records table and in dialog titles.}
 
 \item{schema_policy}{Schema handling policy. Currently \code{"safe"} or
 \code{"manual"}.}

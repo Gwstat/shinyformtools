@@ -120,7 +120,7 @@ server <- function(input, output, session) {
     id = "people",
     form = people_form,
     user = "demo",
-    table_columns = c("sft_easy_id", "name", "team", "score"),
+    table_columns = c("sft_id", "name", "team", "score"),
     # 1. No pagination / no global chrome - just the table.
     table_options = list(paging = FALSE, dom = "t"),
     # 2. Per-column search controls that adapt to each column's type.

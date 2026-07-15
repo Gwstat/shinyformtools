@@ -54,6 +54,21 @@ sft_check_form_region <- function(region, name) {
 #'   `db_mariadb()` or `db_duckdb()`. If omitted, `db_path` is used as SQLite path.
 #' @param form_name Optional user-facing form name.
 #' @param version Integer-like form schema version.
+#' @param uuid Store a UUID (`sft_uuid`) on every record? Defaults to `FALSE`.
+#'   Records are identified by `sft_id`, a database-generated primary key that is
+#'   unique under concurrent writes on every backend, so a UUID is not needed for
+#'   correctness. It buys an identifier that stays stable when records move
+#'   between databases (export, import, merging two instances), and it is what
+#'   the `record_uuid` argument of [update_record()], [soft_delete_record()],
+#'   [fetch_audit_log()], [list_versions()] and [restore_record()] looks up.
+#'   Set it to `TRUE` if you need either; it costs 36 bytes per record, which is
+#'   more than many forms spend on their actual data.
+#' @param easy_id Store a short quotable id (`sft_easy_id`) on every record?
+#'   Defaults to `FALSE`. It is `sft_id` plus two random letters (`"1-QZ"`),
+#'   assigned by a follow-up `UPDATE` after the insert, so it adds nothing that
+#'   `sft_id` does not already guarantee - it is a nicer thing to read out over
+#'   the phone, not a stronger identifier. With it disabled, `sft_id` is the id
+#'   shown in the records table and in dialog titles.
 #' @param schema_policy Schema handling policy. Currently `"safe"` or
 #'   `"manual"`.
 #' @param on_edit_missing_required How to treat new mandatory fields when old
@@ -101,6 +116,8 @@ form <- function(form_id,
                      db = NULL,
                      form_name = form_id,
                      version = 1L,
+                     uuid = FALSE,
+                     easy_id = FALSE,
                      schema_policy = c("safe", "manual"),
                      on_edit_missing_required = c("warn", "require", "ignore"),
                      tab_labels = NULL,
@@ -126,6 +143,8 @@ form <- function(form_id,
     db_path = db_path,
     db = db,
     version = as.integer(version),
+    uuid = isTRUE(uuid),
+    easy_id = isTRUE(easy_id),
     schema_policy = schema_policy,
     on_edit_missing_required = on_edit_missing_required,
     tab_labels = tab_labels,

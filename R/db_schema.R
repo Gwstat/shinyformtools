@@ -8,7 +8,15 @@
 # but was never filtered on, so the multi-form-per-table it hinted at did not
 # exist; one table belongs to one form. Both are recoverable as an additive
 # add_column migration if a reader ever appears.
-sft_system_columns <- function(conn = NULL) {
+#
+# sft_uuid and sft_easy_id are opt-in (form(uuid = TRUE) / form(easy_id = TRUE))
+# rather than removed. Neither adds identity that sft_id lacks: sft_id is a
+# database-generated primary key on every backend, so it is already unique under
+# concurrent writes. sft_uuid (36 bytes, the most expensive system column) earns
+# its cost only when records move between databases; sft_easy_id is sft_id with
+# two random letters, i.e. cosmetic. Both flags come from the form, hence the
+# arguments.
+sft_system_columns <- function(conn = NULL, uuid = FALSE, easy_id = FALSE) {
   short_text <- if (is.null(conn)) "TEXT" else sft_short_text_definition(conn)
   id_def <- if (is.null(conn)) {
     "INTEGER PRIMARY KEY AUTOINCREMENT"
@@ -18,8 +26,8 @@ sft_system_columns <- function(conn = NULL) {
 
   c(
     sft_id = id_def,
-    sft_uuid = paste(short_text, "UNIQUE"),
-    sft_easy_id = short_text,
+    if (isTRUE(uuid)) c(sft_uuid = paste(short_text, "UNIQUE")),
+    if (isTRUE(easy_id)) c(sft_easy_id = short_text),
     sft_form_version = "INTEGER",
     sft_created_at = short_text,
     sft_created_by = short_text,
@@ -66,7 +74,14 @@ sft_expected_columns <- function(form, conn = NULL) {
     character(1)
   )
 
-  c(sft_system_columns(conn), field_definitions)
+  c(
+    sft_system_columns(
+      conn,
+      uuid = sft_form_has_uuid(form),
+      easy_id = sft_form_has_easy_id(form)
+    ),
+    field_definitions
+  )
 }
 
 sft_column_definition <- function(conn, column_name, definition) {

@@ -1,6 +1,7 @@
-testthat::test_that("reference choices use sft_easy_id as stable default value", {
+testthat::test_that("reference choices use sft_id as stable default value", {
+  # sft_id is the default because every form has it; sft_easy_id is opt-in.
   data <- data.frame(
-    sft_easy_id = c("1-ABCD", "2-EFGH"),
+    sft_id = c(1L, 2L),
     name = c("Ada Lovelace", "Grace Hopper"),
     phone = c("0391 111", "0391 222"),
     stringsAsFactors = FALSE
@@ -13,13 +14,25 @@ testthat::test_that("reference choices use sft_easy_id as stable default value",
     include_empty = TRUE
   )
 
-  testthat::expect_equal(unname(choices), c("", "1-ABCD", "2-EFGH"))
+  testthat::expect_equal(unname(choices), c("", "1", "2"))
   testthat::expect_equal(names(choices), c("", "Ada Lovelace · 0391 111", "Grace Hopper · 0391 222"))
+})
+
+testthat::test_that("reference choices still accept sft_easy_id explicitly", {
+  data <- data.frame(
+    sft_easy_id = c("1-ABCD", "2-EFGH"),
+    name = c("Ada Lovelace", "Grace Hopper"),
+    stringsAsFactors = FALSE
+  )
+
+  choices <- reference_choices(data, value = "sft_easy_id", label = "name")
+
+  testthat::expect_equal(unname(choices), c("1-ABCD", "2-EFGH"))
 })
 
 testthat::test_that("reference choices validate missing columns", {
   data <- data.frame(
-    sft_easy_id = "1-ABCD",
+    sft_id = 1L,
     name = "Ada Lovelace",
     stringsAsFactors = FALSE
   )

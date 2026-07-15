@@ -28,6 +28,10 @@ bugs_form <- form(
   form_name = "Bug reports",
   table_name = "bug_reports",
   db = db_sqlite(db_path),
+  # A ticket id gets read out and pasted into chat, so this form opts into
+  # sft_easy_id ("3-QZ") instead of the bare sft_id every form has. It is the
+  # only difference: easy_id is cosmetic, not a stronger identifier.
+  easy_id = TRUE,
   fields = list(
     form_field(id = "summary", label = "Summary", mandatory = TRUE, col = 1, pos = 1),
     form_field(

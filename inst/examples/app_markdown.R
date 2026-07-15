@@ -104,7 +104,7 @@ server <- function(input, output, session) {
     id = "notes",
     form = notes_form,
     user = "demo",
-    table_columns = c("sft_easy_id", "title", "status", "description"),
+    table_columns = c("sft_id", "title", "status", "description"),
     table_options = list(columnDefs = list(list(width = "55%", targets = 3))),
     persist_column_settings = FALSE
   )

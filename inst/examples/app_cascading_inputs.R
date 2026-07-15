@@ -184,8 +184,8 @@ server <- function(input, output, session) {
     id = "locations",
     form = locations_form,
     user = "demo",
-    table_columns = c("sft_easy_id", "location_name", "address", "zip"),
-    display_column_labels = c(sft_easy_id = "Location ID", address = "Address"),
+    table_columns = c("sft_id", "location_name", "address", "zip"),
+    display_column_labels = c(sft_id = "Location ID", address = "Address"),
     display_transform = function(data, context) {
       data |>
         dplyr::mutate(address = paste0(street, " ", house_no, house_suffix))

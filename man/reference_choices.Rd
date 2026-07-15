@@ -6,7 +6,7 @@
 \usage{
 reference_choices(
   data,
-  value = "sft_easy_id",
+  value = "sft_id",
   label = NULL,
   extra = NULL,
   include_empty = FALSE,
@@ -17,8 +17,8 @@ reference_choices(
 \arguments{
 \item{data}{Data frame or function returning a data frame.}
 
-\item{value}{Column used as stored reference value. Defaults to
-\code{"sft_easy_id"}.}
+\item{value}{Column used as stored reference value. Defaults to \code{"sft_id"},
+the primary key, which every form has.}
 
 \item{label}{Optional column used as user-facing label. If \code{NULL}, \code{value} is
 used as label.}
@@ -38,17 +38,22 @@ A named character vector suitable for Shiny choice arguments.
 \description{
 Builds a named choices vector from a data frame, typically from another
 \code{form_server()} return value such as \code{persons$records()}. The stored
-choice values should be stable reference ids, for example \code{sft_easy_id} or
-\code{sft_id}; labels can combine one main label column with optional extra
-display columns such as phone numbers.
+choice values should be stable reference ids: \code{sft_id} by default, or
+\code{sft_easy_id} for forms created with \code{form(easy_id = TRUE)}. Labels can
+combine one main label column with optional extra display columns such as
+phone numbers.
+}
+\details{
+Whichever column you pick is written into the referring records, so treat it
+as permanent: changing it later orphans references already stored.
 }
 \examples{
 people <- data.frame(
-  sft_easy_id = c("p1", "p2"),
+  sft_id = c(1L, 2L),
   name = c("Ada Lovelace", "Alan Turing"),
   phone = c("123", "456"),
   stringsAsFactors = FALSE
 )
-reference_choices(people, value = "sft_easy_id", label = "name")
+reference_choices(people, label = "name")
 reference_choices(people, label = "name", extra = "phone")
 }
