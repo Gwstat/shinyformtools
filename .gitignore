@@ -12,7 +12,6 @@ CLAUDE.md
 *.tar.gz
 
 # Database artefacts (preventive; none are committed)
-dev/*.sqlite
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
