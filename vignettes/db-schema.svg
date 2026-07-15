@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 700" width="960" height="700" role="img" aria-label="Database layout created by shinyformtools: the sft_forms and sft_fields system tables describe the form, the data table holds the records with fourteen system columns, sft_audit_log holds one row per mutation, and sft_schema_migrations and sft_user_preferences are keyed by form_id.">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 700" width="960" height="700" role="img" aria-label="Database layout created by shinyformtools. Deliberately free of counts, which go stale: the diagram itself is the list. sft_forms and sft_fields hold the form description; the data table holds your declared fields alongside the system columns that carry each record's lifecycle, plus the opt-in identifier columns; sft_audit_log holds one row per mutation; sft_schema_migrations and sft_user_preferences are keyed by form_id. The links are conventions the code upholds, not foreign keys - the package declares none.">
   <style>
     .box   { fill: #ffffff; stroke: #d0d7de; stroke-width: 1; }
     .hdr   { fill: #f6f8fa; }

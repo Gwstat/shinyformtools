@@ -45,6 +45,30 @@ test_that("the schema diagram draws no column the package does not create", {
   expect_equal(setdiff(drawn, known), character(0))
 })
 
+test_that("the diagram's alt text states no counts, which is how it went stale", {
+  # The aria-label survived four schema changes claiming "fourteen system
+  # columns" because nobody ever sees it. A count in prose has no guard and will
+  # rot again; describing the structure instead does not.
+  svg <- diagram_text()
+  label <- regmatches(svg, regexpr('aria-label="[^"]*"', svg))
+
+  expect_length(label, 1L)
+
+  numbers <- c("one", "two", "three", "four", "five", "six", "seven", "eight",
+               "nine", "ten", "eleven", "twelve", "thirteen", "fourteen")
+  # "one row per mutation" is a shape, not a count of anything that can change.
+  countable <- paste0("\\b", setdiff(numbers, "one"), "\\b(?! row per)")
+
+  for (word in countable) {
+    expect_false(
+      grepl(word, label, perl = TRUE, ignore.case = TRUE),
+      info = paste0("alt text states a count that will go stale: ", word)
+    )
+  }
+
+  expect_false(grepl("\\b\\d+ (system )?columns?\\b", label, perl = TRUE))
+})
+
 test_that("the schema diagram draws every system table", {
   svg <- diagram_text()
 
