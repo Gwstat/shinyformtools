@@ -185,7 +185,7 @@ interpolated into SQL, and SQL-injection regressions are covered by tests in
 
 ## Example apps
 
-Fifteen self-contained demo apps ship with the package; each shows a
+Seventeen self-contained demo apps ship with the package; each shows a
 **"How it is built"** walkthrough beside the running form. List and run them:
 
 ```r
@@ -198,6 +198,9 @@ run_example("app_crud_basic")
   the audit log. **Start here.**
 - **app_input_types** — a tour of every supported input type, plus the
   `html_field()` and `output_field()` field kinds and a server-fed live preview.
+- **app_custom_input** — `register_input()` makes any Shiny input usable as an
+  `input_type`: a `shinyWidgets` knob dial (single value, stored in a `REAL`
+  column) and a multi-select picker (stored as a JSON array).
 - **app_field_control** — constraining fields: per-user `editable`, locked/derived
   fields, hidden-but-stored columns (`show = FALSE`), and conditional inputs
   (`dynamic_visibility()`).
@@ -232,7 +235,6 @@ run_example("app_crud_basic")
 - **app_shape_map** — records with a fixed, non-editable geometry:
   `shape_field()` + `attach_shapes()` drawn on a leaflet map via `decode_shape()`.
   Needs `sf` and `leaflet`.
-
 - **app_highlight** — reactive field/tab highlighting on a two-tab form:
   `highlight_fields` red-glows chosen inputs (and their tab) live, and
   `show_changed` blue-glows edit fields that have changed since the record was
