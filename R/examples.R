@@ -72,6 +72,10 @@ example_path <- function(example) {
 
 #' List available shinyformtools example apps
 #'
+#' Files whose name starts with an underscore are shared helpers sourced by the
+#' examples (such as the walkthrough scaffolding), not runnable apps, so they
+#' are not listed.
+#'
 #' @return Character vector of example names.
 #' @export
 list_examples <- function() {
@@ -81,22 +85,17 @@ list_examples <- function() {
     mustWork = FALSE
   )
 
-  if (nzchar(installed_dir) && dir.exists(installed_dir)) {
-    files <- list.files(installed_dir, pattern = "\\.R$")
-    return(sub("\\.R$", "", files))
+  dir <- if (nzchar(installed_dir) && dir.exists(installed_dir)) {
+    installed_dir
+  } else {
+    file.path(.sft_package_root(), "inst", "examples")
   }
 
-  dev_dir <- file.path(
-    .sft_package_root(),
-    "inst",
-    "examples"
-  )
-
-  if (!dir.exists(dev_dir)) {
+  if (!dir.exists(dir)) {
     return(character())
   }
 
-  files <- list.files(dev_dir, pattern = "\\.R$")
+  files <- list.files(dir, pattern = "^[^_].*\\.R$")
 
   sub("\\.R$", "", files)
 }

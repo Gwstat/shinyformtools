@@ -7,17 +7,17 @@
 form_ui(
   id,
   title = NULL,
-  show_user = TRUE,
-  show_audit = TRUE,
+  show_user = FALSE,
+  show_audit = FALSE,
   show_include_deleted = FALSE,
   show_add = TRUE,
   show_edit = TRUE,
-  show_deleted_records = TRUE,
+  show_deleted_records = FALSE,
   show_delete = TRUE,
   show_refresh_table = TRUE,
   show_versions = FALSE,
-  show_column_settings = TRUE,
-  show_column_selection = TRUE,
+  show_column_settings = FALSE,
+  show_column_selection = FALSE,
   form_layout = c("modal", "inline"),
   labels = list(),
   button_options = list()
@@ -28,9 +28,12 @@ form_ui(
 
 \item{title}{Optional title shown above the module.}
 
-\item{show_user}{Logical. Whether to show a user input field.}
+\item{show_user}{Logical. Whether to show a user input field. Off by default:
+in most apps the acting user comes from authentication, not a text box.}
 
-\item{show_audit}{Logical. Whether to show the audit log table.}
+\item{show_audit}{Logical. Whether to show the audit log table. Off by
+default. Every mutation is still recorded either way; this only controls
+whether the log is displayed. Requires the \code{can_view_audit} permission.}
 
 \item{show_include_deleted}{Logical. Whether to show the legacy include-deleted
 checkbox.}
@@ -39,7 +42,10 @@ checkbox.}
 
 \item{show_edit}{Logical. Whether to show the edit button.}
 
-\item{show_deleted_records}{Logical. Whether to show the deleted-records dialog button.}
+\item{show_deleted_records}{Logical. Whether to show the deleted-records
+dialog button, from which soft-deleted records can be restored. Off by
+default. Records are still only ever soft-deleted; this only controls
+whether the restore dialog is reachable.}
 
 \item{show_delete}{Logical. Whether to show the delete button.}
 
@@ -47,9 +53,11 @@ checkbox.}
 
 \item{show_versions}{Deprecated compatibility flag. Standalone version buttons are no longer rendered by the default UI; versions are shown in the case modal when permitted.}
 
-\item{show_column_settings}{Logical. Whether to show the admin column-settings button.}
+\item{show_column_settings}{Logical. Whether to show the admin
+column-settings button. Off by default.}
 
-\item{show_column_selection}{Logical. Whether to show the user column-selection button.}
+\item{show_column_selection}{Logical. Whether to show the user
+column-selection button. Off by default.}
 
 \item{form_layout}{Where the add/edit forms render. \code{"modal"} (default) opens
 them in a dialog; \code{"inline"} renders them in a panel above the records table,
@@ -68,7 +76,11 @@ and classes. Supported entries are \code{placement} (\code{"top"}, \code{"bottom
 Shiny UI.
 }
 \description{
-Form module UI
+The defaults are deliberately lean: the records table and the add / edit /
+delete buttons, and nothing else. Everything beyond that CRUD core -- the
+audit log, the deleted-records dialog, the column buttons and the user field
+-- is opt-in, so a plain \code{form_ui(id)} yields a plain table rather than a
+wall of controls. Switch on what the app needs with the \verb{show_*} arguments.
 }
 \examples{
 \dontrun{

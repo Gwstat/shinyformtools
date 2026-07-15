@@ -7,10 +7,17 @@ shinyformtools::list_examples()
 shinyformtools::run_example("app_shape_map")
 ```
 
-Each app lays out a **"How it is built"** walkthrough beside the running form:
-the meaningful parts of the source are shown as numbered, annotated steps. Every
-example is fully self-contained (each reads its own `#> STEP` markers and draws
-the demo page itself) so a single file can be copied and run on its own.
+Each app shows the running form on the right and, on the left, two tabs:
+
+- **How it is built** — the meaningful parts of the source as numbered,
+  annotated steps (the file's own `#> STEP` / `#> NOTE` markers).
+- **Complete code** — the whole example file at once, with a copy button. This
+  is the runnable app: paste it into an `app.R` and it works as-is.
+
+Only the walkthrough itself is shared, in `_demo_scaffold.R`; each `app_*.R`
+sources it in its last few lines, inside a `#> DEMO` region. The "Complete code"
+tab strips exactly that region, so what you copy is the application and never
+the machinery that draws the page around it.
 
 ## Examples
 
