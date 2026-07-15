@@ -95,9 +95,26 @@ recorded. See `run_example("app_crud_basic")` for a fuller version of this app.
 
 ## 3. What lands in the database
 
-The schema is derived from the form. You can inspect it before anything is
-created: `inspect_schema()` compares what the database currently has against what
-the form expects.
+The form above produces this:
+
+```{r schema-diagram, echo = FALSE, out.width = "100%", fig.alt = "Entity diagram of the six tables shinyformtools creates."}
+knitr::include_graphics("db-schema.svg")
+```
+
+Your data table sits in the middle. `sft_forms` and `sft_fields` are the form
+description itself, persisted -- the package writes down what it built so it can
+recognise the table later. `sft_audit_log` holds one row per mutation, which is
+what makes soft-delete and restore possible. The last two are bookkeeping.
+
+One thing the diagram is explicit about: **there are no foreign keys**. The
+package declares none, on any backend. `sft_audit_log.record_id` points at
+`contacts.sft_id` by convention, upheld by the code -- not by a constraint the
+database enforces. If you write to these tables yourself, nothing will stop you
+from breaking the link.
+
+The rest of this section walks through the diagram. The schema is derived from
+the form, and you can inspect it before anything is created: `inspect_schema()`
+compares what the database currently has against what the form expects.
 
 ```{r inspect-before}
 conn <- db_connect(db)
