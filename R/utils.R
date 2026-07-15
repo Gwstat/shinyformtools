@@ -57,6 +57,31 @@ sft_as_json <- function(x) {
   )
 }
 
+# JSON-encode a vector as a JSON array even when it has length 1. sft_as_json()
+# auto-unboxes, which would store a single selection of a multi-value field as
+# a bare JSON scalar that the array-expecting decode path cannot parse.
+sft_as_json_array <- function(x) {
+  jsonlite::toJSON(
+    x,
+    auto_unbox = FALSE,
+    null = "null",
+    POSIXt = "ISO8601"
+  )
+}
+
+# Serializer for audit-log snapshots: keeps NA fields as explicit JSON nulls.
+# The default toJSON() drops NA columns from a one-row data frame entirely, so
+# restore would silently skip every field that was empty in the snapshot.
+sft_as_json_snapshot <- function(x) {
+  jsonlite::toJSON(
+    x,
+    auto_unbox = TRUE,
+    null = "null",
+    na = "null",
+    POSIXt = "ISO8601"
+  )
+}
+
 sft_quote_identifier <- function(conn, x) {
   as.character(DBI::dbQuoteIdentifier(conn, x))
 }

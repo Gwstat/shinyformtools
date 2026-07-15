@@ -394,7 +394,14 @@ sft_render_form_tabs <- function(form,
     }
   )
 
-  do.call(shiny::tabsetPanel, tab_panels)
+  # Wrap the tabset in a namespaced div so the highlight stylesheet can scope its
+  # tab-glow rule to this form's tabs only, instead of every .nav-tabs on the
+  # page (a host-app navbarPage/tabsetPanel would otherwise glow too).
+  shiny::div(
+    id = ns(paste0("sft_form_tabs_", prefix)),
+    class = "sft-form-tabs",
+    do.call(shiny::tabsetPanel, tab_panels)
+  )
 }
 
 sft_render_form_slides <- function(form,

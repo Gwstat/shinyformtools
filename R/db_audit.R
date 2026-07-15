@@ -152,8 +152,8 @@ write_audit_log <- function(conn,
     version_no,
     sft_now(),
     sft_db_param(changed_by),
-    if (is.null(old_data)) NA_character_ else as.character(sft_as_json(old_data)),
-    if (is.null(new_data)) NA_character_ else as.character(sft_as_json(new_data)),
+    if (is.null(old_data)) NA_character_ else as.character(sft_as_json_snapshot(old_data)),
+    if (is.null(new_data)) NA_character_ else as.character(sft_as_json_snapshot(new_data)),
     as.character(sft_as_json(changed_fields)),
     sft_db_param(reason)
   )

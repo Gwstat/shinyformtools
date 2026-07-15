@@ -49,9 +49,14 @@ a missing column falls back to \code{default}.
 The result is a named list whose names match the arguments of
 \code{\link[=form_server]{form_server()}} (\code{user}, \code{can_add}, \code{can_view_record}, \code{can_edit},
 \code{can_delete}, \code{can_restore}, \code{can_view_versions}, \code{can_view_deleted_records},
-\code{can_change_column_settings}, \code{can_select_column_view}, \code{can_view_audit}), so
-it can be spread directly:
+\code{can_change_column_settings}, \code{can_select_column_view}, \code{can_view_audit},
+\code{can_view_table}, \code{can_reset_table}), so it can be spread directly:
 \code{do.call(form_server, c(list(id = "x", form = form), perms))}.
+
+The two table-level permissions (\code{can_view_table}, \code{can_reset_table}) fall
+back to \code{TRUE} instead of \code{default} when their credential column is absent,
+so credential tables created before these permissions existed keep their
+tables visible.
 
 To drive several tables from one login, call the adapter once and spread the
 same \code{perms} into each form. For table-specific rights, pass a \code{mapping} that

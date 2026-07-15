@@ -91,3 +91,27 @@ testthat::test_that("the Standard view cannot be overwritten via save", {
   saved <- sft_available_shared_column_view_names(conn = conn, form = form)
   testthat::expect_length(saved, 0L)
 })
+
+testthat::test_that("a corrupted preference row does not break preference loading", {
+  db_path <- tempfile(fileext = ".sqlite")
+  conn <- local_test_conn(db_path)
+
+  form <- form(
+    form_id = "pref_corrupt", table_name = "pref_corrupt", db_path = db_path,
+    fields = list(form_field(id = "name", label = "Name"))
+  )
+  init_db(form, conn = conn)
+
+  sft_set_user_preference(conn, form, user = "u", key = "columns", value = c("name"))
+
+  # Corrupt the stored JSON directly.
+  DBI::dbExecute(
+    conn,
+    "UPDATE sft_user_preferences SET preference_json = ? WHERE user_id = ? AND preference_key = ?",
+    params = list("{not valid json", "u", "columns")
+  )
+
+  testthat::expect_null(
+    sft_get_user_preference(conn, form, user = "u", key = "columns")
+  )
+})

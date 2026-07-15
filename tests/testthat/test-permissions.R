@@ -146,3 +146,36 @@ testthat::test_that("sft_form_server accepts reactive can_* and hide_forbidden",
     testthat::expect_silent(session$flushReact())
   })
 })
+
+testthat::test_that("sft_module_editable_fields fails closed on an empty vector", {
+  testthat::expect_null(sft_module_editable_fields(NULL))
+  testthat::expect_identical(sft_module_editable_fields(character(0)), character(0))
+  testthat::expect_identical(
+    sft_module_editable_fields(function() character(0)),
+    character(0)
+  )
+  testthat::expect_identical(sft_module_editable_fields(c(NA, "name")), "name")
+})
+
+testthat::test_that("an empty editable_fields vector locks every input field", {
+  f <- form(
+    form_id = "ef_empty", table_name = "ef_empty",
+    db_path = tempfile(fileext = ".sqlite"),
+    fields = list(form_field(id = "a", label = "A"), form_field(id = "b", label = "B"))
+  )
+
+  none <- as.character(render_form_fields(f, editable_fields = character(0)))
+  count <- function(s) lengths(regmatches(s, gregexpr("disabled", s)))
+  testthat::expect_equal(count(none), 2L)
+})
+
+testthat::test_that("table-level permissions fall back to granted when the column is absent", {
+  perms <- shinymanager_permissions(list(user = "u", can_add = "TRUE"))
+
+  testthat::expect_true(perms$can_view_table())
+  testthat::expect_true(perms$can_reset_table())
+  testthat::expect_false(perms$can_edit())
+
+  denied <- shinymanager_permissions(list(user = "u", can_view_table = "FALSE"))
+  testthat::expect_false(denied$can_view_table())
+})

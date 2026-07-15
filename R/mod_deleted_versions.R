@@ -33,6 +33,13 @@ sft_register_deleted_versions <- function(input,
   deleted_records <- shiny::reactive({
     refresh_tick()
 
+    # Permission gate on the data source, not only on the dialog-opening
+    # observer: outputs compute once something subscribes, so a client-injected
+    # output binding must never receive rows the permission forbids.
+    if (!sft_module_permission(can_view_deleted_records, default = TRUE)) {
+      return(data.frame())
+    }
+
     data <- fetch_records(
       form = form,
       conn = conn,
@@ -65,6 +72,13 @@ sft_register_deleted_versions <- function(input,
   restore_versions <- shiny::reactive({
     refresh_tick()
     record_id <- restore_record_id()
+
+    # Same gate as deleted_records above: restore_record_id is already set by
+    # merely opening the edit dialog (can_view_record), so without this check a
+    # client-injected output binding would expose the full version history.
+    if (!sft_module_permission(can_view_versions, default = TRUE)) {
+      return(data.frame())
+    }
 
     if (is.null(record_id)) {
       return(data.frame())

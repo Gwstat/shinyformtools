@@ -139,3 +139,88 @@ testthat::test_that("update_record with a resolved form drops fields the user ma
   after_admin <- fetch_records(form, conn = conn)
   testthat::expect_equal(after_admin$secret, "updated")
 })
+
+testthat::test_that("sft_static_locked_input_defaults maps locked fields to declared defaults", {
+  f <- form(
+    form_id = "locked_defaults",
+    db_path = tempfile(fileext = ".sqlite"),
+    fields = list(
+      form_field(id = "name", label = "Name"),
+      form_field(id = "role", label = "Role", editable = FALSE, args = list(value = "user")),
+      form_field(id = "note", label = "Note", editable = FALSE),
+      form_field(id = "flag", label = "Flag", editable = function(user) TRUE)
+    )
+  )
+
+  defaults <- sft_static_locked_input_defaults(f)
+
+  # Only statically locked fields appear; function-locked fields are handled
+  # per user by sft_user_locked_input_fields.
+  testthat::expect_setequal(names(defaults), c("role", "note"))
+  testthat::expect_identical(defaults$role, "user")
+  testthat::expect_null(defaults$note)
+})
+
+testthat::test_that("add ignores client values for statically non-editable fields", {
+  db_path <- tempfile(fileext = ".sqlite")
+  conn <- local_test_conn(db_path)
+
+  f <- form(
+    form_id = "locked_add", table_name = "locked_add", db_path = db_path,
+    fields = list(
+      form_field(id = "name", label = "Name"),
+      form_field(id = "role", label = "Role", editable = FALSE, args = list(value = "user"))
+    )
+  )
+  init_db(f, conn = conn)
+
+  shiny::testServer(
+    form_server,
+    args = list(form = f, conn = conn),
+    {
+      # The role input renders disabled, but that is client-side only: simulate
+      # a tampered client submitting a value for it anyway.
+      session$setInputs(add_name = "Ada", add_role = "admin")
+      session$setInputs(submit_add = 1L)
+    }
+  )
+
+  records <- fetch_records(f, conn = conn)
+  testthat::expect_identical(records$role[1], "user")
+})
+
+testthat::test_that("derived non-editable fields are recomputed server-side on add", {
+  db_path <- tempfile(fileext = ".sqlite")
+  conn <- local_test_conn(db_path)
+
+  f <- form(
+    form_id = "derived_add", table_name = "derived_add", db_path = db_path,
+    fields = list(
+      form_field(id = "city", label = "City"),
+      # The app_cascading_inputs pattern: a locked field whose value is derived
+      # from another input by a dynamic_value binding.
+      form_field(id = "zip", label = "ZIP", editable = FALSE)
+    )
+  )
+  init_db(f, conn = conn)
+
+  binding <- dynamic_value(
+    field = "zip",
+    depends_on = "city",
+    value = function(values) if (identical(values$city, "Berlin")) "10115" else ""
+  )
+
+  shiny::testServer(
+    form_server,
+    args = list(form = f, conn = conn, input_bindings = list(binding)),
+    {
+      # A tampered client submits its own zip; the server recomputes it from
+      # the binding instead.
+      session$setInputs(add_city = "Berlin", add_zip = "99999")
+      session$setInputs(submit_add = 1L)
+    }
+  )
+
+  records <- fetch_records(f, conn = conn)
+  testthat::expect_identical(records$zip[1], "10115")
+})

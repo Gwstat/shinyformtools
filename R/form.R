@@ -249,8 +249,11 @@ sft_validate_form <- function(form) {
     }
   }
 
-  input_fields <- Filter(sft_is_input_field, form$fields)
-  db_columns <- vapply(input_fields, function(x) x$db_column, character(1))
+  # Every stored field (input and shape) joins the table, so the duplicate-column
+  # check must span both - not just input fields, or a shape field could collide
+  # with an input column and fail only at CREATE TABLE.
+  stored_fields <- Filter(sft_is_stored_field, form$fields)
+  db_columns <- vapply(stored_fields, function(x) x$db_column, character(1))
 
   if (length(db_columns) > 0L && anyDuplicated(db_columns)) {
     duplicated_columns <- unique(db_columns[duplicated(db_columns)])
@@ -260,6 +263,27 @@ sft_validate_form <- function(form) {
       ".",
       call. = FALSE
     )
+  }
+
+  # A field id must not equal a *different* field's db_column. Value resolution
+  # tries the id before the db_column (sft_record_get_value), so such an alias
+  # would make one field silently read another field's stored column.
+  if (length(stored_fields) > 0L) {
+    stored_ids <- vapply(stored_fields, function(x) x$id, character(1))
+    aliased <- vapply(
+      seq_along(stored_fields),
+      function(i) stored_ids[[i]] %in% db_columns[-i],
+      logical(1)
+    )
+
+    if (any(aliased)) {
+      stop(
+        "a field id must not match another field's database column. Conflicting: ",
+        paste(unique(stored_ids[aliased]), collapse = ", "),
+        ".",
+        call. = FALSE
+      )
+    }
   }
 
   invisible(form)

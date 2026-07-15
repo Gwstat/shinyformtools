@@ -2,20 +2,34 @@
 
 #' Form module UI
 #'
+#' The defaults are deliberately lean: the records table and the add / edit /
+#' delete buttons, and nothing else. Everything beyond that CRUD core -- the
+#' audit log, the deleted-records dialog, the column buttons and the user field
+#' -- is opt-in, so a plain `form_ui(id)` yields a plain table rather than a
+#' wall of controls. Switch on what the app needs with the `show_*` arguments.
+#'
 #' @param id Module id.
 #' @param title Optional title shown above the module.
-#' @param show_user Logical. Whether to show a user input field.
-#' @param show_audit Logical. Whether to show the audit log table.
+#' @param show_user Logical. Whether to show a user input field. Off by default:
+#'   in most apps the acting user comes from authentication, not a text box.
+#' @param show_audit Logical. Whether to show the audit log table. Off by
+#'   default. Every mutation is still recorded either way; this only controls
+#'   whether the log is displayed. Requires the `can_view_audit` permission.
 #' @param show_include_deleted Logical. Whether to show the legacy include-deleted
 #'   checkbox.
 #' @param show_add Logical. Whether to show the add button.
 #' @param show_edit Logical. Whether to show the edit button.
-#' @param show_deleted_records Logical. Whether to show the deleted-records dialog button.
+#' @param show_deleted_records Logical. Whether to show the deleted-records
+#'   dialog button, from which soft-deleted records can be restored. Off by
+#'   default. Records are still only ever soft-deleted; this only controls
+#'   whether the restore dialog is reachable.
 #' @param show_delete Logical. Whether to show the delete button.
 #' @param show_refresh_table Logical. Whether to show a button that clears table filters, ordering, paging and row selection.
 #' @param show_versions Deprecated compatibility flag. Standalone version buttons are no longer rendered by the default UI; versions are shown in the case modal when permitted.
-#' @param show_column_settings Logical. Whether to show the admin column-settings button.
-#' @param show_column_selection Logical. Whether to show the user column-selection button.
+#' @param show_column_settings Logical. Whether to show the admin
+#'   column-settings button. Off by default.
+#' @param show_column_selection Logical. Whether to show the user
+#'   column-selection button. Off by default.
 #' @param form_layout Where the add/edit forms render. `"modal"` (default) opens
 #'   them in a dialog; `"inline"` renders them in a panel above the records table,
 #'   with add and edit mutually exclusive. Must match the `form_layout` passed to
@@ -45,17 +59,17 @@
 #' @export
 form_ui <- function(id,
                         title = NULL,
-                        show_user = TRUE,
-                        show_audit = TRUE,
+                        show_user = FALSE,
+                        show_audit = FALSE,
                         show_include_deleted = FALSE,
                         show_add = TRUE,
                         show_edit = TRUE,
-                        show_deleted_records = TRUE,
+                        show_deleted_records = FALSE,
                         show_delete = TRUE,
                         show_refresh_table = TRUE,
                         show_versions = FALSE,
-                        show_column_settings = TRUE,
-                        show_column_selection = TRUE,
+                        show_column_settings = FALSE,
+                        show_column_selection = FALSE,
                         form_layout = c("modal", "inline"),
                         labels = list(),
                         button_options = list()) {
@@ -147,7 +161,9 @@ form_ui <- function(id,
 #' @param conn Optional existing DBI connection.
 #' @param user Optional user identifier or function returning a user identifier.
 #' @param include_deleted_default Logical default for including deleted records.
-#' @param show_audit Logical. Whether audit output should be rendered.
+#' @param show_audit Logical. Whether audit output should be rendered. Off by
+#'   default, matching `form_ui(show_audit = FALSE)`; set both to `TRUE` to show
+#'   the audit log. Mutations are recorded regardless.
 #' @param table_columns Optional columns shown in the records table.
 #' @param table_views Optional named list of predefined table views. Each entry is
 #'   a character vector of database column names. A function returning such a list
@@ -192,7 +208,8 @@ form_ui <- function(id,
 #'   user may edit (or a function/reactive returning one). When supplied, every
 #'   other input field in the edit dialog is rendered read-only and is ignored on
 #'   save, so a user can be allowed to edit only specific inputs. `NULL` (default)
-#'   keeps each field's own `editable` setting.
+#'   keeps each field's own `editable` setting; an empty vector locks every
+#'   input field.
 #' @param labels Optional named list overriding UI labels, modal texts and
 #'   notification messages. Set individual entries to `NULL` to hide the
 #'   corresponding button or modal title.
@@ -279,7 +296,7 @@ form_server <- function(id,
                             conn = NULL,
                             user = NULL,
                             include_deleted_default = FALSE,
-                            show_audit = TRUE,
+                            show_audit = FALSE,
                             table_columns = NULL,
                             table_views = NULL,
                             default_column_view = "Standard",
@@ -597,8 +614,12 @@ form_server <- function(id,
 
       if (!is.null(row) && "sft_id" %in% names(row)) {
         selected_record_id(row$sft_id[1])
+      } else {
+        # Deselection delivers NULL: clear the remembered id so a later refresh
+        # does not re-select the row the user just deselected.
+        selected_record_id(NULL)
       }
-    }, ignoreNULL = TRUE)
+    }, ignoreNULL = FALSE, ignoreInit = TRUE)
 
 
     current_record_columns <- shiny::reactive({
@@ -728,6 +749,26 @@ form_server <- function(id,
             values <- values[!names(values) %in% locked_fields]
           }
 
+          # Statically non-editable fields render disabled, which only the
+          # client enforces. Derived fields (dynamic_value bindings) are
+          # recomputed server-side from the other values; every other locked
+          # field falls back to its declared default (assigning NULL drops
+          # fields without one), so no locked value comes from the client.
+          static_defaults <- sft_static_locked_input_defaults(form)
+          derived_fields <- intersect(
+            names(static_defaults),
+            sft_value_binding_fields(input_bindings)
+          )
+          for (field_id in setdiff(names(static_defaults), derived_fields)) {
+            values[[field_id]] <- static_defaults[[field_id]]
+          }
+          values <- sft_recompute_locked_value_bindings(
+            input_bindings = input_bindings,
+            form = form,
+            values = values,
+            field_ids = derived_fields
+          )
+
           # Drop the value of any field a dynamic_visibility() binding hides, so a
           # field that is not currently shown never persists a stale value.
           values <- sft_drop_hidden_field_values(input_bindings, form, values)
@@ -781,7 +822,7 @@ form_server <- function(id,
           can_edit = sft_module_permission(can_edit, default = TRUE),
           can_view_versions = sft_module_permission(can_view_versions, default = TRUE),
           can_restore = sft_module_permission(can_restore, default = TRUE),
-          editable_fields = sft_module_value(editable_fields)
+          editable_fields = sft_module_editable_fields(editable_fields)
         )
       }
     })
@@ -840,7 +881,7 @@ form_server <- function(id,
           can_edit = can_edit_now,
           can_view_versions = sft_module_permission(can_view_versions, default = TRUE),
           can_restore = sft_module_permission(can_restore, default = TRUE),
-          editable_fields = sft_module_value(editable_fields),
+          editable_fields = sft_module_editable_fields(editable_fields),
           modal_header = modal_header
         ),
         submit_id = "submit_edit",
@@ -888,7 +929,7 @@ form_server <- function(id,
 
           # Server-side enforcement of per-user field editing: drop any field the
           # user is not allowed to edit, so a disabled input cannot be saved.
-          allowed_fields <- sft_module_value(editable_fields)
+          allowed_fields <- sft_module_editable_fields(editable_fields)
           if (!is.null(allowed_fields)) {
             values <- values[names(values) %in% allowed_fields]
           }

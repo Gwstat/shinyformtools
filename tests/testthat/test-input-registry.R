@@ -111,3 +111,40 @@ test_that("dynamic update helpers fall back to a registered update_fun", {
     "not supported"
   )
 })
+
+test_that("a single selection of a multi-value field round-trips as a JSON array", {
+  field <- form_field(
+    id = "tags", label = "Tags", input_type = "checkboxGroupInput",
+    args = list(choices = c("a", "b"))
+  )
+
+  encoded <- sft_field_db_value(field, "a")
+  expect_identical(encoded, "[\"a\"]")
+  expect_identical(sft_ui_value(field, encoded), "a")
+  expect_identical(sft_format_json_vector_value(encoded), "a")
+})
+
+test_that("registered multiple inputs encode single selections as arrays too", {
+  withr::defer(rm(list = ls(.sft_input_registry), envir = .sft_input_registry))
+
+  txt <- function(inputId, label, ...) shiny::textInput(inputId, label, ...)
+  register_input("tags_single", fun = txt, value_arg = "selected", multiple = TRUE)
+  field <- form_field(id = "t", label = "T", input_type = "tags_single")
+
+  encoded <- sft_field_db_value(field, "a")
+  expect_identical(encoded, "[\"a\"]")
+  expect_identical(sft_ui_value(field, encoded), "a")
+})
+
+test_that("legacy scalar-encoded single values still decode", {
+  # Databases written before single selections were forced to arrays store a
+  # bare JSON string scalar, quotes included.
+  field <- form_field(
+    id = "tags", label = "Tags", input_type = "checkboxGroupInput",
+    args = list(choices = c("a", "b"))
+  )
+
+  expect_identical(sft_ui_value(field, "\"a\""), "a")
+  # Plain (non-JSON) stored values are untouched.
+  expect_identical(sft_ui_value(field, "plain"), "plain")
+})
