@@ -11,9 +11,9 @@ form_buttons(
   show_delete = TRUE,
   show_refresh_table = TRUE,
   show_versions = FALSE,
-  show_deleted_records = TRUE,
-  show_column_settings = TRUE,
-  show_column_selection = TRUE,
+  show_deleted_records = FALSE,
+  show_column_settings = FALSE,
+  show_column_selection = FALSE,
   labels = list(),
   button_options = list()
 )
@@ -21,7 +21,7 @@ form_buttons(
 \arguments{
 \item{id}{Module id matching \code{\link[=form_ui]{form_ui()}} and \code{\link[=form_server]{form_server()}}.}
 
-\item{show_add, show_edit, show_delete, show_refresh_table, show_versions, show_deleted_records, show_column_settings, show_column_selection}{Logical flags controlling individual buttons. \code{show_versions} is kept for compatibility but the standalone versions button is no longer rendered by the default button row.}
+\item{show_add, show_edit, show_delete, show_refresh_table, show_versions, show_deleted_records, show_column_settings, show_column_selection}{Logical flags controlling individual buttons. \code{show_deleted_records}, \code{show_column_settings} and \code{show_column_selection} default to \code{FALSE}, matching \code{\link[=form_ui]{form_ui()}}. \code{show_versions} is kept for compatibility but the standalone versions button is no longer rendered by the default button row.}
 
 \item{labels}{Optional named list overriding UI labels and button texts.}
 
@@ -39,6 +39,10 @@ use the module namespace from \code{id}, so they trigger the matching
 \code{form_ui(..., button_options = list(placement = "none"))} when using this
 helper.
 }
+\details{
+As in \code{\link[=form_ui]{form_ui()}}, only the CRUD core is on by default; the deleted-records
+and column buttons are opt-in.
+}
 \examples{
 \dontrun{
 library(shiny)
@@ -49,7 +53,7 @@ contacts <- form(
 )
 ui <- fluidPage(
   # External buttons in a header; hide the module's own button row.
-  form_buttons("contacts", show_column_settings = FALSE),
+  form_buttons("contacts"),
   form_ui("contacts", button_options = list(placement = "none"))
 )
 server <- function(input, output, session) {

@@ -7,14 +7,17 @@ sft_default_button_options <- function() {
     class = "btn-sm",
     container_class = NULL,
     container_style = NULL,
+    # Neutral by default: the form module is a building block, so it should not
+    # impose an accent colour on the host app. Override per button via
+    # button_options$button_classes.
     button_classes = list(
-      open_add = "btn-primary",
+      open_add = "btn-default",
       open_edit = "btn-default",
-      delete = "btn-danger",
+      delete = "btn-default",
       refresh_table = "btn-default",
       open_deleted_records = "btn-default",
-      open_column_settings = "btn-warning",
-      open_column_selection = "btn-info"
+      open_column_settings = "btn-default",
+      open_column_selection = "btn-default"
     )
   )
 }
@@ -256,8 +259,11 @@ sft_form_button_row <- function(ns,
 #' `form_ui(..., button_options = list(placement = "none"))` when using this
 #' helper.
 #'
+#' As in [form_ui()], only the CRUD core is on by default; the deleted-records
+#' and column buttons are opt-in.
+#'
 #' @param id Module id matching [form_ui()] and [form_server()].
-#' @param show_add,show_edit,show_delete,show_refresh_table,show_versions,show_deleted_records,show_column_settings,show_column_selection Logical flags controlling individual buttons. `show_versions` is kept for compatibility but the standalone versions button is no longer rendered by the default button row.
+#' @param show_add,show_edit,show_delete,show_refresh_table,show_versions,show_deleted_records,show_column_settings,show_column_selection Logical flags controlling individual buttons. `show_deleted_records`, `show_column_settings` and `show_column_selection` default to `FALSE`, matching [form_ui()]. `show_versions` is kept for compatibility but the standalone versions button is no longer rendered by the default button row.
 #' @param labels Optional named list overriding UI labels and button texts.
 #' @param button_options Optional named list controlling action-button alignment
 #'   and classes. The same structure as in [form_ui()] is supported.
@@ -273,7 +279,7 @@ sft_form_button_row <- function(ns,
 #' )
 #' ui <- fluidPage(
 #'   # External buttons in a header; hide the module's own button row.
-#'   form_buttons("contacts", show_column_settings = FALSE),
+#'   form_buttons("contacts"),
 #'   form_ui("contacts", button_options = list(placement = "none"))
 #' )
 #' server <- function(input, output, session) {
@@ -288,9 +294,9 @@ form_buttons <- function(id,
                              show_delete = TRUE,
                              show_refresh_table = TRUE,
                              show_versions = FALSE,
-                             show_deleted_records = TRUE,
-                             show_column_settings = TRUE,
-                             show_column_selection = TRUE,
+                             show_deleted_records = FALSE,
+                             show_column_settings = FALSE,
+                             show_column_selection = FALSE,
                              labels = list(),
                              button_options = list()) {
   ns <- shiny::NS(id)

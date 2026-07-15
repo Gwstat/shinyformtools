@@ -10,5 +10,7 @@ list_examples()
 Character vector of example names.
 }
 \description{
-List available shinyformtools example apps
+Files whose name starts with an underscore are shared helpers sourced by the
+examples (such as the walkthrough scaffolding), not runnable apps, so they
+are not listed.
 }
