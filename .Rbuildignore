@@ -5,6 +5,7 @@
 ^\.ai$
 ^\.claude$
 ^CLAUDE\.md$
+^AGENTS\.md$
 ^\.vscode$
 ^cran-comments\.md$
 ^\.git$
