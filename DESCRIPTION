@@ -26,8 +26,10 @@ Suggests:
     commonmark,
     dplyr,
     duckdb,
+    knitr,
     RMariaDB,
     openxlsx,
+    rmarkdown,
     shinymanager,
     shinyglide,
     sf,
@@ -35,6 +37,7 @@ Suggests:
     leaflet,
     testthat (>= 3.0.0),
     withr
+VignetteBuilder: knitr
 Config/testthat/edition: 3
 Imports:
     DBI,

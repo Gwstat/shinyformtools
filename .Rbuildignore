@@ -24,3 +24,5 @@
 ^.*\.duckdb$
 ^.*\.duckdb\.wal$
 ^.*\.db$
+^doc$
+^Meta$
