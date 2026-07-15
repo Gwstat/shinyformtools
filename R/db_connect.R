@@ -164,19 +164,6 @@ sft_redact_db_config <- function(db) {
   out
 }
 
-#' Connect to a database
-#'
-#' @param db Database configuration created with `db_sqlite()` or
-#'   `db_mariadb()` or `db_duckdb()`. A character scalar is
-#'   treated as SQLite path for backwards compatibility.
-#'
-#' @return A DBI connection.
-#' @examples
-#' db <- db_sqlite(tempfile(fileext = ".sqlite"))
-#' conn <- db_connect(db)
-#' DBI::dbIsValid(conn)
-#' db_disconnect(conn)
-#' @export
 # How long SQLite retries a locked database before giving up, in milliseconds.
 sft_sqlite_busy_timeout_ms <- 5000L
 
@@ -200,6 +187,19 @@ sft_set_sqlite_busy_timeout <- function(conn) {
   invisible(conn)
 }
 
+#' Connect to a database
+#'
+#' @param db Database configuration created with `db_sqlite()` or
+#'   `db_mariadb()` or `db_duckdb()`. A character scalar is
+#'   treated as SQLite path for backwards compatibility.
+#'
+#' @return A DBI connection.
+#' @examples
+#' db <- db_sqlite(tempfile(fileext = ".sqlite"))
+#' conn <- db_connect(db)
+#' DBI::dbIsValid(conn)
+#' db_disconnect(conn)
+#' @export
 db_connect <- function(db = db_sqlite()) {
   if (is.character(db) && length(db) == 1L && !is.na(db)) {
     db <- db_sqlite(db)
