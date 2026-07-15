@@ -1,10 +1,15 @@
+# The per-record system columns. Every entry here is written to every row of
+# every form's table, so a column earns its place only if something reads it.
+#
+# Two former columns were removed for that reason. sft_schema_hash stored the
+# whole expected-schema JSON (~600 bytes) on every row - the same constant on
+# each - yet nothing ever read it back: the drift probe compares against
+# sft_forms.schema_hash, one row per form. sft_form_id recorded the owning form
+# but was never filtered on, so the multi-form-per-table it hinted at did not
+# exist; one table belongs to one form. Both are recoverable as an additive
+# add_column migration if a reader ever appears.
 sft_system_columns <- function(conn = NULL) {
   short_text <- if (is.null(conn)) "TEXT" else sft_short_text_definition(conn)
-  # The schema signature is the full expected-schema JSON, which can exceed the
-  # short-text limit (VARCHAR(255) on MariaDB); store it as long text like
-  # config_json. TEXT on every backend, so the signature (computed with
-  # conn = NULL) is unchanged and existing databases see no drift.
-  long_text <- "TEXT"
   id_def <- if (is.null(conn)) {
     "INTEGER PRIMARY KEY AUTOINCREMENT"
   } else {
@@ -15,9 +20,7 @@ sft_system_columns <- function(conn = NULL) {
     sft_id = id_def,
     sft_uuid = paste(short_text, "UNIQUE"),
     sft_easy_id = short_text,
-    sft_form_id = short_text,
     sft_form_version = "INTEGER",
-    sft_schema_hash = long_text,
     sft_created_at = short_text,
     sft_created_by = short_text,
     sft_updated_at = short_text,

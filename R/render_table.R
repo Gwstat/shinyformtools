@@ -1,8 +1,8 @@
 sft_system_column_labels <- function() {
   tl <- sft_table_labels()
   cols <- c(
-    "sft_id", "sft_uuid", "sft_easy_id", "sft_form_id", "sft_form_version",
-    "sft_schema_hash", "sft_created_at", "sft_created_by", "sft_updated_at",
+    "sft_id", "sft_uuid", "sft_easy_id", "sft_form_version",
+    "sft_created_at", "sft_created_by", "sft_updated_at",
     "sft_updated_by", "sft_deleted_at", "sft_deleted_by", "sft_is_deleted"
   )
   out <- vapply(cols, function(key) as.character(tl[[key]]), character(1))

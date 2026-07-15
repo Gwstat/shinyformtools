@@ -161,9 +161,7 @@ added by the package:
 | `sft_id` | Integer primary key; the record id used by the CRUD functions. |
 | `sft_uuid` | A UUID for the record; stable if rows move between databases. |
 | `sft_easy_id` | Human-quotable id, `<sft_id>-<two random letters>` (e.g. `1-QZ`). |
-| `sft_form_id` | The form that owns the row; several forms may share a table. |
 | `sft_form_version` | The form's `version` when the record was created. |
-| `sft_schema_hash` | The schema signature the row conforms to; drives drift detection. |
 | `sft_created_at`, `sft_created_by` | When the record was inserted, and by which user. |
 | `sft_updated_at`, `sft_updated_by` | Same for the most recent edit. |
 | `sft_deleted_at`, `sft_deleted_by` | Same for the soft delete, `NULL` while live. |

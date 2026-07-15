@@ -111,12 +111,14 @@ testthat::test_that("sft_update_record updates values and writes audit log", {
   testthat::expect_equal(audit$version_no, c(1L, 2L))
 })
 
-testthat::test_that("sft_update_record refreshes the record schema hash", {
+testthat::test_that("records carry no per-row schema hash or form id", {
+  # Both columns were write-only: nothing read them back, and sft_schema_hash
+  # stored the entire schema JSON on every row. A new table must not have them.
   conn <- local_test_conn()
 
   form <- form(
-    form_id = "schema_hash_mirror",
-    table_name = "schema_hash_mirror",
+    form_id = "no_dead_columns",
+    table_name = "no_dead_columns",
     db = db_sqlite(tempfile(fileext = ".sqlite")),
     fields = list(
       form_field(id = "name", label = "Name", mandatory = TRUE)
@@ -124,35 +126,62 @@ testthat::test_that("sft_update_record refreshes the record schema hash", {
   )
 
   inserted <- insert_record(form, list(name = "Ada"), conn = conn)
-  record_id <- inserted$sft_id[1]
 
-  signature <- sft_schema_signature(form)
-  testthat::expect_equal(inserted$sft_schema_hash[1], signature)
+  testthat::expect_false("sft_schema_hash" %in% names(inserted))
+  testthat::expect_false("sft_form_id" %in% names(inserted))
+  testthat::expect_false("sft_schema_hash" %in% names(sft_system_columns()))
+  testthat::expect_false("sft_form_id" %in% names(sft_system_columns()))
+})
 
-  # Simulate a record whose stored hash is stale (e.g. written before a
-  # migration), then confirm an update rewrites it to the current signature.
-  DBI::dbExecute(
-    conn,
-    "UPDATE schema_hash_mirror SET sft_schema_hash = 'stale' WHERE sft_id = ?",
-    params = list(record_id)
+testthat::test_that("a table still carrying the retired columns keeps working", {
+  # The upgrade path: databases written by an older version still have the two
+  # columns. They are nullable, retire_column executes no SQL, and nothing reads
+  # them - so CRUD must simply carry on and leave them alone.
+  conn <- local_test_conn()
+
+  form <- form(
+    form_id = "legacy_columns",
+    table_name = "legacy_columns",
+    db = db_sqlite(tempfile(fileext = ".sqlite")),
+    fields = list(
+      form_field(id = "name", label = "Name", mandatory = TRUE)
+    )
   )
 
-  update_record(
+  init_db(form, conn = conn, apply = TRUE)
+
+  # Simulate the pre-upgrade shape.
+  DBI::dbExecute(conn, "ALTER TABLE legacy_columns ADD COLUMN sft_form_id TEXT")
+  DBI::dbExecute(conn, "ALTER TABLE legacy_columns ADD COLUMN sft_schema_hash TEXT")
+
+  # The planner retires them rather than dropping them.
+  plan <- plan_migration(conn, form)
+  retired <- plan$actions$db_column[plan$actions$action == "retire_column"]
+  testthat::expect_true(all(c("sft_form_id", "sft_schema_hash") %in% retired))
+  testthat::expect_true(all(plan$actions$safe))
+
+  inserted <- insert_record(form, list(name = "Ada"), conn = conn)
+  record_id <- inserted$sft_id[1]
+
+  updated <- update_record(
     form = form,
     record_id = record_id,
     values = list(name = "Ada Lovelace"),
     conn = conn,
     user = "tester"
   )
+  testthat::expect_equal(updated$name, "Ada Lovelace")
 
-  refreshed <- sft_get_record(
-    conn = conn,
-    form = form,
-    record_id = record_id,
-    include_deleted = TRUE
+  fetched <- fetch_records(form, conn = conn)
+  testthat::expect_equal(nrow(fetched), 1L)
+
+  # The leftover columns survive untouched and stay empty.
+  still_there <- DBI::dbGetQuery(
+    conn,
+    "SELECT sft_form_id, sft_schema_hash FROM legacy_columns"
   )
-
-  testthat::expect_equal(refreshed$sft_schema_hash[1], signature)
+  testthat::expect_true(is.na(still_there$sft_form_id[1]))
+  testthat::expect_true(is.na(still_there$sft_schema_hash[1]))
 })
 
 testthat::test_that("sft_soft_delete_record hides records by default", {

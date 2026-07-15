@@ -227,9 +227,7 @@ insert_record <- function(form,
 
     system_values <- list(
       sft_uuid = uuid::UUIDgenerate(),
-      sft_form_id = form$form_id,
       sft_form_version = form$version,
-      sft_schema_hash = sft_schema_signature(form),
       sft_created_at = now,
       sft_created_by = sft_db_param(user),
       sft_updated_at = now,
@@ -432,10 +430,8 @@ update_record <- function(form,
     update_values <- c(
       field_values,
       list(
-        # Mirror the insert path: the row is now written under the current
-        # schema, so refresh its structural-conformance marker. sft_form_version
-        # is intentionally left as creation provenance.
-        sft_schema_hash = sft_schema_signature(form),
+        # sft_form_version is intentionally left untouched: it is creation
+        # provenance, not a marker of the last write.
         sft_updated_at = now,
         sft_updated_by = sft_db_param(user)
       )
