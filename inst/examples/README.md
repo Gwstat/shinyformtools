@@ -157,7 +157,8 @@ Start with **app_crud_basic**; the rest each focus on one capability.
 
 - **app_design_presets** — the visual presets for the module's tables. Radio
   buttons switch `form_ui(table_style = ...)` live between `"classic"` (the
-  unmodified DT look), `"clean"` (card-style, reactable-like), `"zebra"` (soft
+  unmodified DT look), `"clean"` (card-style, reactable-like), `"publication"`
+  (a booktabs-style journal table: serif type, horizontal rules only, no
   stripes) and `"compact"` (dense, dark header). The preset is pure CSS scoped
   to the module's own tables — the audit log is shown so you can see every
   module table follow it — and can also be set app-wide with

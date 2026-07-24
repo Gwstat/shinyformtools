@@ -144,7 +144,7 @@ server <- function(input, output, session) {
 #> NOTE: the two extras it wants to show: the audit log (show_audit, on both
 #> NOTE: form_ui and form_server) and the deleted-records dialog you restore
 #> NOTE: from. table_style picks a visual preset for the tables ("classic",
-#> NOTE: "clean", "zebra", "compact"); it can also be set app-wide via
+#> NOTE: "clean", "publication", "compact"); it can also be set app-wide via
 #> NOTE: options(shinyformtools.table_style = "clean").
 ui <- fluidPage(
   titlePanel("Basic CRUD"),

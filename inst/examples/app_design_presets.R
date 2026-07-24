@@ -6,7 +6,8 @@
 #   - "classic" - the unmodified DT look (the default).
 #   - "clean"   - a card-style, reactable-like look: rounded border, uppercase
 #                 gray headers, row separators instead of stripes.
-#   - "zebra"   - soft striped rows.
+#   - "publication" - a booktabs-style journal table: serif type, horizontal
+#                 rules only, no stripes.
 #   - "compact" - dense rows under a dark header.
 #
 # The preset is pure CSS, scoped to this module's tables - host-app tables are
@@ -109,7 +110,7 @@ ui <- fluidPage(
     choices = c(
       "classic (default)" = "classic",
       "clean" = "clean",
-      "zebra" = "zebra",
+      "publication" = "publication",
       "compact" = "compact"
     ),
     selected = "clean",

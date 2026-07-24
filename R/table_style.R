@@ -16,7 +16,7 @@
 # versions.
 
 sft_table_styles <- function() {
-  c("classic", "clean", "zebra", "compact")
+  c("classic", "clean", "publication", "compact")
 }
 
 # Resolve the effective preset: an explicit argument wins, NULL consults the
@@ -128,30 +128,41 @@ sft_table_style_rules <- function(ns, table_style) {
     ))
   }
 
-  if (identical(table_style, "zebra")) {
+  if (identical(table_style, "publication")) {
+    # A booktabs-style journal table: serif type, a heavy rule above and below
+    # the table, a light rule under the header, no vertical rules, no stripes.
     return(paste0(
-      "/* sft table style: zebra */\n",
+      "/* sft table style: publication */\n",
+      sel(" table.dataTable"), " {\n",
+      "  font-family: Georgia, Cambria, \"Times New Roman\", Times, serif;\n",
+      "  color: #1a1a1a;\n",
+      "  border-collapse: collapse;\n",
+      "  border-top: 2px solid #222222;\n",
+      "  border-bottom: 2px solid #222222;\n",
+      "}\n",
       sel(" table.dataTable thead th"), " {\n",
-      "  font-weight: 600;\n",
-      "  border-bottom: 2px solid #d9dee3;\n",
-      "  padding: 0.5rem 0.7rem;\n",
+      "  font-weight: 700;\n",
+      "  color: #111111;\n",
+      "  background: transparent;\n",
+      "  border-top: none;\n",
+      "  border-bottom: 1px solid #222222;\n",
+      "  padding: 0.5rem 0.75rem;\n",
       "}\n",
       sel(" table.dataTable tbody td"), " {\n",
-      "  padding: 0.5rem 0.7rem;\n",
-      "  border-left: none;\n",
-      "  border-right: none;\n",
+      "  padding: 0.45rem 0.75rem;\n",
+      "  border: none;\n",
       "}\n",
       stripe_sel, " {\n",
-      "  box-shadow: inset 0 0 0 9999px #f6f8fa;\n",
-      "  background-color: #f6f8fa;\n",
+      "  box-shadow: none;\n",
+      "  background-color: transparent;\n",
       "}\n",
       hover_sel, " {\n",
-      "  box-shadow: inset 0 0 0 9999px #eef2f6;\n",
-      "  background-color: #eef2f6;\n",
+      "  box-shadow: inset 0 0 0 9999px #f7f6f2;\n",
+      "  background-color: #f7f6f2;\n",
       "}\n",
       sel(" table.dataTable > tbody > tr.selected > *"), " {\n",
-      "  box-shadow: inset 0 0 0 9999px rgba(33, 133, 208, 0.14);\n",
-      "  background-color: rgba(33, 133, 208, 0.14);\n",
+      "  box-shadow: inset 0 0 0 9999px rgba(70, 90, 120, 0.12);\n",
+      "  background-color: rgba(70, 90, 120, 0.12);\n",
       "  color: inherit;\n",
       "}\n"
     ))

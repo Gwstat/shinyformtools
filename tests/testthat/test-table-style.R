@@ -51,9 +51,9 @@ test_that("form_ui includes the preset CSS only when a preset is active", {
 
   # The global option styles a form that does not pass the argument, and a
   # per-form argument still wins.
-  withr::with_options(list(shinyformtools.table_style = "zebra"), {
+  withr::with_options(list(shinyformtools.table_style = "publication"), {
     option_html <- as.character(form_ui("contacts"))
-    expect_true(grepl("sft table style: zebra", option_html, fixed = TRUE))
+    expect_true(grepl("sft table style: publication", option_html, fixed = TRUE))
 
     override_html <- as.character(form_ui("contacts", table_style = "classic"))
     expect_false(grepl("sft table style", override_html, fixed = TRUE))

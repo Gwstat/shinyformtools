@@ -67,8 +67,9 @@ with add and edit mutually exclusive. Must match the \code{form_layout} passed t
 
 \item{table_style}{Visual preset for the module's tables (records, audit,
 deleted records, versions). One of \code{"classic"} (the unmodified 'DT' look),
-\code{"clean"} (card-style with row separators instead of stripes), \code{"zebra"}
-(soft striped rows) or \code{"compact"} (dense, dark header). The default \code{NULL}
+\code{"clean"} (card-style with row separators instead of stripes),
+\code{"publication"} (a booktabs-style journal table: serif type, horizontal
+rules only, no stripes) or \code{"compact"} (dense, dark header). The default \code{NULL}
 consults \code{getOption("shinyformtools.table_style")} and falls back to
 \code{"classic"}, so an app can set the look once and override it per form.
 Purely cosmetic CSS, scoped to this module's tables; host-app tables are

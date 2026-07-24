@@ -36,8 +36,9 @@
 #'   [form_server()].
 #' @param table_style Visual preset for the module's tables (records, audit,
 #'   deleted records, versions). One of `"classic"` (the unmodified 'DT' look),
-#'   `"clean"` (card-style with row separators instead of stripes), `"zebra"`
-#'   (soft striped rows) or `"compact"` (dense, dark header). The default `NULL`
+#'   `"clean"` (card-style with row separators instead of stripes),
+#'   `"publication"` (a booktabs-style journal table: serif type, horizontal
+#'   rules only, no stripes) or `"compact"` (dense, dark header). The default `NULL`
 #'   consults `getOption("shinyformtools.table_style")` and falls back to
 #'   `"classic"`, so an app can set the look once and override it per form.
 #'   Purely cosmetic CSS, scoped to this module's tables; host-app tables are
