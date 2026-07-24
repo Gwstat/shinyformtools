@@ -267,6 +267,14 @@ form_ui <- function(id,
 #'   so it is clear which fields were actually changed before saving.
 #' @param changed_color Glow colour used for `show_changed`. Any CSS colour
 #'   string. Defaults to a blue (`"#2b8cff"`).
+#' @param conflict_check Logical. When `TRUE` (default), saving an edit is
+#'   rejected if another user changed the record while the edit dialog was
+#'   open: instead of silently overwriting, the dialog switches to a conflict
+#'   view showing what changed and who changed it, with the choice to apply
+#'   the other changes to the inputs, keep the own entries, or go back. The
+#'   check is value-based and runs inside the update transaction (see the
+#'   `expected_record` argument of [update_record()]). Set to `FALSE` to
+#'   restore the previous last-write-wins behaviour.
 #' @param form_layout Where the add/edit forms render. `"modal"` (default) opens
 #'   them in a dialog; `"inline"` renders them in a panel above the records table,
 #'   with add and edit mutually exclusive. Must match the `form_layout` passed to
@@ -336,6 +344,7 @@ form_server <- function(id,
                             highlight_color = "#dc3545",
                             show_changed = TRUE,
                             changed_color = "#2b8cff",
+                            conflict_check = TRUE,
                             form_layout = c("modal", "inline")) {
   if (!inherits(form, "sft_form")) {
     stop("form must be a form object.", call. = FALSE)
@@ -380,6 +389,13 @@ form_server <- function(id,
     record_columns_loaded_for <- shiny::reactiveVal(NULL)
     active_column_view <- shiny::reactiveVal("Standard")
     current_edit_row <- shiny::reactiveVal(NULL)
+    # Edit-conflict state: NULL or list(current_record, columns), set when
+    # update_record() rejects a stale edit. The baseline is the record as it
+    # looked when editing started (or after a conflict was resolved) - kept
+    # separate from current_edit_row so refreshing it never rebuilds the
+    # inline form body (which would discard the user's typed values).
+    edit_conflict <- shiny::reactiveVal(NULL)
+    edit_conflict_baseline <- shiny::reactiveVal(NULL)
     selected_record_id <- shiny::reactiveVal(NULL)
     table_structure_tick <- shiny::reactiveVal(0L)
     # Inline (non-modal) add/edit panel state: NULL | "add" | "edit". Single value,
@@ -492,6 +508,17 @@ form_server <- function(id,
 
           refresh()
         },
+        sft_edit_conflict = function(cond) {
+          # A stale edit was rejected by update_record(). Keep the dialog open
+          # with the user's values; the conflict view (mod_conflict.R) takes
+          # over the dialog body until the user decides how to continue.
+          edit_conflict(
+            list(
+              current_record = cond$current_record,
+              columns = cond$columns
+            )
+          )
+        },
         error = function(err) {
           shiny::showNotification(
             conditionMessage(err),
@@ -559,6 +586,17 @@ form_server <- function(id,
       highlight_color = highlight_color,
       show_changed = show_changed,
       changed_color = changed_color
+    )
+
+    sft_register_edit_conflict(
+      input = input,
+      output = output,
+      session = session,
+      form = form,
+      labels = labels,
+      conn = conn,
+      edit_conflict = edit_conflict,
+      edit_conflict_baseline = edit_conflict_baseline
     )
 
     if (!is.null(modal_header)) {
@@ -806,6 +844,8 @@ form_server <- function(id,
       }
 
       current_edit_row(row)
+      edit_conflict(NULL)
+      edit_conflict_baseline(row)
       restore_record_id(row$sft_id[1])
 
       if (identical(form_layout, "inline")) {
@@ -894,6 +934,7 @@ form_server <- function(id,
 
     shiny::observeEvent(input$sft_inline_cancel, {
       inline_active(NULL)
+      edit_conflict(NULL)
     })
 
     shiny::observeEvent(input$submit_edit, {
@@ -943,7 +984,10 @@ form_server <- function(id,
             record_id = row$sft_id[1],
             values = values,
             conn = conn,
-            user = current_user
+            user = current_user,
+            expected_record = if (isTRUE(conflict_check)) {
+              edit_conflict_baseline()
+            }
           )
         },
         "record_updated"

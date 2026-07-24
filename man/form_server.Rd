@@ -50,6 +50,7 @@ form_server(
   highlight_color = "#dc3545",
   show_changed = TRUE,
   changed_color = "#2b8cff",
+  conflict_check = TRUE,
   form_layout = c("modal", "inline")
 )
 }
@@ -209,6 +210,15 @@ so it is clear which fields were actually changed before saving.}
 
 \item{changed_color}{Glow colour used for \code{show_changed}. Any CSS colour
 string. Defaults to a blue (\code{"#2b8cff"}).}
+
+\item{conflict_check}{Logical. When \code{TRUE} (default), saving an edit is
+rejected if another user changed the record while the edit dialog was
+open: instead of silently overwriting, the dialog switches to a conflict
+view showing what changed and who changed it, with the choice to apply
+the other changes to the inputs, keep the own entries, or go back. The
+check is value-based and runs inside the update transaction (see the
+\code{expected_record} argument of \code{\link[=update_record]{update_record()}}). Set to \code{FALSE} to
+restore the previous last-write-wins behaviour.}
 
 \item{form_layout}{Where the add/edit forms render. \code{"modal"} (default) opens
 them in a dialog; \code{"inline"} renders them in a panel above the records table,

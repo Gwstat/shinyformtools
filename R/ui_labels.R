@@ -81,7 +81,17 @@ sft_default_ui_labels <- function() {
     columns_loaded = "Column view loaded.",
     columns_reset = "Column selection reset to default.",
     standard_column_view_not_overwritable = "The default view cannot be overwritten. Please choose a new view name.",
-    table_refreshed = "Table filter and state were reset."
+    table_refreshed = "Table filter and state were reset.",
+    conflict_title = "This record was changed while you were editing",
+    conflict_intro = "Changed by {users}. Decide how to continue:",
+    conflict_field = "Field",
+    conflict_opened = "When opened",
+    conflict_now = "Now in the database",
+    conflict_changed_by = "Last changed by",
+    conflict_also_mine = "You also changed this field. Applying the changes will replace your entry.",
+    conflict_accept = "Apply their changes",
+    conflict_keep = "Keep my entries",
+    conflict_back = "Back"
   )
 }
 

@@ -194,40 +194,48 @@ sft_edit_form_body <- function(ns,
                                editable_fields = NULL,
                                modal_header = NULL) {
   shiny::tagList(
-    sft_modal_accordion_css(),
-    sft_record_meta_ui(
-      row = row,
-      labels = labels,
-      datetime_format = datetime_format
-    ),
-    if (!is.null(modal_header)) {
-      shiny::uiOutput(ns("edit_modal_header"))
-    },
-    render_form_fields(
-      form = form,
-      ns = ns,
-      prefix = "edit_",
-      values = row,
-      read_only = !isTRUE(can_edit),
-      editable_fields = editable_fields
-    ),
-    if (isTRUE(can_view_versions)) {
-      shiny::tagList(
-        shiny::hr(),
-        shiny::tags$details(
-          class = "sft-versions-accordion",
-          shiny::tags$summary(shiny::strong(sft_ui_label(labels, "edit_versions_title"))),
-          shiny::p(shiny::tags$small(sft_ui_label(labels, "edit_versions_intro"))),
-          sft_versions_output_ui(ns, "restore_versions"),
-          if (isTRUE(can_restore)) {
-            shiny::div(
-              class = "sft-versions-actions",
-              sft_action_button_if_label(ns, "confirm_restore", labels, "confirm_restore")
-            )
-          }
+    # The whole regular edit body lives in one addressable container so the
+    # conflict view (rendered into sft_edit_conflict_ui below) can hide it via
+    # CSS without rebuilding it - the inputs stay in the DOM, so the user's
+    # typed values survive switching between form and conflict view.
+    shiny::div(
+      id = ns("sft_edit_form_main"),
+      sft_modal_accordion_css(),
+      sft_record_meta_ui(
+        row = row,
+        labels = labels,
+        datetime_format = datetime_format
+      ),
+      if (!is.null(modal_header)) {
+        shiny::uiOutput(ns("edit_modal_header"))
+      },
+      render_form_fields(
+        form = form,
+        ns = ns,
+        prefix = "edit_",
+        values = row,
+        read_only = !isTRUE(can_edit),
+        editable_fields = editable_fields
+      ),
+      if (isTRUE(can_view_versions)) {
+        shiny::tagList(
+          shiny::hr(),
+          shiny::tags$details(
+            class = "sft-versions-accordion",
+            shiny::tags$summary(shiny::strong(sft_ui_label(labels, "edit_versions_title"))),
+            shiny::p(shiny::tags$small(sft_ui_label(labels, "edit_versions_intro"))),
+            sft_versions_output_ui(ns, "restore_versions"),
+            if (isTRUE(can_restore)) {
+              shiny::div(
+                class = "sft-versions-actions",
+                sft_action_button_if_label(ns, "confirm_restore", labels, "confirm_restore")
+              )
+            }
+          )
         )
-      )
-    }
+      }
+    ),
+    shiny::uiOutput(ns("sft_edit_conflict_ui"))
   )
 }
 
