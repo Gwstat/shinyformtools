@@ -34,6 +34,14 @@
 #'   them in a dialog; `"inline"` renders them in a panel above the records table,
 #'   with add and edit mutually exclusive. Must match the `form_layout` passed to
 #'   [form_server()].
+#' @param table_style Visual preset for the module's tables (records, audit,
+#'   deleted records, versions). One of `"classic"` (the unmodified 'DT' look),
+#'   `"clean"` (card-style with row separators instead of stripes), `"zebra"`
+#'   (soft striped rows) or `"compact"` (dense, dark header). The default `NULL`
+#'   consults `getOption("shinyformtools.table_style")` and falls back to
+#'   `"classic"`, so an app can set the look once and override it per form.
+#'   Purely cosmetic CSS, scoped to this module's tables; host-app tables are
+#'   unaffected.
 #' @param labels Optional named list overriding UI labels and button texts.
 #' @param button_options Optional named list controlling action-button placement
 #'   and classes. Supported entries are `placement` (`"top"`, `"bottom"`,
@@ -71,10 +79,12 @@ form_ui <- function(id,
                         show_column_settings = FALSE,
                         show_column_selection = FALSE,
                         form_layout = c("modal", "inline"),
+                        table_style = NULL,
                         labels = list(),
                         button_options = list()) {
   ns <- shiny::NS(id)
   form_layout <- match.arg(form_layout)
+  table_style <- sft_resolve_table_style(table_style)
   labels <- sft_ui_labels(labels)
   button_options <- sft_normalize_button_options(button_options)
 
@@ -106,6 +116,7 @@ form_ui <- function(id,
     shinyjs::useShinyjs(),
     sft_button_css(),
     sft_highlight_css(ns),
+    sft_table_style_css(ns, table_style),
 
     if (!is.null(title)) {
       shiny::h3(title)
