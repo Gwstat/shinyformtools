@@ -114,7 +114,7 @@ sft_system_table_types <- function(conn) {
   list(
     id = sft_auto_id_definition(conn),
     short_text = sft_short_text_definition(conn),
-    long_text = "TEXT"
+    long_text = sft_long_text_definition(conn)
   )
 }
 

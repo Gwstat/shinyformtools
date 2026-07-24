@@ -52,6 +52,31 @@ testthat::test_that("sft_db_duckdb stores connection metadata without requiring 
   testthat::expect_equal(db$config, list(threads = "1"))
 })
 
+testthat::test_that("backend-specific column types resolve per backend", {
+  # sft_db_backend() dispatches on the connection's class names only, so a
+  # bare object with the right class exercises the SQL-type helpers without a
+  # live server.
+  mariadb_conn <- structure(list(), class = "MariaDBConnection")
+  sqlite_conn <- structure(list(), class = "SQLiteConnection")
+
+  testthat::expect_identical(sft_db_backend(mariadb_conn), "mariadb")
+
+  # MariaDB caps TEXT at 64KB; the JSON payload columns must be MEDIUMTEXT so
+  # a large config_json / audit snapshot cannot overflow under strict mode.
+  testthat::expect_identical(sft_long_text_definition(mariadb_conn), "MEDIUMTEXT")
+  testthat::expect_identical(sft_long_text_definition(sqlite_conn), "TEXT")
+
+  types <- sft_system_table_types(mariadb_conn)
+  testthat::expect_identical(types$long_text, "MEDIUMTEXT")
+  testthat::expect_identical(types$short_text, "VARCHAR(255)")
+
+  # MariaDB's own text spellings normalise into the TEXT bucket, so drift
+  # detection does not flag them as type changes.
+  for (type in c("mediumtext", "LONGTEXT", "tinytext", "varchar(255)")) {
+    testthat::expect_identical(sft_normalize_db_type_for_compare(type), "TEXT")
+  }
+})
+
 testthat::test_that("sft_db_duckdb creates an optional DuckDB connection", {
   testthat::skip_if_not_installed("duckdb")
 

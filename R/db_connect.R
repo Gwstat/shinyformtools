@@ -401,6 +401,21 @@ sft_short_text_definition <- function(conn) {
   "TEXT"
 }
 
+# Column type for unbounded text (JSON payloads: config_json, audit snapshots).
+# On SQLite/DuckDB TEXT is unbounded, but MariaDB caps TEXT at 64KB and, with
+# the strict sql_mode default (since 10.2), errors on overflow - a form with
+# large choice lists or a fat audit snapshot would fail to save. MEDIUMTEXT
+# (16MB) removes that ceiling. This matters at CREATE time: the system tables
+# are CREATE IF NOT EXISTS and are never migrated, so a database initialised
+# before this change keeps TEXT until altered by hand.
+sft_long_text_definition <- function(conn) {
+  if (sft_is_mariadb_connection(conn)) {
+    return("MEDIUMTEXT")
+  }
+
+  "TEXT"
+}
+
 sft_last_insert_id <- function(conn) {
   if (sft_is_mariadb_connection(conn)) {
     out <- DBI::dbGetQuery(conn, "SELECT LAST_INSERT_ID() AS sft_id")
@@ -458,14 +473,29 @@ sft_prepend_explicit_id <- function(conn, table_name, id_column, columns, values
 }
 
 # Identify a transient conflict that re-running the transaction can resolve: a
-# unique or primary-key violation produced by a racing writer. The remaining
-# MAX(id) + 1 allocations (per-record `version_no` on every backend; DuckDB
-# `sft_id` / audit `log_id`) let two concurrent writers read the same MAX and
-# pick the same value; the covering unique indexes turn that into one of the
-# constraint errors below. Each backend phrases it differently:
+# unique or primary-key violation produced by a racing writer, or an InnoDB
+# lock conflict. The remaining MAX(id) + 1 allocations (per-record `version_no`
+# on every backend; DuckDB `sft_id` / audit `log_id`) let two concurrent writers
+# read the same MAX and pick the same value; the covering unique indexes turn
+# that into one of the constraint errors below. Each backend phrases it
+# differently:
 #   SQLite : "UNIQUE constraint failed", "... must be unique"
 #   DuckDB : "Duplicate key", "violates primary key/unique constraint"
 #   MariaDB: "Duplicate entry '...' for key"
+# MariaDB/InnoDB additionally raises two lock errors whose message literally
+# says "try restarting transaction" - which is exactly what this predicate
+# enables:
+#   error 1213: "Deadlock found when trying to get lock; try restarting
+#                transaction" (the victim is rolled back immediately)
+#   error 1205: "Lock wait timeout exceeded; try restarting transaction"
+# In both cases the transaction has been rolled back, so re-running it against
+# the now-committed state is the documented recovery.
+# Observed LIVE (MariaDB 11.8 via RMariaDB): a write that lost a row-lock race
+# can also surface as error 1020, "Record has changed since last read in
+# table '...'". Same treatment - the retry re-runs the whole transaction, so it
+# re-reads the row and applies the update to the committed state (and when
+# update_record carries an expected_record, the re-run raises the clean
+# sft_edit_conflict instead of silently overwriting).
 # A genuine business-unique violation that slips past validation also matches,
 # but retrying stays safe: the retry re-runs validate_record, which now sees
 # the committed duplicate and raises a clean (non-retryable) validation error, so
@@ -485,6 +515,9 @@ sft_is_retryable_conflict <- function(e) {
       "Duplicate key",
       "violates primary key",
       "violates unique",
+      "Deadlock found",
+      "Lock wait timeout exceeded",
+      "Record has changed since last read",
       sep = "|"
     ),
     msg,
