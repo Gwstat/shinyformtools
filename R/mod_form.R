@@ -507,6 +507,14 @@ form_server <- function(id,
     # refresh the table; on error keep the modal open and show the error. Shared
     # by the add / edit / delete submit handlers.
     run_mutation <- function(action, success_label) {
+      # Heal a connection the server dropped while the session sat idle
+      # (MariaDB wait_timeout). Only the module's own connection is replaced;
+      # `<<-` updates the connection every observer reads from this scope, so no
+      # call site changes. A caller-supplied connection is left untouched.
+      if (owns_connection) {
+        conn <<- sft_live_connection(conn, form$db)
+      }
+
       tryCatch(
         {
           action()
@@ -543,6 +551,12 @@ form_server <- function(id,
 
     records <- shiny::reactive({
       refresh_tick()
+
+      # Same reconnect guard as run_mutation(): a row selection or refresh after
+      # a long idle period must not fail on a server-dropped connection.
+      if (owns_connection) {
+        conn <<- sft_live_connection(conn, form$db)
+      }
 
       fetch_records(
         form = form,

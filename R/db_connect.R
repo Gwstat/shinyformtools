@@ -335,6 +335,36 @@ sft_resolve_connection <- function(form, conn = NULL, envir = parent.frame()) {
   conn
 }
 
+# Return a live connection for a caller that OWNS its connection. A connection
+# closed by the server (e.g. MariaDB drops a long-idle Shiny session at
+# wait_timeout) still looks valid to the client - DBI::dbIsValid() does not
+# round-trip - so the only reliable detection is a trivial probe query. When it
+# fails, a fresh connection is opened from `db`, which reapplies every
+# per-connection setup step (e.g. the SQLite busy_timeout) because it routes
+# through db_connect(). "SELECT 1" is backend-neutral (SQLite, DuckDB, MariaDB).
+# The caller must reassign its held connection to the return value. Only ever
+# call this for a self-opened connection: a caller-supplied one keeps its own
+# lifecycle and must not be silently replaced. Internal.
+sft_live_connection <- function(conn, db) {
+  alive <- tryCatch(
+    {
+      DBI::dbGetQuery(conn, "SELECT 1")
+      TRUE
+    },
+    error = function(e) FALSE
+  )
+
+  if (alive) {
+    return(conn)
+  }
+
+  # The probe failed. Close the old handle before replacing it: usually it is
+  # already dead (db_disconnect is then a no-op), but if the probe failed while
+  # the handle was still open, disconnecting it prevents a leaked connection.
+  db_disconnect(conn)
+  db_connect(db)
+}
+
 sft_db_backend <- function(conn) {
   classes <- class(conn)
 
