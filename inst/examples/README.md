@@ -152,7 +152,16 @@ Start with **app_crud_basic**; the rest each focus on one capability.
   drops the pager and global chrome; `table_filter = "top"` adds per-column
   search controls that adapt to each column's type (range slider for a numeric
   column, dropdown for a factor, text box otherwise); `table_format` runs
-  `DT::formatStyle()` to colour cells by value band and category.
+  `DT::formatStyle()` to colour cells by value band and category. (For the
+  ready-made visual presets, see **app_design_presets**.)
+
+- **app_design_presets** — the visual presets for the module's tables. Radio
+  buttons switch `form_ui(table_style = ...)` live between `"classic"` (the
+  unmodified DT look), `"clean"` (card-style, reactable-like), `"zebra"` (soft
+  stripes) and `"compact"` (dense, dark header). The preset is pure CSS scoped
+  to the module's own tables — the audit log is shown so you can see every
+  module table follow it — and can also be set app-wide with
+  `options(shinyformtools.table_style = "clean")`, overridable per form.
 
 - **app_shape_map** — districts with a fixed, non-editable geometry. Shows
   `shape_field()` + `attach_shapes()`: each record has editable

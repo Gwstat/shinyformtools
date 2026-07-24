@@ -143,7 +143,9 @@ server <- function(input, output, session) {
 #> NOTE: table. Only the CRUD core is on by default, so this example opts into
 #> NOTE: the two extras it wants to show: the audit log (show_audit, on both
 #> NOTE: form_ui and form_server) and the deleted-records dialog you restore
-#> NOTE: from.
+#> NOTE: from. table_style picks a visual preset for the tables ("classic",
+#> NOTE: "clean", "zebra", "compact"); it can also be set app-wide via
+#> NOTE: options(shinyformtools.table_style = "clean").
 ui <- fluidPage(
   titlePanel("Basic CRUD"),
   how_to(),
@@ -151,7 +153,8 @@ ui <- fluidPage(
     id = "contacts",
     title = "Contacts",
     show_audit = TRUE,
-    show_deleted_records = TRUE
+    show_deleted_records = TRUE,
+    table_style = "clean"
   )
 )
 #> END

@@ -19,6 +19,7 @@ form_ui(
   show_column_settings = FALSE,
   show_column_selection = FALSE,
   form_layout = c("modal", "inline"),
+  table_style = NULL,
   labels = list(),
   button_options = list()
 )
@@ -63,6 +64,15 @@ column-selection button. Off by default.}
 them in a dialog; \code{"inline"} renders them in a panel above the records table,
 with add and edit mutually exclusive. Must match the \code{form_layout} passed to
 \code{\link[=form_server]{form_server()}}.}
+
+\item{table_style}{Visual preset for the module's tables (records, audit,
+deleted records, versions). One of \code{"classic"} (the unmodified 'DT' look),
+\code{"clean"} (card-style with row separators instead of stripes), \code{"zebra"}
+(soft striped rows) or \code{"compact"} (dense, dark header). The default \code{NULL}
+consults \code{getOption("shinyformtools.table_style")} and falls back to
+\code{"classic"}, so an app can set the look once and override it per form.
+Purely cosmetic CSS, scoped to this module's tables; host-app tables are
+unaffected.}
 
 \item{labels}{Optional named list overriding UI labels and button texts.}
 
