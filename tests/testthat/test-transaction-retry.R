@@ -4,7 +4,12 @@ testthat::test_that("sft_is_retryable_conflict recognises backend constraint mes
     "PRIMARY KEY must be unique",
     "Duplicate entry '5' for key 'PRIMARY'",
     "Constraint Error: Duplicate key \"sft_id: 5\" violates primary key constraint",
-    "violates unique constraint"
+    "violates unique constraint",
+    # InnoDB lock errors say "try restarting transaction" - so we do.
+    "Deadlock found when trying to get lock; try restarting transaction [1213]",
+    "Lock wait timeout exceeded; try restarting transaction [1205]",
+    # Observed live via RMariaDB when a write loses a row-lock race.
+    "Record has changed since last read in table 'contacts' [1020]"
   )
 
   for (msg in retryable) {

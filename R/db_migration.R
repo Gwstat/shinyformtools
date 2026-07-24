@@ -83,7 +83,8 @@ sft_normalize_db_type_for_compare <- function(type) {
   type <- sub("\\(.*$", "", type)
   type <- trimws(type)
 
-  if (type %in% c("CHAR", "CHARACTER", "VARCHAR", "STRING", "TEXT")) {
+  if (type %in% c("CHAR", "CHARACTER", "VARCHAR", "STRING", "TEXT",
+                  "TINYTEXT", "MEDIUMTEXT", "LONGTEXT")) {
     return("TEXT")
   }
 
