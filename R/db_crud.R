@@ -295,6 +295,52 @@ insert_record <- function(form,
   })
 }
 
+# Columns of the form's active input fields whose stored value differs between
+# two versions of the same record row. Used by the edit-conflict check in
+# update_record(): value-based (via sft_values_differ), so a no-op save by
+# another user (same values, newer sft_updated_at) is not reported as a
+# conflict, and timestamp resolution does not matter.
+sft_conflicting_columns <- function(form, expected_record, current_record) {
+  as_record_list <- function(record) {
+    if (is.data.frame(record)) sft_row_to_list(record) else as.list(record)
+  }
+
+  expected <- as_record_list(expected_record)
+  current <- as_record_list(current_record)
+
+  columns <- character()
+
+  for (field in sft_active_input_fields(form)) {
+    column <- field$db_column
+
+    if (sft_values_differ(current[[column]], expected[[column]])) {
+      columns <- c(columns, column)
+    }
+  }
+
+  columns
+}
+
+# Classed condition signalled by update_record() when expected_record no longer
+# matches the stored row. Carries the fresh row and the changed columns so a
+# caller (e.g. the Shiny module's conflict view) can react without re-fetching.
+# The message deliberately does not match sft_is_retryable_conflict(): a stale
+# edit must surface, not be retried.
+sft_edit_conflict_condition <- function(current_record, columns) {
+  structure(
+    class = c("sft_edit_conflict", "error", "condition"),
+    list(
+      message = paste0(
+        "The record was changed by someone else while it was being edited. ",
+        "Changed columns: ", paste(columns, collapse = ", "), "."
+      ),
+      call = NULL,
+      current_record = current_record,
+      columns = columns
+    )
+  )
+}
+
 #' Update a form record
 #'
 #' @param form Object created with [form()].
@@ -304,6 +350,15 @@ insert_record <- function(form,
 #' @param conn Optional DBI connection.
 #' @param user Optional user identifier.
 #' @param reason Optional reason for audit log.
+#' @param expected_record Optional one-row data frame (or named list): the
+#'   record as it looked when editing started. When supplied, the update is
+#'   rejected with an error of class `"sft_edit_conflict"` if any input field's
+#'   stored value has changed in the meantime (i.e. another writer saved first),
+#'   so a stale edit cannot silently overwrite newer data. The comparison is
+#'   value-based: a save that changed no field values does not count as a
+#'   conflict. The condition carries the current row (`current_record`) and the
+#'   affected columns (`columns`). Default `NULL` skips the check (previous
+#'   behaviour).
 #'
 #' @return The updated record as a one-row data frame.
 #' @examples
@@ -329,7 +384,8 @@ update_record <- function(form,
                               record_uuid = NULL,
                               conn = NULL,
                               user = NULL,
-                              reason = NULL) {
+                              reason = NULL,
+                              expected_record = NULL) {
   conn <- sft_prepare_mutation(form, conn, user = user)
 
   sft_db_with_transaction(conn, {
@@ -340,6 +396,25 @@ update_record <- function(form,
       record_uuid = record_uuid,
       include_deleted = FALSE
     )
+
+    # Optimistic-locking check, inside the transaction so no writer can slip in
+    # between the comparison and the UPDATE below.
+    if (!is.null(expected_record)) {
+      conflict_columns <- sft_conflicting_columns(
+        form = form,
+        expected_record = expected_record,
+        current_record = old_record
+      )
+
+      if (length(conflict_columns) > 0L) {
+        stop(
+          sft_edit_conflict_condition(
+            current_record = old_record,
+            columns = conflict_columns
+          )
+        )
+      }
+    }
 
     editable_field_ids <- vapply(
       sft_editable_input_fields(form),

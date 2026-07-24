@@ -11,7 +11,8 @@ update_record(
   record_uuid = NULL,
   conn = NULL,
   user = NULL,
-  reason = NULL
+  reason = NULL,
+  expected_record = NULL
 )
 }
 \arguments{
@@ -28,6 +29,16 @@ update_record(
 \item{user}{Optional user identifier.}
 
 \item{reason}{Optional reason for audit log.}
+
+\item{expected_record}{Optional one-row data frame (or named list): the
+record as it looked when editing started. When supplied, the update is
+rejected with an error of class \code{"sft_edit_conflict"} if any input field's
+stored value has changed in the meantime (i.e. another writer saved first),
+so a stale edit cannot silently overwrite newer data. The comparison is
+value-based: a save that changed no field values does not count as a
+conflict. The condition carries the current row (\code{current_record}) and the
+affected columns (\code{columns}). Default \code{NULL} skips the check (previous
+behaviour).}
 }
 \value{
 The updated record as a one-row data frame.

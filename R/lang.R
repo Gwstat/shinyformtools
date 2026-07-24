@@ -163,7 +163,17 @@ german_labels <- function() {
     columns_loaded = "Spaltenansicht geladen.",
     columns_reset = "Spaltenauswahl auf Standard zur\u00fcckgesetzt.",
     standard_column_view_not_overwritable = "Die Standardansicht kann nicht \u00fcberschrieben werden. Bitte einen neuen Ansichtsnamen w\u00e4hlen.",
-    table_refreshed = "Tabellenfilter und -zustand wurden zur\u00fcckgesetzt."
+    table_refreshed = "Tabellenfilter und -zustand wurden zur\u00fcckgesetzt.",
+    conflict_title = "Dieser Datensatz wurde w\u00e4hrend der Bearbeitung ge\u00e4ndert",
+    conflict_intro = "Ge\u00e4ndert von {users}. Bitte entscheiden, wie es weitergeht:",
+    conflict_field = "Feld",
+    conflict_opened = "Beim \u00d6ffnen",
+    conflict_now = "Jetzt in der Datenbank",
+    conflict_changed_by = "Zuletzt ge\u00e4ndert von",
+    conflict_also_mine = "Dieses Feld haben auch Sie ge\u00e4ndert. \u00dcbernehmen ersetzt Ihre Eingabe.",
+    conflict_accept = "\u00c4nderungen \u00fcbernehmen",
+    conflict_keep = "Meine Eingaben behalten",
+    conflict_back = "Zur\u00fcck"
   )
 }
 
