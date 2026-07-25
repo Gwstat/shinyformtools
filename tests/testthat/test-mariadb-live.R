@@ -304,6 +304,108 @@ testthat::test_that("a table name with an uppercase letter stays usable", {
   testthat::expect_equal(sum(history$action == "create_table"), 1L)
 })
 
+testthat::test_that("concurrent writers on one record all commit, with no lost version", {
+  skip_if_no_mariadb()
+  testthat::skip_if_not_installed("parallel")
+  testthat::skip_if_not_installed("pkgload")
+
+  # The workers are separate R processes, so they need the package. Prefer the
+  # SOURCE tree, because loading an installed copy would quietly test whatever
+  # version happens to be installed rather than the one under test.
+  source_dir <- normalizePath(testthat::test_path("..", ".."), mustWork = FALSE)
+
+  if (!file.exists(file.path(source_dir, "DESCRIPTION"))) {
+    testthat::skip("package source not reachable from the test directory")
+  }
+
+  config <- sft_test_mariadb_config()
+  db <- local_test_mariadb()
+
+  conn <- db_connect(db)
+  withr::defer(db_disconnect(conn))
+
+  contacts <- test_form_basic("contacts", db = db)
+  init_db(contacts, conn = conn, user = "test")
+  insert_record(contacts, list(name = "Ada", email = "ada@example.com"),
+                conn = conn, user = "test")
+
+  workers <- 3L
+  updates <- 4L
+
+  # Every worker updates THE SAME record. That is what actually collides: the
+  # audit log allocates version_no as MAX(version_no) + 1 per record, so two
+  # writers reading the same MAX pick the same version and the covering unique
+  # index rejects one of them. sft_db_with_transaction() is supposed to roll
+  # that writer back and re-run it, recomputing MAX + 1, so that both commit.
+  # Writing DIFFERENT records would prove nothing - each new record starts at
+  # version 1 and nothing ever contends.
+  worker <- function(id, source_dir, config, dbname, updates) {
+    pkgload::load_all(source_dir, quiet = TRUE)
+
+    db <- db_mariadb(
+      dbname = dbname, host = config$host, port = config$port,
+      user = config$user, password = config$password
+    )
+
+    contacts <- form(
+      form_id = "contacts", table_name = "contacts", db = db,
+      fields = list(
+        form_field(id = "name", label = "Name", mandatory = TRUE),
+        form_field(id = "email", label = "E-Mail", unique = TRUE)
+      )
+    )
+
+    conn <- db_connect(db)
+    on.exit(db_disconnect(conn), add = TRUE)
+
+    for (k in seq_len(updates)) {
+      result <- tryCatch(
+        {
+          update_record(
+            contacts,
+            list(name = paste0("worker ", id, " pass ", k)),
+            record_id = 1,
+            conn = conn,
+            user = paste0("worker", id)
+          )
+          NULL
+        },
+        error = function(e) conditionMessage(e)
+      )
+
+      if (!is.null(result)) {
+        return(result)
+      }
+    }
+
+    NA_character_
+  }
+
+  cluster <- parallel::makePSOCKcluster(workers)
+  withr::defer(parallel::stopCluster(cluster))
+
+  failures <- unlist(parallel::clusterApply(
+    cluster, seq_len(workers), worker,
+    source_dir = source_dir, config = config,
+    dbname = db$dbname, updates = updates
+  ))
+
+  # Not one writer may be turned away.
+  testthat::expect_identical(failures, rep(NA_character_, workers))
+
+  audit <- fetch_audit_log(contacts, conn = conn)
+
+  # One insert plus every update, each with its own version - no collision
+  # survived and nothing was silently dropped.
+  testthat::expect_equal(nrow(audit), 1L + workers * updates)
+  testthat::expect_setequal(audit$version_no, seq_len(1L + workers * updates))
+
+  # And the record itself is intact: exactly one row, holding one worker's value.
+  records <- fetch_records(contacts, conn = conn)
+  testthat::expect_equal(nrow(records), 1L)
+  testthat::expect_match(records$name, "^worker [0-9]+ pass [0-9]+$")
+})
+
 testthat::test_that("a real lock conflict is classified as retryable", {
   skip_if_no_mariadb()
 

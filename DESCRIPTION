@@ -29,6 +29,7 @@ Suggests:
     knitr,
     RMariaDB,
     openxlsx,
+    pkgload,
     rmarkdown,
     shinymanager,
     shinyglide,
