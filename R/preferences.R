@@ -20,7 +20,7 @@ sft_init_preferences_table <- function(conn) {
       "preference_json ", types$long_text, ", ",
       "updated_at ", types$short_text, ", ",
       "UNIQUE (form_id, user_id, preference_key)",
-      ")"
+      ")", sft_create_table_suffix(conn)
     )
   )
 

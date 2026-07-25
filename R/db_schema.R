@@ -40,8 +40,27 @@ sft_system_columns <- function(conn = NULL, uuid = FALSE, easy_id = FALSE) {
   )
 }
 
-sft_field_db_definition <- function(field, conn = NULL) {
+sft_field_db_definition <- function(field, conn = NULL, unique_text_ok = TRUE) {
   definition <- field$db_type
+
+  # A unique field's column has to be indexable. Where the server cannot put a
+  # UNIQUE index on an unbounded TEXT column (MariaDB < 10.4, real MySQL at any
+  # version), it becomes VARCHAR(255) instead - otherwise the form cannot be
+  # created at all: CREATE UNIQUE INDEX fails with error 1170 and takes every
+  # CRUD call down with it. The value is capped at 255 characters there, which
+  # is the price of the feature existing on those servers.
+  #
+  # Only applies with a connection in hand. With conn = NULL the declared type
+  # is returned unchanged, so sft_schema_signature() stays backend-neutral and
+  # no existing database sees this as drift.
+  if (
+    !is.null(conn) &&
+      isTRUE(field$unique) &&
+      !isTRUE(unique_text_ok) &&
+      identical(sft_normalize_db_type_for_compare(definition), "TEXT")
+  ) {
+    definition <- sft_short_text_definition(conn)
+  }
 
   if (!is.null(field$db_default)) {
     if (is.null(conn)) {
@@ -61,11 +80,16 @@ sft_expected_columns <- function(form, conn = NULL) {
 
   stored_fields <- Filter(sft_is_stored_field, form$fields)
 
+  # Resolved once per call rather than per field: on MariaDB it costs a
+  # SELECT VERSION() round trip.
+  unique_text_ok <- is.null(conn) || sft_supports_unique_text_index(conn)
+
   field_definitions <- vapply(
     stored_fields,
     sft_field_db_definition,
     character(1),
-    conn = conn
+    conn = conn,
+    unique_text_ok = unique_text_ok
   )
 
   names(field_definitions) <- vapply(
@@ -106,7 +130,8 @@ sft_create_table_sql <- function(conn, table_name, columns) {
     sft_quote_identifier(conn, table_name),
     " (",
     paste(column_sql, collapse = ", "),
-    ")"
+    ")",
+    sft_create_table_suffix(conn)
   )
 }
 
@@ -133,6 +158,7 @@ sft_system_table_types <- function(conn) {
 #' @keywords internal
 init_system_tables <- function(conn) {
   types <- sft_system_table_types(conn)
+  suffix <- sft_create_table_suffix(conn)
 
   DBI::dbExecute(
     conn,
@@ -147,7 +173,7 @@ init_system_tables <- function(conn) {
       "schema_hash ", types$long_text, ", ",
       "created_at ", types$short_text, ", ",
       "updated_at ", types$short_text,
-      ")"
+      ")", suffix
     )
   )
 
@@ -177,7 +203,7 @@ init_system_tables <- function(conn) {
       "created_at ", types$short_text, ", ",
       "retired_at ", types$short_text, ", ",
       "PRIMARY KEY (form_id, field_id)",
-      ")"
+      ")", suffix
     )
   )
 
@@ -196,7 +222,7 @@ init_system_tables <- function(conn) {
       "details_json ", types$long_text, ", ",
       "applied_at ", types$short_text, ", ",
       "applied_by ", types$short_text,
-      ")"
+      ")", suffix
     )
   )
 
@@ -217,13 +243,17 @@ init_system_tables <- function(conn) {
       "new_data_json ", types$long_text, ", ",
       "changed_fields_json ", types$long_text, ", ",
       "reason ", types$long_text,
-      ")"
+      ")", suffix
     )
   )
 
   sft_ensure_column(conn, "sft_forms", "schema_hash", types$long_text)
 
   sft_init_preferences_table(conn)
+
+  # Databases created before the payload columns became MEDIUMTEXT keep a 64KB
+  # ceiling that CREATE TABLE IF NOT EXISTS cannot lift; widen them here.
+  sft_widen_long_text_columns(conn)
 
   sft_ensure_audit_version_index(conn)
 
@@ -722,18 +752,45 @@ sft_create_unique_index <- function(conn, form, index) {
     DBI::dbExecute(conn, sql),
     error = function(e) {
       stop(
-        paste0(
-          "Could not create unique index '", index$name, "' on ",
-          form$table_name, ". Active records probably already contain ",
-          "duplicate values for a unique field. Original error: ",
-          conditionMessage(e)
-        ),
+        sft_unique_index_error_message(index, form, conditionMessage(e)),
         call. = FALSE
       )
     }
   )
 
   invisible(TRUE)
+}
+
+# Explain a failed CREATE UNIQUE INDEX without guessing at the cause.
+#
+# Duplicate values among the active records are the common reason, but they are
+# not the only one, and this message used to assert them unconditionally. On a
+# server that cannot index an unbounded TEXT column the real error is 1170, and
+# telling the caller to go looking for duplicate data sends them after something
+# that is not there - observed while testing against MariaDB 10.3 and MySQL 8.4.
+sft_unique_index_error_message <- function(index, form, original) {
+  key_length_error <- grepl(
+    "used in key specification without a key length|\\[1170\\]",
+    original
+  )
+
+  cause <- if (key_length_error) {
+    paste0(
+      "This server cannot put a unique index on an unbounded TEXT column ",
+      "(MariaDB before 10.4, and MySQL at any version). Declare the field ",
+      "with db_type = \"VARCHAR(255)\", or use MariaDB 10.4 or newer."
+    )
+  } else {
+    paste0(
+      "Active records probably already contain duplicate values for this ",
+      "unique field."
+    )
+  }
+
+  paste0(
+    "Could not create unique index '", index$name, "' on ", form$table_name,
+    ". ", cause, " Original error: ", original
+  )
 }
 
 # List index names defined on a table, across backends. Returns character(0)
@@ -779,12 +836,22 @@ sft_list_index_names <- function(conn, table_name) {
 }
 
 # Drop an index, across backends. MariaDB requires the ON <table> clause.
+#
+# MySQL has no `DROP INDEX ... IF EXISTS` at all - it answers with a syntax
+# error (1064), verified live on 8.4.10 - so on that backend the guard is a
+# lookup rather than a clause. MariaDB would accept IF EXISTS, but one code path
+# for both is simpler than branching on the server version, and the index list
+# is read from the same helper the migration planner already uses.
 sft_drop_index <- function(conn, table_name, index_name) {
   if (sft_db_backend(conn) == "mariadb") {
+    if (!(index_name %in% sft_list_index_names(conn, table_name))) {
+      return(invisible(TRUE))
+    }
+
     DBI::dbExecute(
       conn,
       paste0(
-        "DROP INDEX IF EXISTS ", sft_quote_identifier(conn, index_name),
+        "DROP INDEX ", sft_quote_identifier(conn, index_name),
         " ON ", sft_quote_identifier(conn, table_name)
       )
     )
