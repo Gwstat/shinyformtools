@@ -43,6 +43,21 @@ sft_system_columns <- function(conn = NULL, uuid = FALSE, easy_id = FALSE) {
 sft_field_db_definition <- function(field, conn = NULL, unique_text_ok = TRUE) {
   definition <- field$db_type
 
+  # A shape field holds serialised geometry, and geometry is not small: a single
+  # administrative boundary at any real level of detail runs past MariaDB's 64KB
+  # TEXT ceiling and is REJECTED outright ("Data too long ... [1406]" under the
+  # strict sql_mode default). Measured: a polygon of 500 vertices serialises to
+  # 19KB and stores fine, 3000 vertices to 115KB and does not. The declared type
+  # stays TEXT (conn = NULL), so the schema signature is unchanged; only the
+  # column actually created on MariaDB is widened.
+  if (
+    !is.null(conn) &&
+      sft_is_shape_field(field) &&
+      identical(sft_normalize_db_type_for_compare(definition), "TEXT")
+  ) {
+    definition <- sft_long_text_definition(conn)
+  }
+
   # A unique field's column has to be indexable. Where the server cannot put a
   # UNIQUE index on an unbounded TEXT column (MariaDB < 10.4, real MySQL at any
   # version), it becomes VARCHAR(255) instead - otherwise the form cannot be

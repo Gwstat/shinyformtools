@@ -304,6 +304,159 @@ testthat::test_that("a table name with an uppercase letter stays usable", {
   testthat::expect_equal(sum(history$action == "create_table"), 1L)
 })
 
+testthat::test_that("a shape field round-trips, including a geometry past 64KB", {
+  skip_if_no_mariadb()
+  testthat::skip_if_not_installed("sf")
+  testthat::skip_if_not_installed("geojsonsf")
+
+  db <- local_test_mariadb()
+  conn <- db_connect(db)
+  withr::defer(db_disconnect(conn))
+
+  districts <- form(
+    form_id = "districts", table_name = "districts", db = db,
+    fields = list(
+      form_field(id = "code", label = "Code", mandatory = TRUE, unique = TRUE),
+      shape_field(id = "geometry", label = "Boundary", crs = 4326)
+    )
+  )
+  init_db(districts, conn = conn, user = "test")
+
+  # Geometry is stored as serialised text, and a boundary at any real level of
+  # detail is bigger than MariaDB's 64KB TEXT ceiling. A 3000-vertex ring
+  # serialises to ~115KB and used to be rejected with "Data too long ... [1406]".
+  ring <- function(n) {
+    angle <- seq(0, 2 * pi, length.out = n)
+    coords <- cbind(10 + cos(angle), 50 + sin(angle))
+    coords[n, ] <- coords[1, ]
+    coords
+  }
+
+  shapes <- sf::st_sf(
+    code = c("small", "detailed"),
+    geometry = sf::st_sfc(
+      sf::st_polygon(list(ring(50L))),
+      sf::st_polygon(list(ring(3000L))),
+      crs = 4326
+    )
+  )
+
+  for (code in shapes$code) {
+    insert_record(districts, list(code = code), conn = conn, user = "test")
+  }
+
+  attach_shapes(districts, shapes = shapes, key = c(code = "code"),
+                conn = conn, user = "test")
+
+  records <- fetch_records(districts, conn = conn)
+  testthat::expect_equal(nrow(records), 2L)
+  testthat::expect_gt(max(nchar(records$geometry)), 65535L)
+
+  shape <- Filter(sft_is_shape_field, districts$fields)[[1L]]
+  decoded <- decode_shape(records$geometry, shape)
+  testthat::expect_length(decoded, 2L)
+  testthat::expect_equal(
+    as.numeric(sf::st_area(decoded)),
+    as.numeric(sf::st_area(sf::st_geometry(shapes))),
+    tolerance = 1e-6
+  )
+})
+
+testthat::test_that("markdown, custom inputs, the rights table and column views work", {
+  skip_if_no_mariadb()
+  testthat::skip_if_not_installed("commonmark")
+  testthat::skip_if_not_installed("shinyWidgets")
+
+  db <- local_test_mariadb()
+  conn <- db_connect(db)
+  withr::defer(db_disconnect(conn))
+
+  # --- markdown: the SOURCE is stored, rendering happens on the way out ------
+  notes <- form(
+    form_id = "notes", table_name = "notes", db = db,
+    fields = list(
+      form_field(id = "title", label = "Title", mandatory = TRUE),
+      form_field(id = "body", label = "Body", markdown = TRUE)
+    )
+  )
+  init_db(notes, conn = conn, user = "test")
+
+  source_text <- "# Heading\n\n**bold**\n\n<script>alert(1)</script>"
+  insert_record(notes, list(title = "T", body = source_text), conn = conn, user = "test")
+
+  stored <- fetch_records(notes, conn = conn)$body
+  testthat::expect_identical(stored, source_text)
+  testthat::expect_match(sft_render_markdown(stored), "<strong>")
+  testthat::expect_false(grepl("<script>", sft_render_markdown(stored), fixed = TRUE))
+
+  # --- custom registered inputs, incl. a non-TEXT column --------------------
+  register_input("live_knob", shinyWidgets::knobInput, value_arg = "value")
+  register_input("live_picker", shinyWidgets::pickerInput, value_arg = "selected",
+                 multiple = TRUE)
+
+  custom <- form(
+    form_id = "custom", table_name = "custom", db = db,
+    fields = list(
+      form_field(id = "level", label = "Level", input_type = "live_knob", db_type = "REAL"),
+      form_field(id = "tags", label = "Tags", input_type = "live_picker",
+                 args = list(choices = c("a", "b", "c")))
+    )
+  )
+  init_db(custom, conn = conn, user = "test")
+
+  insert_record(custom, list(level = 42, tags = c("a", "c")), conn = conn, user = "test")
+  # A length-1 multi value used to be stored as a bare JSON scalar and could not
+  # be read back; it must still arrive as an array.
+  insert_record(custom, list(level = 7, tags = "b"), conn = conn, user = "test")
+
+  raw <- DBI::dbGetQuery(conn, "SELECT level, tags FROM custom ORDER BY sft_id")
+  testthat::expect_equal(raw$level, c(42, 7))
+  testthat::expect_identical(sft_parse_json_vector(raw$tags[1]), c("a", "c"))
+  testthat::expect_identical(sft_parse_json_vector(raw$tags[2]), "b")
+
+  # --- rights table: multi-select forms stored as a JSON array --------------
+  rights <- permissions_form(form_ids = c("notes", "custom"), db = db,
+                             users = c("ada", "grace"))
+  init_db(rights, conn = conn, user = "test")
+
+  insert_record(
+    rights,
+    list(user = "ada", forms = c("notes", "custom"),
+         can_add = TRUE, can_edit = TRUE, can_delete = FALSE),
+    conn = conn, user = "test"
+  )
+
+  rules <- fetch_records(rights, conn = conn)
+  resolved <- rights_permissions(rules, user = "ada", form_id = "notes")
+  testthat::expect_true(resolved$can_add())
+  testthat::expect_true(resolved$can_edit())
+  testthat::expect_false(resolved$can_delete())
+
+  stranger <- rights_permissions(rules, user = "grace", form_id = "notes")
+  testthat::expect_false(stranger$can_add())
+
+  # --- saved column views live in sft_user_preferences ---------------------
+  sft_set_column_view(conn, notes, user = "ada", view_name = "short",
+                      columns = c("title"))
+  sft_set_shared_column_view(conn, notes, view_name = "all",
+                             columns = c("title", "body"))
+
+  testthat::expect_identical(
+    sft_available_column_view_names(conn, notes, "ada"), "short"
+  )
+  testthat::expect_identical(
+    sft_available_shared_column_view_names(conn, notes), "all"
+  )
+  testthat::expect_identical(
+    sft_get_column_view(conn, notes, "ada", "short"), "title"
+  )
+
+  sft_set_active_column_view(conn, notes, "ada", "short")
+  testthat::expect_identical(
+    sft_get_active_column_view(conn, notes, "ada"), "short"
+  )
+})
+
 testthat::test_that("concurrent writers on one record all commit, with no lost version", {
   skip_if_no_mariadb()
   testthat::skip_if_not_installed("parallel")

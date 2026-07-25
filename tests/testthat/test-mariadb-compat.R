@@ -69,6 +69,25 @@ testthat::test_that("a unique TEXT column becomes VARCHAR(255) only where it mus
   )
 })
 
+testthat::test_that("a shape column is created wide enough for real geometry", {
+  # Serialised geometry is routinely larger than MariaDB's 64KB TEXT limit: a
+  # 3000-vertex boundary is ~115KB and was rejected outright.
+  shape <- shape_field(id = "geometry", label = "Boundary", crs = 4326)
+
+  testthat::expect_identical(
+    sft_field_db_definition(shape, conn = fake_mariadb_conn()),
+    "MEDIUMTEXT"
+  )
+
+  # Everywhere else TEXT is already unbounded, and the declared type is what the
+  # backend-neutral signature must keep seeing.
+  conn <- db_connect(db_sqlite(tempfile(fileext = ".sqlite")))
+  on.exit(db_disconnect(conn), add = TRUE)
+
+  testthat::expect_identical(sft_field_db_definition(shape, conn = conn), "TEXT")
+  testthat::expect_identical(sft_field_db_definition(shape, conn = NULL), "TEXT")
+})
+
 testthat::test_that("the schema signature is unchanged by the VARCHAR mapping", {
   # This is the load-bearing part: the signature is computed with conn = NULL, so
   # it must stay backend-neutral. If the mapping leaked into it, every stored
