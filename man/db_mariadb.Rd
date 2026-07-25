@@ -34,8 +34,8 @@ Define a MariaDB database backend
 }
 \section{How MariaDB differs from SQLite}{
 
-The same form behaves slightly differently on a MariaDB or MySQL server than
-it does on SQLite. None of this needs configuring, but it is worth knowing:
+The same form behaves slightly differently on a MariaDB server than it does
+on SQLite. None of this needs configuring, but it is worth knowing:
 
 \itemize{
 \item \strong{Uniqueness ignores case and accents.} MariaDB's default collations
@@ -66,6 +66,10 @@ triggered by the \emph{form} changing, and the system tables are not part of
 that signature -- so on a database whose form is already current, run
 \code{\link[=init_db]{init_db()}} once after upgrading the package to be sure.
 }
+
+MySQL is not supported. This function will connect to it, because the
+protocol is the same, but the package is neither tested nor fixed against it:
+a field carrying a \code{db_default} on a text column cannot be created there.
 }
 
 \examples{

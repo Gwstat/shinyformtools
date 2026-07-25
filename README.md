@@ -132,6 +132,10 @@ db_mariadb(
 deployments; `DuckDB` is supported as an aligned local backend for CRUD, audit,
 and preferences.
 
+MySQL is **not supported**. `db_mariadb()` will connect to it — the protocol is
+the same — but the package is neither tested nor fixed against it: a field with
+a `db_default` on a text column cannot be created there. Use MariaDB.
+
 ## Server-side validation
 
 Cross-field rules are evaluated on the server during insert and update, so they
@@ -224,7 +228,7 @@ run_example("app_crud_basic")
   (HTML-sanitized) Markdown in the table. Needs `commonmark`.
 - **app_backends** — one form, two backends side by side: **SQLite** and
   **DuckDB** (the DuckDB tab appears when `duckdb` is installed).
-- **app_mariadb** — the same form on a **MariaDB / MySQL** server, with an in-app
+- **app_mariadb** — the same form on a **MariaDB** server, with an in-app
   setup tutorial (copy-paste Docker command) when no server is reachable. Needs
   `RMariaDB`.
 - **app_shinymanager** — a support desk with per-user CRUD across two tables,

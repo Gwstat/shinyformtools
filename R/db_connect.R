@@ -69,8 +69,8 @@ db_duckdb <- function(path = "form_data.duckdb",
 #' Define a MariaDB database backend
 #'
 #' @section How MariaDB differs from SQLite:
-#' The same form behaves slightly differently on a MariaDB or MySQL server than
-#' it does on SQLite. None of this needs configuring, but it is worth knowing:
+#' The same form behaves slightly differently on a MariaDB server than it does
+#' on SQLite. None of this needs configuring, but it is worth knowing:
 #'
 #' \itemize{
 #'   \item **Uniqueness ignores case and accents.** MariaDB's default collations
@@ -101,6 +101,10 @@ db_duckdb <- function(path = "form_data.duckdb",
 #'     that signature -- so on a database whose form is already current, run
 #'     [init_db()] once after upgrading the package to be sure.
 #' }
+#'
+#' MySQL is not supported. This function will connect to it, because the
+#' protocol is the same, but the package is neither tested nor fixed against it:
+#' a field carrying a `db_default` on a text column cannot be created there.
 #'
 #' @param dbname Database name.
 #' @param host Database host.
