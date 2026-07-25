@@ -259,7 +259,15 @@ form_ui <- function(id,
 #' @param audit_options Additional DT options for the audit table.
 #' @param version_options Additional DT options for the version table.
 #' @param deleted_records_options Additional DT options for the deleted-records table.
-#' @param datetime_format Format used for displayed timestamps.
+#' @param datetime_format Format used for displayed timestamps. Timestamps are
+#'   rendered in the time zone of the machine running the app -- for a deployed
+#'   Shiny app, the server. Set
+#'   `options(shinyformtools.datetime_timezone = "UTC")`, or to any Olson name
+#'   such as `"Asia/Tokyo"`, to pin it instead. That is what an installation
+#'   serving several regions wants: everyone then reads the same wall clock,
+#'   rather than each viewer having to know where the server stands. Values
+#'   stored without a time-zone offset, such as a user's own date field, are
+#'   never shifted -- only stamps that identify a moment in time are translated.
 #' @param refresh_triggers Optional reactive (or list of reactives) that this
 #'   table should re-fetch on. Pass another form's returned `changed` reactive to
 #'   make this table react to changes in that table, so dependent tables and
