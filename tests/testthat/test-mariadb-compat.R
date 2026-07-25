@@ -146,6 +146,61 @@ testthat::test_that("widening long-text columns is a no-op off MariaDB", {
   ))
 })
 
+testthat::test_that("a conflict is recognised even when the server speaks German", {
+  # Matching the English wording alone silently disabled the whole retry
+  # machinery on a localized server. These are REAL messages captured from
+  # MariaDB 11.8 with lc_messages = 'de_DE'.
+  german <- c(
+    "Doppelter Eintrag '1' für Schlüssel 'PRIMARY' [1062]",
+    paste0(
+      "Beim Warten auf eine Sperre wurde die zulässige Wartezeit ",
+      "überschritten. Bitte versuchen Sie, die Transaktion neu zu ",
+      "starten [1205]"
+    )
+  )
+
+  for (msg in german) {
+    testthat::expect_true(sft_is_retryable_conflict(simpleError(msg)))
+  }
+
+  # The English wording still works, so nothing regressed.
+  testthat::expect_true(sft_is_retryable_conflict(
+    simpleError("Duplicate entry '1' for key 'PRIMARY' [1062]")
+  ))
+
+  # And errors that are NOT conflicts must stay non-retryable in any language -
+  # otherwise a typo in a query would be retried five times before failing.
+  not_conflicts <- c(
+    "Tabelle 'db.nope' existiert nicht [1146]",
+    "Unbekanntes Tabellenfeld 'nope' in SELECT [1054]",
+    "Table 'db.nope' doesn't exist [1146]",
+    "Data too long for column 'config_json' at row 1 [1406]"
+  )
+
+  for (msg in not_conflicts) {
+    testthat::expect_false(sft_is_retryable_conflict(simpleError(msg)))
+  }
+})
+
+testthat::test_that("table lookup is exact unless the server folds identifiers", {
+  conn <- db_connect(db_sqlite(tempfile(fileext = ".sqlite")))
+  on.exit(db_disconnect(conn), add = TRUE)
+
+  DBI::dbExecute(conn, "CREATE TABLE MyStaff (a TEXT)")
+
+  # SQLite is not asked about folding at all, and stores the name as written.
+  testthat::expect_false(sft_folds_table_names(conn))
+  testthat::expect_true(sft_table_exists(conn, "MyStaff"))
+  testthat::expect_false(sft_table_exists(conn, "nowhere"))
+
+  # Case-insensitive matching must NOT leak into a case-sensitive backend:
+  # there, `mystaff` would be a different table.
+  testthat::expect_false(sft_table_exists(conn, "mystaff"))
+
+  testthat::expect_true(sft_tables_present(conn, c("MyStaff"), c("MyStaff", "x")))
+  testthat::expect_false(sft_tables_present(conn, c("MyStaff", "gone"), c("MyStaff")))
+})
+
 testthat::test_that("dropping an index does not rely on IF EXISTS", {
   # MySQL rejects `DROP INDEX ... IF EXISTS` with a syntax error (1064, verified
   # live on 8.4.10), so the MariaDB branch must guard by lookup instead. On

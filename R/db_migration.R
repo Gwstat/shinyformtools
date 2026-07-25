@@ -9,8 +9,59 @@ sft_empty_migration_actions <- function() {
   )
 }
 
+# Whether the server stores table identifiers folded to lower case, i.e.
+# lower_case_table_names is 1 (the Windows default) or 2 (the macOS default). On
+# such a server a table created as `MyStaff` is stored and listed as `mystaff`.
+sft_folds_table_names <- function(conn) {
+  if (!sft_is_mariadb_connection(conn)) {
+    return(FALSE)
+  }
+
+  setting <- tryCatch(
+    DBI::dbGetQuery(conn, "SELECT @@lower_case_table_names AS folded")$folded[1],
+    error = function(e) NULL
+  )
+
+  if (is.null(setting) || length(setting) != 1L || is.na(setting)) {
+    return(FALSE)
+  }
+
+  # as.character() first because the driver may hand back an integer64.
+  !identical(as.integer(as.character(setting)), 0L)
+}
+
+# Are all of `wanted` present among `existing`?
+#
+# The exact comparison comes first and is the whole story on SQLite, DuckDB and
+# a case-sensitive MySQL-protocol server - it costs nothing extra. Only when a
+# table appears to be missing is the server asked whether it folds identifiers,
+# because that changes what "missing" means: with lower_case_table_names set, a
+# form whose table_name carries an uppercase letter creates `mystaff` and then
+# never finds `MyStaff` again. Reproduced live on MariaDB 11.8 started with
+# --lower-case-table-names=1: the schema probe never went green, so every CRUD
+# call re-ran the migration, the second CREATE UNIQUE INDEX failed with
+# "Duplicate key name [1061]", and the form was unusable - no insert succeeded
+# and fetch_records() returned nothing.
+#
+# The fallback is deliberately gated on the server setting rather than always
+# folding: where identifiers ARE case-sensitive, `Foo` and `foo` are two
+# different tables and must not be conflated.
+sft_tables_present <- function(conn,
+                               wanted,
+                               existing = DBI::dbListTables(conn)) {
+  if (all(wanted %in% existing)) {
+    return(TRUE)
+  }
+
+  if (!sft_folds_table_names(conn)) {
+    return(FALSE)
+  }
+
+  all(tolower(wanted) %in% tolower(existing))
+}
+
 sft_table_exists <- function(conn, table_name) {
-  table_name %in% DBI::dbListTables(conn)
+  sft_tables_present(conn, table_name)
 }
 
 # Add a column to an existing table only if it is missing. Used to evolve the
