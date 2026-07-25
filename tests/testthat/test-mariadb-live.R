@@ -304,6 +304,164 @@ testthat::test_that("a table name with an uppercase letter stays usable", {
   testthat::expect_equal(sum(history$action == "create_table"), 1L)
 })
 
+testthat::test_that("a must_be_unique rule enforces composite uniqueness", {
+  skip_if_no_mariadb()
+
+  db <- local_test_mariadb()
+  conn <- db_connect(db)
+  withr::defer(db_disconnect(conn))
+
+  # This rule builds its own multi-column SQL, separate from the composite
+  # unique INDEX behind `unique = TRUE`, so it needs its own live check.
+  bookings <- form(
+    form_id = "bookings", table_name = "bookings", db = db,
+    fields = list(
+      form_field(id = "room", label = "Room", mandatory = TRUE),
+      form_field(id = "day", label = "Day", mandatory = TRUE),
+      form_field(id = "who", label = "Who")
+    ),
+    validation_rules = list(
+      must_be_unique(id = "room_day", fields = c("room", "day"),
+                     message = "That room is taken that day.")
+    )
+  )
+  init_db(bookings, conn = conn, user = "test")
+
+  insert_record(bookings, list(room = "A", day = "2026-08-01", who = "Ada"),
+                conn = conn, user = "test")
+
+  # Only the COMBINATION is unique - the same room on another day is fine.
+  testthat::expect_no_error(
+    insert_record(bookings, list(room = "A", day = "2026-08-02", who = "Grace"),
+                  conn = conn, user = "test")
+  )
+
+  testthat::expect_error(
+    insert_record(bookings, list(room = "A", day = "2026-08-01", who = "Dup"),
+                  conn = conn, user = "test"),
+    "taken that day"
+  )
+
+  # Editing the row that holds the value must not collide with itself.
+  testthat::expect_no_error(
+    update_record(bookings, list(who = "Ada L."), record_id = 1,
+                  conn = conn, user = "test")
+  )
+})
+
+testthat::test_that("a stale edit is rejected instead of overwriting", {
+  skip_if_no_mariadb()
+
+  db <- local_test_mariadb()
+  conn <- db_connect(db)
+  withr::defer(db_disconnect(conn))
+
+  contacts <- test_form_basic("contacts", db = db)
+  init_db(contacts, conn = conn, user = "test")
+  insert_record(contacts, list(name = "Ada", email = "ada@example.com"),
+                conn = conn, user = "test")
+
+  # What the first user saw when they opened the record.
+  opened <- fetch_records(contacts, conn = conn)[1, , drop = FALSE]
+
+  # Someone else saves first.
+  update_record(contacts, list(name = "Changed by B"), record_id = 1,
+                conn = conn, user = "b")
+
+  conflict <- tryCatch(
+    {
+      update_record(contacts, list(name = "Changed by A"), record_id = 1,
+                    conn = conn, user = "a", expected_record = opened)
+      NULL
+    },
+    sft_edit_conflict = function(c) c
+  )
+
+  testthat::expect_s3_class(conflict, "sft_edit_conflict")
+  testthat::expect_identical(conflict$columns, "name")
+
+  # The rejection has to be total: the second save writes nothing at all.
+  testthat::expect_identical(fetch_records(contacts, conn = conn)$name, "Changed by B")
+
+  # Saving what is already stored is not a conflict - only a real difference is.
+  testthat::expect_no_error(
+    update_record(contacts, list(name = "Changed by B"), record_id = 1,
+                  conn = conn, user = "a",
+                  expected_record = fetch_records(contacts, conn = conn)[1, , drop = FALSE])
+  )
+})
+
+testthat::test_that("restore refuses to steal a unique value from a live record", {
+  skip_if_no_mariadb()
+
+  db <- local_test_mariadb()
+  conn <- db_connect(db)
+  withr::defer(db_disconnect(conn))
+
+  contacts <- test_form_basic("contacts", db = db)
+  init_db(contacts, conn = conn, user = "test")
+
+  insert_record(contacts, list(name = "Grace", email = "grace@example.com"),
+                conn = conn, user = "test")
+  soft_delete_record(contacts, record_id = 1, conn = conn, user = "test")
+
+  # The soft delete freed the address, and somebody else took it.
+  insert_record(contacts, list(name = "Taker", email = "grace@example.com"),
+                conn = conn, user = "test")
+
+  testthat::expect_error(
+    restore_record(contacts, record_id = 1, conn = conn, user = "test"),
+    "already held by an active record"
+  )
+
+  # Once it is free again the restore goes through.
+  soft_delete_record(contacts, record_id = 2, conn = conn, user = "test")
+  testthat::expect_no_error(
+    restore_record(contacts, record_id = 1, conn = conn, user = "test")
+  )
+  expect_record_count(contacts, conn, 1)
+
+  # Restoring an old version without reactivating leaves the deleted state alone.
+  update_record(contacts, list(name = "Grace H."), record_id = 1, conn = conn, user = "test")
+  testthat::expect_no_error(
+    restore_record(contacts, record_id = 1, version_no = 1, conn = conn,
+                   user = "test", reactivate = FALSE)
+  )
+})
+
+testthat::test_that("a connection the server dropped is healed", {
+  skip_if_no_mariadb()
+
+  db <- local_test_mariadb()
+  conn <- db_connect(db)
+  withr::defer(db_disconnect(conn))
+
+  contacts <- test_form_basic("contacts", db = db)
+  init_db(contacts, conn = conn, user = "test")
+
+  victim <- db_connect(db)
+  thread <- DBI::dbGetQuery(victim, "SELECT CONNECTION_ID() AS id")$id[1]
+
+  # A real server-side drop, which is what a MariaDB wait_timeout does to a
+  # long-idle Shiny session.
+  DBI::dbExecute(conn, paste("KILL", as.character(thread)))
+  Sys.sleep(0.5)
+
+  # This is why the guard runs a probe query instead of trusting dbIsValid():
+  # the client still believes the connection is fine.
+  testthat::expect_true(DBI::dbIsValid(victim))
+  testthat::expect_error(DBI::dbGetQuery(victim, "SELECT 1"))
+
+  healed <- sft_live_connection(victim, db)
+  withr::defer(db_disconnect(healed))
+
+  testthat::expect_no_error(DBI::dbGetQuery(healed, "SELECT 1"))
+  testthat::expect_no_error(
+    insert_record(contacts, list(name = "After reconnect", email = "post@example.com"),
+                  conn = healed, user = "test")
+  )
+})
+
 testthat::test_that("a shape field round-trips, including a geometry past 64KB", {
   skip_if_no_mariadb()
   testthat::skip_if_not_installed("sf")
