@@ -184,7 +184,15 @@ for example \code{function(table) DT::formatStyle(table, "Status", ...)}.}
 
 \item{deleted_records_options}{Additional DT options for the deleted-records table.}
 
-\item{datetime_format}{Format used for displayed timestamps.}
+\item{datetime_format}{Format used for displayed timestamps. Timestamps are
+rendered in the time zone of the machine running the app -- for a deployed
+Shiny app, the server. Set
+\code{options(shinyformtools.datetime_timezone = "UTC")}, or to any Olson name
+such as \code{"Asia/Tokyo"}, to pin it instead. That is what an installation
+serving several regions wants: everyone then reads the same wall clock,
+rather than each viewer having to know where the server stands. Values
+stored without a time-zone offset, such as a user's own date field, are
+never shifted -- only stamps that identify a moment in time are translated.}
 
 \item{refresh_triggers}{Optional reactive (or list of reactives) that this
 table should re-fetch on. Pass another form's returned \code{changed} reactive to

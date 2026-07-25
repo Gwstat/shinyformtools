@@ -40,13 +40,63 @@ sft_default_datetime_format <- function() {
   "%d.%m.%Y %H:%M"
 }
 
+# The time zone displayed timestamps are rendered in.
+#
+# Defaults to "" - the time zone of the machine running the app, which for a
+# Shiny app is the server. Set `options(shinyformtools.datetime_timezone = ...)`
+# to pin it, either to "UTC" or to any Olson name ("Asia/Tokyo"), which is what
+# a deployment serving several regions wants: everyone then reads the same wall
+# clock instead of the server's.
+sft_datetime_timezone <- function() {
+  value <- getOption("shinyformtools.datetime_timezone", default = "")
+
+  if (!is.character(value) || length(value) != 1L || is.na(value)) {
+    return("")
+  }
+
+  value
+}
+
+# Whether a timestamp string carries a UTC offset, and therefore identifies a
+# moment in time rather than a wall-clock reading.
+#
+# The distinction decides whether the value may be shifted. `sft_now()` writes
+# "...T08:18:03.670+0200", which names an instant: rendering it in another zone
+# is a correct translation. A user's own date field holds "2026-08-01" or a
+# plain "2026-08-01 09:00" with no offset - a wall-clock reading whose zone
+# nobody recorded. Shifting THAT would silently change the value the user typed,
+# so it is formatted back exactly as written.
+sft_has_utc_offset <- function(x) {
+  grepl("(Z|[+-][0-9]{2}:?[0-9]{2})$", trimws(as.character(x)))
+}
+
+# Timestamp spellings a stored value may arrive in, most specific first: the
+# offset-bearing ones must be tried before their offset-less counterparts, or
+# "...T08:18:03+0200" would match "%Y-%m-%dT%H:%M:%S" with the offset ignored
+# and the value would silently lose two hours.
+sft_datetime_parse_formats <- function() {
+  c(
+    "%Y-%m-%d %H:%M:%OS%z",
+    "%Y-%m-%d %H:%M:%S%z",
+    "%Y-%m-%dT%H:%M:%OS%z",
+    "%Y-%m-%dT%H:%M:%S%z",
+    "%Y-%m-%d %H:%M:%OS",
+    "%Y-%m-%d %H:%M:%S",
+    "%Y-%m-%dT%H:%M:%OS",
+    "%Y-%m-%dT%H:%M:%S",
+    "%Y-%m-%d"
+  )
+}
+
 sft_format_datetime_value <- function(x, datetime_format = sft_default_datetime_format()) {
   if (is.null(x)) {
     return(x)
   }
 
+  display_tz <- sft_datetime_timezone()
+
   if (inherits(x, "POSIXt")) {
-    return(format(x, datetime_format))
+    return(format(x, datetime_format, tz = display_tz))
   }
 
   x_chr <- as.character(x)
@@ -57,29 +107,42 @@ sft_format_datetime_value <- function(x, datetime_format = sft_default_datetime_
     return(out)
   }
 
-  parsed <- suppressWarnings(
-    as.POSIXct(
-      x_chr[needs_format],
-      tz = "UTC",
-      tryFormats = c(
-        "%Y-%m-%d %H:%M:%OS%z",
-        "%Y-%m-%d %H:%M:%S%z",
-        "%Y-%m-%dT%H:%M:%OS%z",
-        "%Y-%m-%dT%H:%M:%S%z",
-        "%Y-%m-%d %H:%M:%OS",
-        "%Y-%m-%d %H:%M:%S",
-        "%Y-%m-%dT%H:%M:%OS",
-        "%Y-%m-%dT%H:%M:%S",
-        "%Y-%m-%d"
-      )
+  values <- x_chr[needs_format]
+
+  # Parsing in UTC keeps the arithmetic honest: a value carrying an offset is
+  # converted to the right instant, and one without is taken at face value.
+  #
+  # The formats are applied one at a time rather than handed to as.POSIXct()'s
+  # `tryFormats`, which looks convenient but is all-or-nothing: it picks a
+  # format only if it matches EVERY value, and when none does it THROWS
+  # ("character string is not in a standard unambiguous format") rather than
+  # returning NA - a single unexpected string in a column would take the whole
+  # table down. Applying each format in turn and keeping whatever it resolves
+  # leaves unparseable values as NA, which is what the fallback below always
+  # assumed, and lets one column hold a mix of spellings.
+  parsed <- as.POSIXct(rep(NA_real_, length(values)), origin = "1970-01-01", tz = "UTC")
+
+  for (format_candidate in sft_datetime_parse_formats()) {
+    unresolved <- is.na(parsed)
+
+    if (!any(unresolved)) {
+      break
+    }
+
+    parsed[unresolved] <- suppressWarnings(
+      as.POSIXct(strptime(values[unresolved], format_candidate, tz = "UTC"))
     )
+  }
+
+  # Rendering in UTC returns an offset-less value unchanged, because that is the
+  # zone it was parsed as.
+  formatted <- ifelse(
+    sft_has_utc_offset(values),
+    format(parsed, datetime_format, tz = display_tz),
+    format(parsed, datetime_format, tz = "UTC")
   )
 
-  formatted <- ifelse(
-    is.na(parsed),
-    x_chr[needs_format],
-    format(parsed, datetime_format)
-  )
+  formatted <- ifelse(is.na(parsed), values, formatted)
 
   out[needs_format] <- formatted
   out
