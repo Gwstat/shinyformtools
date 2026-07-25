@@ -32,6 +32,42 @@ A shinyformtools database configuration.
 \description{
 Define a MariaDB database backend
 }
+\section{How MariaDB differs from SQLite}{
+
+The same form behaves slightly differently on a MariaDB or MySQL server than
+it does on SQLite. None of this needs configuring, but it is worth knowing:
+
+\itemize{
+\item \strong{Uniqueness ignores case and accents.} MariaDB's default collations
+are accent- and case-insensitive, so a field declared \code{unique = TRUE}
+treats \code{"MULLER@example.com"} and \code{"muller@example.com"} as the same
+value -- and likewise two spellings that differ only by an umlaut. SQLite
+compares exactly, so the identical form accepts both there. Uniqueness is
+therefore stricter on MariaDB, never looser.
+\item \strong{Unique text fields are capped at 255 characters on older servers.}
+MariaDB 10.4 and newer index an unbounded \code{TEXT} column directly. Older
+MariaDB and MySQL cannot, so the column is created as \code{VARCHAR(255)}
+instead -- otherwise the unique constraint could not exist at all.
+\item \strong{Schema changes are not transactional.} MariaDB commits each
+\code{CREATE}/\code{ALTER} statement as it runs, so a migration that fails halfway
+leaves the completed steps in place. \code{\link[=apply_migration]{apply_migration()}} therefore runs
+the plan directly on MariaDB rather than pretending a transaction would
+protect it. On SQLite and DuckDB the plan does roll back as one unit.
+\item \strong{Tables are created as utf8mb4.} Without this they would inherit
+the server default, which on MariaDB 10.5 and older is \code{latin1} -- and a
+\code{latin1} column rejects (or worse, silently truncates) anything outside
+Western European text. Tables that already exist are left as they are;
+converting one rewrites stored data and is a deliberate manual step.
+\item \strong{Databases created by an older version of this package are widened.}
+The columns holding JSON payloads were once \code{TEXT}, which MariaDB caps at
+64KB; they are altered to \code{MEDIUMTEXT} whenever the schema is reconciled,
+and always by an explicit \code{\link[=init_db]{init_db()}}. Note that reconciliation is
+triggered by the \emph{form} changing, and the system tables are not part of
+that signature -- so on a database whose form is already current, run
+\code{\link[=init_db]{init_db()}} once after upgrading the package to be sure.
+}
+}
+
 \examples{
 # Builds a configuration object only; it does not connect to a server.
 db <- db_mariadb(

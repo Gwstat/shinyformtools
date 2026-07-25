@@ -68,6 +68,40 @@ db_duckdb <- function(path = "form_data.duckdb",
 
 #' Define a MariaDB database backend
 #'
+#' @section How MariaDB differs from SQLite:
+#' The same form behaves slightly differently on a MariaDB or MySQL server than
+#' it does on SQLite. None of this needs configuring, but it is worth knowing:
+#'
+#' \itemize{
+#'   \item **Uniqueness ignores case and accents.** MariaDB's default collations
+#'     are accent- and case-insensitive, so a field declared `unique = TRUE`
+#'     treats `"MULLER@example.com"` and `"muller@example.com"` as the same
+#'     value -- and likewise two spellings that differ only by an umlaut. SQLite
+#'     compares exactly, so the identical form accepts both there. Uniqueness is
+#'     therefore stricter on MariaDB, never looser.
+#'   \item **Unique text fields are capped at 255 characters on older servers.**
+#'     MariaDB 10.4 and newer index an unbounded `TEXT` column directly. Older
+#'     MariaDB and MySQL cannot, so the column is created as `VARCHAR(255)`
+#'     instead -- otherwise the unique constraint could not exist at all.
+#'   \item **Schema changes are not transactional.** MariaDB commits each
+#'     `CREATE`/`ALTER` statement as it runs, so a migration that fails halfway
+#'     leaves the completed steps in place. [apply_migration()] therefore runs
+#'     the plan directly on MariaDB rather than pretending a transaction would
+#'     protect it. On SQLite and DuckDB the plan does roll back as one unit.
+#'   \item **Tables are created as utf8mb4.** Without this they would inherit
+#'     the server default, which on MariaDB 10.5 and older is `latin1` -- and a
+#'     `latin1` column rejects (or worse, silently truncates) anything outside
+#'     Western European text. Tables that already exist are left as they are;
+#'     converting one rewrites stored data and is a deliberate manual step.
+#'   \item **Databases created by an older version of this package are widened.**
+#'     The columns holding JSON payloads were once `TEXT`, which MariaDB caps at
+#'     64KB; they are altered to `MEDIUMTEXT` whenever the schema is reconciled,
+#'     and always by an explicit [init_db()]. Note that reconciliation is
+#'     triggered by the *form* changing, and the system tables are not part of
+#'     that signature -- so on a database whose form is already current, run
+#'     [init_db()] once after upgrading the package to be sure.
+#' }
+#'
 #' @param dbname Database name.
 #' @param host Database host.
 #' @param port Database port.
@@ -600,7 +634,17 @@ sft_prepend_explicit_id <- function(conn, table_name, id_column, columns, values
 # A genuine business-unique violation that slips past validation also matches,
 # but retrying stays safe: the retry re-runs validate_record, which now sees
 # the committed duplicate and raises a clean (non-retryable) validation error, so
-# the loop stops after one extra attempt rather than spinning. Internal.
+# the loop stops after one extra attempt rather than spinning.
+#
+# MATCHING THE PROSE ALONE IS NOT ENOUGH, and this was found the hard way: the
+# server translates its error text. With lc_messages = 'de_DE' the very same
+# duplicate arrives as "Doppelter Eintrag '1' fuer Schluessel 'PRIMARY' [1062]",
+# none of the English phrases match, and the whole retry machinery silently
+# stops working - on a server nobody would think to test, because test servers
+# run in English. The numeric error code is NOT translated and RMariaDB appends
+# it to every message in brackets, so the codes below are the language-proof
+# half of this predicate and the prose is the fallback for drivers that omit
+# them. Internal.
 sft_is_retryable_conflict <- function(e) {
   msg <- conditionMessage(e)
 
@@ -610,6 +654,7 @@ sft_is_retryable_conflict <- function(e) {
 
   grepl(
     paste(
+      # Wording, as SQLite, DuckDB and an English-language MariaDB phrase it.
       "UNIQUE constraint failed",
       "must be unique",
       "Duplicate entry",
@@ -619,6 +664,16 @@ sft_is_retryable_conflict <- function(e) {
       "Deadlock found",
       "Lock wait timeout exceeded",
       "Record has changed since last read",
+      # MySQL-protocol error numbers, which no locale changes:
+      #   1062 / 1586 duplicate entry for a unique or primary key
+      #   1213      deadlock, the victim was rolled back
+      #   1205      lock wait timeout
+      #   1020      record has changed since last read
+      "\\[1062\\]",
+      "\\[1586\\]",
+      "\\[1213\\]",
+      "\\[1205\\]",
+      "\\[1020\\]",
       sep = "|"
     ),
     msg,

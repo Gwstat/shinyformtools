@@ -634,7 +634,7 @@ sft_schema_is_current <- function(conn, form) {
     form$table_name
   )
 
-  if (!all(required_tables %in% tables)) {
+  if (!sft_tables_present(conn, required_tables, tables)) {
     return(FALSE)
   }
 
@@ -774,11 +774,19 @@ sft_unique_index_error_message <- function(index, form, original) {
     original
   )
 
+  already_exists <- grepl("Duplicate key name|\\[1061\\]", original)
+
   cause <- if (key_length_error) {
     paste0(
       "This server cannot put a unique index on an unbounded TEXT column ",
       "(MariaDB before 10.4, and MySQL at any version). Declare the field ",
       "with db_type = \"VARCHAR(255)\", or use MariaDB 10.4 or newer."
+    )
+  } else if (already_exists) {
+    paste0(
+      "The index already exists, which means the schema was believed to be ",
+      "missing when it is not - typically a table name the server stores ",
+      "differently from how the form spells it."
     )
   } else {
     paste0(
