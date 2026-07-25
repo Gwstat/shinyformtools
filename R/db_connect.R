@@ -446,6 +446,77 @@ sft_long_text_definition <- function(conn) {
   "TEXT"
 }
 
+# Whether the server can put a UNIQUE index on an unbounded TEXT column.
+#
+# MariaDB >= 10.4 does it transparently by creating a UNIQUE HASH index (live
+# check: SHOW INDEX reports Index_type HASH). Everything older - and real MySQL
+# at any version - rejects it with "BLOB/TEXT column used in key specification
+# without a key length [1170]", reproduced live on MariaDB 10.3.39 and MySQL
+# 8.4.10. Where it is not supported, a unique TEXT field's column is created as
+# VARCHAR(255) instead (see sft_field_db_definition), which is indexable
+# everywhere.
+sft_supports_unique_text_index <- function(conn) {
+  if (!sft_is_mariadb_connection(conn)) {
+    return(TRUE)
+  }
+
+  version <- tryCatch(
+    as.character(DBI::dbGetQuery(conn, "SELECT VERSION() AS version")$version[1]),
+    # An unreadable version means the conservative answer: VARCHAR(255) works on
+    # every server, an unindexable TEXT column works on none.
+    error = function(e) ""
+  )
+
+  sft_mariadb_supports_unique_text(version)
+}
+
+# The version test behind sft_supports_unique_text_index(), split out so it can
+# be exercised without a server. `version` is what SELECT VERSION() returns,
+# e.g. "10.3.39-MariaDB-1:10.3.39+maria~ubu2004" or "8.4.10" for MySQL.
+sft_mariadb_supports_unique_text <- function(version) {
+  version <- as.character(version %||% "")
+
+  if (!grepl("mariadb", version, ignore.case = TRUE)) {
+    return(FALSE)
+  }
+
+  # Some MariaDB builds prefix the version with "5.5.5-" so that very old
+  # clients keep connecting; strip it before reading the real numbers.
+  version <- sub("^5\\.5\\.5-", "", version)
+
+  numbers <- regmatches(version, regexpr("^[0-9]+\\.[0-9]+", version))
+
+  if (length(numbers) != 1L) {
+    return(FALSE)
+  }
+
+  parts <- as.integer(strsplit(numbers, ".", fixed = TRUE)[[1]])
+
+  isTRUE(parts[1] > 10L || (parts[1] == 10L && parts[2] >= 4L))
+}
+
+# Clause appended to every CREATE TABLE the package issues.
+#
+# Without it, MariaDB/MySQL tables inherit the server's default charset - and
+# MariaDB <= 10.5 defaults to latin1. Verified live on 10.3.39: a database
+# created with a plain CREATE DATABASE produced latin1_swedish_ci tables, where
+# umlauts still round-tripped (they exist in latin1) but CJK and emoji inserts
+# were rejected with "Incorrect string value ... [1366]" - and without the strict
+# sql_mode they would have been silently truncated instead. Pinning utf8mb4
+# makes the schema independent of how the database happened to be created.
+#
+# This affects tables created from here on. An existing latin1 table is left
+# alone: converting one is an ALTER TABLE ... CONVERT TO CHARACTER SET that
+# rewrites stored bytes, which is not something to do implicitly behind a CRUD
+# call. Empty on SQLite and DuckDB, so their DDL is byte-for-byte unchanged.
+sft_create_table_suffix <- function(conn) {
+  if (sft_is_mariadb_connection(conn)) {
+    return(" DEFAULT CHARSET=utf8mb4")
+  }
+
+  ""
+}
+
 sft_last_insert_id <- function(conn) {
   if (sft_is_mariadb_connection(conn)) {
     out <- DBI::dbGetQuery(conn, "SELECT LAST_INSERT_ID() AS sft_id")

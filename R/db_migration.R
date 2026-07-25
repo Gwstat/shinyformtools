@@ -30,6 +30,77 @@ sft_ensure_column <- function(conn, table_name, column, definition) {
   invisible(TRUE)
 }
 
+# The system tables whose payload columns hold JSON or free text.
+sft_system_table_names <- function() {
+  c(
+    "sft_forms",
+    "sft_fields",
+    "sft_schema_migrations",
+    "sft_audit_log",
+    "sft_user_preferences"
+  )
+}
+
+# Widen system-table payload columns that an older version of the package
+# created as TEXT.
+#
+# MariaDB caps TEXT at 64KB and, under the strict sql_mode default, ERRORS on
+# overflow instead of truncating. New databases therefore get MEDIUMTEXT from
+# sft_long_text_definition() - but CREATE TABLE IF NOT EXISTS never alters a
+# table that already exists, so every database initialised before that change
+# keeps its 64KB ceiling forever. Reproduced live: a 144KB config_json fails
+# with "Data too long for column 'config_json' at row 1 [1406]". This is the
+# migration step that closes the gap, mirroring sft_ensure_column().
+#
+# Which columns to widen is read from the database rather than listed here. On
+# MariaDB every system-table column the package creates is either VARCHAR(255)
+# (short text) or a long-text payload column, so "DATA_TYPE = 'text'" IS exactly
+# the payload set - and unlike a hardcoded list it cannot drift out of sync with
+# the CREATE TABLE statements above. Idempotent: once widened the columns report
+# 'mediumtext' and no longer match. Internal.
+sft_widen_long_text_columns <- function(conn) {
+  if (!sft_is_mariadb_connection(conn)) {
+    return(invisible(FALSE))
+  }
+
+  tables <- intersect(sft_system_table_names(), DBI::dbListTables(conn))
+
+  if (length(tables) == 0L) {
+    return(invisible(FALSE))
+  }
+
+  narrow <- DBI::dbGetQuery(
+    conn,
+    paste0(
+      "SELECT TABLE_NAME AS table_name, COLUMN_NAME AS column_name ",
+      "FROM information_schema.COLUMNS ",
+      "WHERE TABLE_SCHEMA = DATABASE() ",
+      "  AND DATA_TYPE = 'text' ",
+      "  AND TABLE_NAME IN (",
+      paste(rep("?", length(tables)), collapse = ", "),
+      ")"
+    ),
+    params = as.list(tables)
+  )
+
+  if (nrow(narrow) == 0L) {
+    return(invisible(FALSE))
+  }
+
+  for (i in seq_len(nrow(narrow))) {
+    DBI::dbExecute(
+      conn,
+      paste0(
+        "ALTER TABLE ", sft_quote_identifier(conn, narrow$table_name[i]),
+        " MODIFY COLUMN ", sft_quote_identifier(conn, narrow$column_name[i]),
+        " ", sft_long_text_definition(conn)
+      )
+    )
+  }
+
+  invisible(TRUE)
+}
+
 sft_table_info <- function(conn, table_name) {
   if (!sft_table_exists(conn, table_name)) {
     return(
