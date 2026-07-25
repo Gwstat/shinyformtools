@@ -37,8 +37,9 @@ Start with **app_crud_basic**; the rest each focus on one capability.
   is `db_sqlite()` versus `db_duckdb()`. The DuckDB tab appears only when the
   optional `duckdb` package is installed.
 
-- **app_mariadb** — the same declarative form backed by a **MariaDB / MySQL**
-  server. Switching backend is again one line (`db_mariadb(...)`), but a server
+- **app_mariadb** — the same declarative form backed by a **MariaDB**
+  server (MySQL is not supported; see the README). Switching backend is again
+  one line (`db_mariadb(...)`), but a server
   is needed. The connection defaults to user `sft` / password `sft` on
   `127.0.0.1:3306` (database `shinyformtools`) so it works out of the box against
   the server below; override any of it with `SFT_MARIADB_USER` /
