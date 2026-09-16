@@ -40,13 +40,13 @@ test_that("deprecated flat form_server arguments land in their bundles", {
         highlight_color = "#123456"
       ),
       {
-        expect_false(can_add)
-        expect_identical(table_filter, "top")
-        expect_identical(table_columns, "name")
-        expect_identical(highlight_color, "#123456")
+        expect_false(state$permissions$can_add)
+        expect_identical(state$table$filter, "top")
+        expect_identical(state$columns$visible, "name")
+        expect_identical(state$highlight$color, "#123456")
         # Untouched settings keep their defaults.
-        expect_true(can_edit)
-        expect_identical(default_column_view, "Standard")
+        expect_true(state$permissions$can_edit)
+        expect_identical(state$columns$default_view, "Standard")
       }
     )
   )
@@ -75,7 +75,7 @@ test_that("an explicit bundle entry wins over a deprecated argument", {
         permissions = list(can_add = TRUE),
         can_add = FALSE
       ),
-      expect_true(can_add)
+      expect_true(state$permissions$can_add)
     )
   )
 })
@@ -113,8 +113,8 @@ test_that("permissions$user supplies the user when the argument is NULL", {
       permissions = list(user = "alice", can_delete = FALSE)
     ),
     {
-      expect_identical(user, "alice")
-      expect_false(can_delete)
+      expect_identical(state$user, "alice")
+      expect_false(state$permissions$can_delete)
     }
   )
 
@@ -126,7 +126,7 @@ test_that("permissions$user supplies the user when the argument is NULL", {
       user = "bob",
       permissions = list(user = "alice")
     ),
-    expect_identical(user, "bob")
+    expect_identical(state$user, "bob")
   )
 })
 
@@ -145,7 +145,7 @@ test_that("form_server picks the layout up from the UI's hidden input", {
       session$flushReact()
       session$setInputs(sft_form_layout = "inline")
       session$setInputs(open_add = 1L)
-      expect_identical(inline_active(), "add")
+      expect_identical(state$inline_active(), "add")
     }
   )
 
@@ -156,7 +156,7 @@ test_that("form_server picks the layout up from the UI's hidden input", {
     {
       session$flushReact()
       session$setInputs(open_add = 1L)
-      expect_null(inline_active())
+      expect_null(state$inline_active())
     }
   )
 })

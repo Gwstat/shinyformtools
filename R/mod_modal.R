@@ -397,3 +397,43 @@ sft_show_versions_modal <- function(session, row, labels, modal_sizes, can_resto
   )
 }
 
+# The optional caller-supplied header at the top of the add and edit forms
+# (`form_server(modal_header = )`), rendered for both layouts. Registrar.
+sft_register_modal_header <- function(input, output, session, state) {
+  modal_header <- state$modal_header
+  form <- state$form
+
+  if (is.null(modal_header)) {
+    return(invisible(list()))
+  }
+
+  render_header <- function(prefix, record) {
+    sft_render_modal_header(
+      modal_header = modal_header,
+      form = form,
+      ns = session$ns,
+      prefix = prefix,
+      values = sft_modal_input_values(
+        form = form,
+        input = input,
+        prefix = prefix,
+        record = record
+      ),
+      record = record,
+      context = state$display_context(),
+      input = input,
+      output = output,
+      session = session
+    )
+  }
+
+  output$add_modal_header <- shiny::renderUI({
+    render_header("add_", NULL)
+  })
+
+  output$edit_modal_header <- shiny::renderUI({
+    render_header("edit_", state$current_edit_row())
+  })
+
+  invisible(list())
+}

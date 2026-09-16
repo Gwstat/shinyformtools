@@ -325,3 +325,49 @@ form_buttons <- function(id,
   )
 }
 
+# Reactively hide the action buttons, the records table and the audit table
+# whose permission is FALSE (`permissions$hide_forbidden`), so the visible
+# controls match the permissions without callers reaching into namespaced
+# ids. The server-side guards in mod_crud.R stay in force regardless of
+# visibility, so a hidden control can never trigger its action. Registrar.
+sft_register_visibility <- function(input, output, session, state) {
+  permissions <- state$permissions
+
+  if (!isTRUE(permissions$hide_forbidden)) {
+    return(invisible(list()))
+  }
+
+  button_permissions <- list(
+    open_add = permissions$can_add,
+    open_edit = permissions$can_view_record,
+    delete = permissions$can_delete,
+    refresh_table = permissions$can_reset_table,
+    open_deleted_records = permissions$can_view_deleted_records,
+    open_column_selection = function() {
+      state$permission("can_select_column_view") ||
+        state$permission("can_change_column_settings")
+    }
+  )
+
+  shiny::observe({
+    for (button_id in names(button_permissions)) {
+      shinyjs::toggle(
+        id = button_id,
+        condition = sft_module_permission(button_permissions[[button_id]], default = TRUE)
+      )
+    }
+
+    shinyjs::toggle(
+      id = "records_container",
+      condition = state$permission("can_view_table")
+    )
+
+    # No-op when form_ui() did not render the audit container.
+    shinyjs::toggle(
+      id = "audit_container",
+      condition = state$permission("can_view_audit")
+    )
+  })
+
+  invisible(list())
+}

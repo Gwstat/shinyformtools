@@ -465,24 +465,105 @@ sft_show_column_selection_modal <- function(session,
 # Parent-owned state (set_record_columns, active_column_view) and the parent's
 # reactives (display_records, column_choices, current_record_columns) are
 # threaded in explicitly rather than captured.
-sft_register_column_settings <- function(input,
-                                          output,
-                                          session,
-                                          form,
-                                          live_conn,
-                                          user,
-                                          labels,
-                                          modal_sizes,
-                                          table_views,
-                                          persist_column_settings,
-                                          show_system_columns,
-                                          can_change_column_settings,
-                                          can_select_column_view,
-                                          display_records,
-                                          column_choices,
-                                          current_record_columns,
-                                          active_column_view,
-                                          set_record_columns) {
+sft_register_column_settings <- function(input, output, session, state) {
+  form <- state$form
+  live_conn <- state$conn
+  user <- state$user
+  labels <- state$labels
+  modal_sizes <- state$modal_sizes
+  table_columns <- state$columns$visible
+  table_views <- state$columns$views
+  default_column_view <- state$columns$default_view
+  persist_column_settings <- state$columns$persist
+  show_system_columns <- state$columns$show_system
+  display_column_labels <- state$columns$labels
+  can_change_column_settings <- state$permissions$can_change_column_settings
+  can_select_column_view <- state$permissions$can_select_column_view
+  display_records <- state$display_records
+  record_columns <- state$record_columns
+  record_columns_loaded_for <- state$record_columns_loaded_for
+  active_column_view <- state$active_column_view
+  set_record_columns <- state$set_record_columns
+
+  # Which columns the records table shows. Loads the user's saved view once
+  # per user (when persistence is on), falling back to the default view, the
+  # legacy per-user column settings, and finally `columns$visible`.
+  current_record_columns <- shiny::reactive({
+    data <- display_records()
+
+    user_id <- sft_preference_user_id(sft_module_current_user(input, user))
+
+    if (isTRUE(persist_column_settings) && !identical(record_columns_loaded_for(), user_id)) {
+      view_name <- sft_get_active_column_view(
+        conn = live_conn(),
+        form = form,
+        user = user_id
+      )
+
+      saved_columns <- sft_resolve_saved_column_view(
+        conn = live_conn(),
+        form = form,
+        user = user_id,
+        table_views = table_views,
+        view_name = view_name
+      )
+
+      if (!is.null(saved_columns)) {
+        set_record_columns(saved_columns)
+        active_column_view(view_name)
+      } else {
+        fallback_view <- sft_column_view_key(
+          sft_module_value(default_column_view, default = "Standard")
+        )
+
+        fallback_columns <- sft_resolve_saved_column_view(
+          conn = live_conn(),
+          form = form,
+          user = user_id,
+          table_views = table_views,
+          view_name = fallback_view
+        )
+
+        if (!is.null(fallback_columns)) {
+          set_record_columns(fallback_columns)
+          active_column_view(fallback_view)
+        } else {
+          legacy_columns <- sft_get_column_settings(
+            conn = live_conn(),
+            form = form,
+            user = user_id
+          )
+
+          if (!is.null(legacy_columns)) {
+            set_record_columns(legacy_columns)
+            active_column_view("Standard")
+          } else {
+            set_record_columns(table_columns)
+            active_column_view(fallback_view)
+          }
+        }
+      }
+
+      record_columns_loaded_for(user_id)
+    }
+
+    sft_resolve_record_columns(
+      form = form,
+      data = data,
+      columns = record_columns(),
+      show_system_columns = show_system_columns
+    )
+  })
+
+  column_choices <- shiny::reactive({
+    sft_record_column_choices(
+      form = form,
+      data = display_records(),
+      show_system_columns = show_system_columns,
+      display_column_labels = display_column_labels
+    )
+  })
+
   resolve_column_view_columns <- function(view_name) {
     sft_resolve_column_view_columns(
       view_name = view_name,
@@ -662,5 +743,8 @@ sft_register_column_settings <- function(input,
     )
   })
 
-  invisible(NULL)
+  invisible(list(
+    current_record_columns = current_record_columns,
+    column_choices = column_choices
+  ))
 }

@@ -4,28 +4,41 @@
 # module server (so it is exercised by form_server's tests). It renders the
 # records DataTable, keeps it in sync via a proxy on every mutation (re-selecting
 # the active row), and registers the audit table render.
-sft_register_records_table <- function(input,
-                                       output,
-                                       session,
-                                       form,
-                                       live_conn,
-                                       show_system_columns,
-                                       table_options,
-                                       table_class,
-                                       table_filter,
-                                       table_format,
-                                       audit_options,
-                                       datetime_format,
-                                       display_column_labels,
-                                       can_view_table,
-                                       can_view_audit,
-                                       table_structure_tick,
-                                       refresh_tick,
-                                       display_records,
-                                       current_record_columns,
-                                       selected_record,
-                                       selected_record_id,
-                                       display_context) {
+sft_register_records_table <- function(input, output, session, state) {
+  form <- state$form
+  live_conn <- state$conn
+  show_system_columns <- state$columns$show_system
+  table_options <- state$table$options
+  table_class <- state$table$class
+  table_filter <- state$table$filter
+  table_format <- state$table$format
+  audit_options <- state$table$audit_options
+  datetime_format <- state$table$datetime_format
+  display_column_labels <- state$columns$labels
+  can_view_table <- state$permissions$can_view_table
+  can_view_audit <- state$permissions$can_view_audit
+  table_structure_tick <- state$table_structure_tick
+  refresh_tick <- state$refresh_tick
+  display_records <- state$display_records
+  selected_record <- state$selected_record
+  selected_record_id <- state$selected_record_id
+  display_context <- state$display_context
+  # exposed by sft_register_column_settings(); read lazily
+  current_record_columns <- function() state$current_record_columns()
+
+  # Remember the selected sft_id so the table can re-select the row after a
+  # refresh. Deselection delivers NULL: clear the id, so a later refresh does
+  # not re-select the row the user just deselected.
+  shiny::observeEvent(input$records_rows_selected, {
+    row <- selected_record()
+
+    if (!is.null(row) && "sft_id" %in% names(row)) {
+      selected_record_id(row$sft_id[1])
+    } else {
+      selected_record_id(NULL)
+    }
+  }, ignoreNULL = FALSE, ignoreInit = TRUE)
+
   output$records <- DT::renderDT({
     table_structure_tick()
 
@@ -122,5 +135,5 @@ sft_register_records_table <- function(input,
     )
   })
 
-  invisible(NULL)
+  invisible(list())
 }

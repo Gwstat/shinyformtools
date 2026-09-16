@@ -36,14 +36,14 @@ testthat::test_that("column-settings widget, save, and load run in the module", 
         save_column_view = 1L
       )
 
-      testthat::expect_equal(active_column_view(), "NameOnly")
-      testthat::expect_true(all(c("sft_easy_id", "name") %in% record_columns()))
-      testthat::expect_false("city" %in% record_columns())
+      testthat::expect_equal(state$active_column_view(), "NameOnly")
+      testthat::expect_true(all(c("sft_easy_id", "name") %in% state$record_columns()))
+      testthat::expect_false("city" %in% state$record_columns())
 
       # Load the Standard view back through the load observer.
       session$setInputs(column_settings_view = "Standard")
       session$setInputs(load_column_view = 1L)
-      testthat::expect_equal(active_column_view(), "Standard")
+      testthat::expect_equal(state$active_column_view(), "Standard")
     }
   )
 
@@ -84,7 +84,7 @@ testthat::test_that("the Standard view cannot be overwritten via save", {
         save_column_view = 1L
       )
 
-      testthat::expect_equal(active_column_view(), "Standard")
+      testthat::expect_equal(state$active_column_view(), "Standard")
     }
   )
 

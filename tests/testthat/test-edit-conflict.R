@@ -225,8 +225,8 @@ test_that("the edit dialog switches to the conflict view and resolves via keep",
 
       row <- fetch_records(contacts, conn = conn)
       row <- row[row$sft_id == record_id, , drop = FALSE]
-      current_edit_row(row)
-      edit_conflict_baseline(row)
+      state$current_edit_row(row)
+      state$edit_conflict_baseline(row)
 
       # Another user saves while the dialog is open.
       update_record(contacts, list(name = "Bob"), record_id = record_id,
@@ -236,8 +236,8 @@ test_that("the edit dialog switches to the conflict view and resolves via keep",
       session$setInputs(submit_edit = 1)
 
       # The save was rejected: conflict state set, nothing written.
-      expect_false(is.null(edit_conflict()))
-      expect_identical(edit_conflict()$columns, "name")
+      expect_false(is.null(state$edit_conflict()))
+      expect_identical(state$edit_conflict()$columns, "name")
 
       stored <- fetch_records(contacts, conn = conn)
       expect_identical(stored$name[stored$sft_id == record_id][1], "Bob")
@@ -255,8 +255,8 @@ test_that("the edit dialog switches to the conflict view and resolves via keep",
       # "Keep my entries": baseline moves to the current row, view closes,
       # and the next save deliberately writes the user's values.
       session$setInputs(sft_conflict_keep = 1)
-      expect_null(edit_conflict())
-      expect_identical(edit_conflict_baseline()$name[1], "Bob")
+      expect_null(state$edit_conflict())
+      expect_identical(state$edit_conflict_baseline()$name[1], "Bob")
 
       session$setInputs(submit_edit = 2)
       stored <- fetch_records(contacts, conn = conn)
@@ -296,8 +296,8 @@ test_that("conflict_check = FALSE restores last-write-wins", {
 
       row <- fetch_records(contacts, conn = conn)
       row <- row[row$sft_id == record_id, , drop = FALSE]
-      current_edit_row(row)
-      edit_conflict_baseline(row)
+      state$current_edit_row(row)
+      state$edit_conflict_baseline(row)
 
       update_record(contacts, list(name = "Bob"), record_id = record_id,
                     conn = conn, user = "bob")
@@ -306,7 +306,7 @@ test_that("conflict_check = FALSE restores last-write-wins", {
       session$setInputs(submit_edit = 1)
 
       # No conflict view: the stale edit overwrites (previous behaviour).
-      expect_null(edit_conflict())
+      expect_null(state$edit_conflict())
       stored <- fetch_records(contacts, conn = conn)
       expect_identical(stored$name[stored$sft_id == record_id][1], "Alice-Edit")
     }

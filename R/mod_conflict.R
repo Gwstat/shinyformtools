@@ -196,14 +196,12 @@ sft_conflict_set_input <- function(session, field, value) {
 # Register the conflict view output and its three action observers on the form
 # module's session. Not namespaced itself; called from form_server() with the
 # module's input/output/session, like the other sft_register_* helpers.
-sft_register_edit_conflict <- function(input,
-                                       output,
-                                       session,
-                                       form,
-                                       labels,
-                                       live_conn,
-                                       edit_conflict,
-                                       edit_conflict_baseline) {
+sft_register_edit_conflict <- function(input, output, session, state) {
+  form <- state$form
+  labels <- state$labels
+  live_conn <- state$conn
+  edit_conflict <- state$edit_conflict
+  edit_conflict_baseline <- state$edit_conflict_baseline
   output$sft_edit_conflict_ui <- shiny::renderUI({
     conflict <- edit_conflict()
 
@@ -335,5 +333,5 @@ sft_register_edit_conflict <- function(input,
     edit_conflict(NULL)
   })
 
-  invisible(NULL)
+  invisible(list())
 }

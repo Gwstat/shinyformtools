@@ -766,11 +766,10 @@ sft_register_one_input_binding <- function(binding,
   invisible(TRUE)
 }
 
-sft_register_input_bindings <- function(input_bindings,
-                                        form,
-                                        input,
-                                        session,
-                                        context) {
+sft_register_input_bindings <- function(input, output, session, state) {
+  input_bindings <- state$input_bindings
+  form <- state$form
+  context <- state$display_context
   input_bindings <- sft_validate_input_bindings(input_bindings, form)
 
   for (binding in input_bindings) {
@@ -783,5 +782,5 @@ sft_register_input_bindings <- function(input_bindings,
     )
   }
 
-  invisible(input_bindings)
+  invisible(list())
 }

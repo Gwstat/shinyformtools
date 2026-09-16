@@ -272,16 +272,15 @@ sft_changed_since_creation_ids <- function(conn, form, row) {
 
 # Register the reactive highlight stylesheet on the module session. Non-namespaced
 # registrar, called from form_server(); covered by testServer tests.
-sft_register_highlight <- function(output,
-                                   session,
-                                   form,
-                                   current_edit_row,
-                                   live_conn = NULL,
-                                   highlight_fields = NULL,
-                                   highlight_tab = TRUE,
-                                   highlight_color = "#dc3545",
-                                   show_changed = TRUE,
-                                   changed_color = "#2b8cff") {
+sft_register_highlight <- function(input, output, session, state) {
+  form <- state$form
+  current_edit_row <- state$current_edit_row
+  live_conn <- state$conn
+  highlight_fields <- state$highlight$fields
+  highlight_tab <- state$highlight$tab
+  highlight_color <- state$highlight$color
+  show_changed <- state$highlight$show_changed
+  changed_color <- state$highlight$changed_color
   ns <- session$ns
 
   output$sft_highlight_style <- shiny::renderUI({
@@ -309,5 +308,5 @@ sft_register_highlight <- function(output,
     )
   })
 
-  invisible(NULL)
+  invisible(list())
 }

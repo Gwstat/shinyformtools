@@ -35,23 +35,23 @@ testthat::test_that("inline add opens, cancels, and submits into the table", {
     args = list(form = form, conn = conn, form_layout = "inline"),
     {
       # Nothing open initially.
-      testthat::expect_null(inline_active())
+      testthat::expect_null(state$inline_active())
 
       # Open the add form inline: the panel renders the add_ inputs.
       session$setInputs(open_add = 1)
-      testthat::expect_identical(inline_active(), "add")
+      testthat::expect_identical(state$inline_active(), "add")
       add_html <- paste(as.character(output$sft_inline_form), collapse = " ")
       testthat::expect_true(grepl("add_name", add_html, fixed = TRUE))
 
       # Cancel closes the panel.
       session$setInputs(sft_inline_cancel = 1)
-      testthat::expect_null(inline_active())
+      testthat::expect_null(state$inline_active())
 
       # Re-open, fill the form and submit: record inserted and panel closes.
       session$setInputs(open_add = 1)
       session$setInputs(add_name = "Inline Ada", add_note = "via panel")
       session$setInputs(submit_add = 1)
-      testthat::expect_null(inline_active())
+      testthat::expect_null(state$inline_active())
     }
   )
 
@@ -75,14 +75,14 @@ testthat::test_that("inline edit opens for a selected record and saves", {
     {
       session$setInputs(records_rows_selected = 1L)
       session$setInputs(open_edit = 1)
-      testthat::expect_identical(inline_active(), "edit")
+      testthat::expect_identical(state$inline_active(), "edit")
 
       html <- paste(as.character(output$sft_inline_form), collapse = " ")
       testthat::expect_true(grepl("edit_name", html, fixed = TRUE))
 
       session$setInputs(edit_name = "Ada Edited", edit_note = "changed")
       session$setInputs(submit_edit = 1)
-      testthat::expect_null(inline_active())
+      testthat::expect_null(state$inline_active())
     }
   )
 
@@ -104,7 +104,7 @@ testthat::test_that("modal layout never populates the inline panel", {
     {
       session$setInputs(open_add = 1)
       # Modal layout shows a dialog instead; inline state stays empty.
-      testthat::expect_null(inline_active())
+      testthat::expect_null(state$inline_active())
     }
   )
 })
@@ -124,7 +124,7 @@ testthat::test_that("inline add respects can_add = FALSE", {
     {
       session$setInputs(open_add = 1)
       # Permission denied: the panel never opens.
-      testthat::expect_null(inline_active())
+      testthat::expect_null(state$inline_active())
     }
   )
 })

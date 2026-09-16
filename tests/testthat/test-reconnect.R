@@ -44,14 +44,11 @@ test_that("sft_live_connection reopens a dead connection from the config", {
 })
 
 # These two integration tests assert on OBSERVABLE outcomes (a write lands, a
-# read returns data) after the module's connection is dropped, not on the
-# module's private `conn` object. Under testServer the guard's `conn <<-`
-# reassignment updates the module frame, but the test expression resolves `conn`
-# through a scope that does not reliably reflect it - so inspecting `conn`
-# directly is not a valid probe. The outcomes below can only hold if the guard
-# reconnected: an insert or fetch on a dead connection throws. Each test kills
-# the connection before any reconnect has happened, so at that point the test's
-# `conn` and the module's sole connection are the same object and the kill bites.
+# read returns data) after the module's connection is dropped. The module
+# keeps its handle in `state$handle` and every observer reads it through the
+# `state$conn()` accessor, so the tests kill `state$handle` directly and then
+# assert on observable outcomes: an insert or fetch on a dead connection
+# throws, so data written / read proves the guard reconnected.
 
 test_that("the write path reconnects a module-owned connection the server dropped", {
   skip_if_not_installed("DT")
@@ -75,10 +72,10 @@ test_that("the write path reconnects a module-owned connection the server droppe
     ),
     {
       session$flushReact()
-      expect_true(DBI::dbIsValid(conn))
+      expect_true(DBI::dbIsValid(state$handle))
 
       # Simulate wait_timeout, then drive a real submit through the add flow.
-      DBI::dbDisconnect(conn)
+      DBI::dbDisconnect(state$handle)
       session$setInputs(add_name = "Grace")
       session$setInputs(submit_add = 1)
 
@@ -112,15 +109,15 @@ test_that("the read path reconnects a module-owned connection the server dropped
     ),
     {
       session$flushReact()
-      expect_true(DBI::dbIsValid(conn))
+      expect_true(DBI::dbIsValid(state$handle))
 
       # Drop the connection, then force the records reactive to re-run (a cached
       # reactive would not otherwise): the guard must reconnect for the fetch to
       # return data instead of throwing.
-      DBI::dbDisconnect(conn)
-      refresh_tick(refresh_tick() + 1L)
+      DBI::dbDisconnect(state$handle)
+      state$refresh()
 
-      rows <- records()
+      rows <- state$records()
       expect_true("Ada" %in% rows$name)
     }
   )
@@ -150,11 +147,11 @@ test_that("a caller-supplied connection is never silently replaced", {
 
       # owns_connection is FALSE, so the guard never runs: conn stays the exact
       # object the caller passed in, alive or not.
-      expect_false(owns_connection)
-      expect_identical(conn, outer_conn)
+      expect_false(state$owns_connection)
+      expect_identical(state$handle, outer_conn)
 
-      records()
-      expect_identical(conn, outer_conn)
+      state$records()
+      expect_identical(state$handle, outer_conn)
     }
   )
 })
@@ -190,8 +187,8 @@ test_that("a registrar-driven read works after the module's connection was dropp
       session$flushReact()
       invisible(output$deleted_records)
 
-      DBI::dbDisconnect(conn)
-      refresh_tick(refresh_tick() + 1L)
+      DBI::dbDisconnect(state$handle)
+      state$refresh()
       session$flushReact()
 
       expect_no_error(output$deleted_records)
