@@ -1,8 +1,9 @@
 # Add/edit forms rendered inline instead of in a modal dialog.
 #
-# Pass form_layout = "inline" to BOTH form_ui() and form_server(): the add and
-# edit forms then open in a panel above the records table instead of a pop-up
-# dialog. Add and edit are mutually exclusive - opening one closes the other.
+# Pass form_layout = "inline" to form_ui(): the add and edit forms then open in
+# a panel above the records table instead of a pop-up dialog. form_server()
+# picks the layout up from the UI, so nothing changes on the server side. Add
+# and edit are mutually exclusive - opening one closes the other.
 # Everything else (validation, soft-delete/restore, the audit log, permissions)
 # behaves exactly as in the default modal layout.
 #
@@ -71,34 +72,34 @@ how_to <- function() {
       style = "margin: 0.4rem 0 0;",
       "Add and Edit open a panel ", shiny::tags$em("above the table"),
       " instead of a modal. The only change from a normal app is ",
-      shiny::tags$code('form_layout = "inline"'), " on both ", shiny::tags$code("form_ui()"),
-      " and ", shiny::tags$code("form_server()"), "."
+      shiny::tags$code('form_layout = "inline"'), " on ", shiny::tags$code("form_ui()"),
+      "; ", shiny::tags$code("form_server()"), " picks the layout up from the UI."
     )
   )
 }
 
-#> STEP: Wire the server inline
-#> NOTE: The only thing that makes the add/edit forms inline is
-#> NOTE: form_layout = "inline" on form_server() (and the matching argument on
-#> NOTE: form_ui()). The add and edit forms then open in a panel above the
-#> NOTE: records table instead of a modal dialog; opening one closes the other.
-#> NOTE: Everything else (validation, soft-delete/restore, the audit log) is
-#> NOTE: unchanged.
+#> STEP: Wire the server
+#> NOTE: A plain form_server() call: the server reads the layout from the UI,
+#> NOTE: so nothing here says "inline". The add and edit forms open in a panel
+#> NOTE: above the records table instead of a modal dialog; opening one closes
+#> NOTE: the other. Everything else (validation, soft-delete/restore, the audit
+#> NOTE: log) is unchanged.
 server <- function(input, output, session) {
   form_server(
     id = "tasks",
     form = tasks_form,
     user = "demo",
-    form_layout = "inline",
-    table_columns = c("sft_id", "title", "status", "priority", "sft_updated_at"),
-    persist_column_settings = FALSE
+    columns = list(
+      visible = c("sft_id", "title", "status", "priority", "sft_updated_at"),
+      persist = FALSE
+    )
   )
 }
 #> END
 
-#> STEP: Build the UI
-#> NOTE: form_layout = "inline" here matches the argument passed to
-#> NOTE: form_server() above - both sides must agree for the inline panel to work.
+#> STEP: Build the UI inline
+#> NOTE: The only thing that makes the add/edit forms inline is
+#> NOTE: form_layout = "inline" on form_ui(); form_server() picks it up from here.
 ui <- fluidPage(
   titlePanel("Inline add/edit forms"),
   how_to(),

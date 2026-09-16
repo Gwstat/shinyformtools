@@ -15,8 +15,6 @@
 #' @param show_audit Logical. Whether to show the audit log table. Off by
 #'   default. Every mutation is still recorded either way; this only controls
 #'   whether the log is displayed. Requires the `can_view_audit` permission.
-#' @param show_include_deleted Logical. Whether to show the legacy include-deleted
-#'   checkbox.
 #' @param show_add Logical. Whether to show the add button.
 #' @param show_edit Logical. Whether to show the edit button.
 #' @param show_deleted_records Logical. Whether to show the deleted-records
@@ -25,15 +23,14 @@
 #'   whether the restore dialog is reachable.
 #' @param show_delete Logical. Whether to show the delete button.
 #' @param show_refresh_table Logical. Whether to show a button that clears table filters, ordering, paging and row selection.
-#' @param show_versions Deprecated compatibility flag. Standalone version buttons are no longer rendered by the default UI; versions are shown in the case modal when permitted.
 #' @param show_column_settings Logical. Whether to show the admin
 #'   column-settings button. Off by default.
 #' @param show_column_selection Logical. Whether to show the user
 #'   column-selection button. Off by default.
 #' @param form_layout Where the add/edit forms render. `"modal"` (default) opens
 #'   them in a dialog; `"inline"` renders them in a panel above the records table,
-#'   with add and edit mutually exclusive. Must match the `form_layout` passed to
-#'   [form_server()].
+#'   with add and edit mutually exclusive. [form_server()] picks the layout up
+#'   from the UI, so it only has to be set here.
 #' @param table_style Visual preset for the module's tables (records, audit,
 #'   deleted records, versions). One of `"classic"` (the unmodified 'DT' look),
 #'   `"clean"` (card-style with row separators instead of stripes),
@@ -49,6 +46,10 @@
 #'   `"both"`, `"none"`), `align` (`"left"`, `"center"`,
 #'   `"right"`, `"between"`), `class`, `container_class`,
 #'   `container_style` and `button_classes`.
+#' @param ... Deprecated arguments, accepted with a warning for one release:
+#'   `show_include_deleted` (the legacy include-deleted checkbox; use
+#'   `show_deleted_records` instead) and `show_versions` (no effect; versions
+#'   are shown inside the edit dialog when permitted).
 #'
 #' @return Shiny UI.
 #' @examples
@@ -70,21 +71,30 @@ form_ui <- function(id,
                         title = NULL,
                         show_user = FALSE,
                         show_audit = FALSE,
-                        show_include_deleted = FALSE,
                         show_add = TRUE,
                         show_edit = TRUE,
                         show_deleted_records = FALSE,
                         show_delete = TRUE,
                         show_refresh_table = TRUE,
-                        show_versions = FALSE,
                         show_column_settings = FALSE,
                         show_column_selection = FALSE,
                         form_layout = c("modal", "inline"),
                         table_style = NULL,
                         labels = list(),
-                        button_options = list()) {
+                        button_options = list(),
+                        ...) {
   ns <- shiny::NS(id)
   form_layout <- match.arg(form_layout)
+
+  legacy <- sft_map_deprecated_args(
+    dots = list(...),
+    mapping = list(
+      show_include_deleted = list(bundle = NULL, key = "show_include_deleted"),
+      show_versions = list(bundle = NULL, key = NULL)
+    ),
+    fn = "form_ui"
+  )
+  show_include_deleted <- isTRUE(legacy$args$show_include_deleted)
   table_style <- sft_resolve_table_style(table_style)
   labels <- sft_ui_labels(labels)
   button_options <- sft_normalize_button_options(button_options)
@@ -98,7 +108,6 @@ form_ui <- function(id,
       show_edit = show_edit,
       show_delete = show_delete,
       show_refresh_table = show_refresh_table,
-      show_versions = show_versions,
       show_deleted_records = show_deleted_records,
       show_column_settings = show_column_settings,
       show_column_selection = show_column_selection
@@ -145,6 +154,13 @@ form_ui <- function(id,
       shiny::uiOutput(ns("sft_inline_form"))
     },
 
+    # Tells form_server() which layout the UI rendered, so the two never have
+    # to be kept in sync by hand. A hidden text input is still bound and sent.
+    shiny::div(
+      style = "display: none;",
+      shiny::textInput(ns("sft_form_layout"), label = NULL, value = form_layout)
+    ),
+
     shiny::hr(),
 
     shiny::div(
@@ -168,60 +184,96 @@ form_ui <- function(id,
 
 #' Form module server
 #'
+#' Options come in four named lists, each with defaults, so a call only names
+#' what it changes: `permissions` (who may do what), `table` (how the DT tables
+#' look), `columns` (which columns show, saved views) and `highlight` (glow
+#' effects in the forms). The permission adapters [shinymanager_permissions()]
+#' and [rights_permissions()] return a `permissions` list directly.
+#'
 #' @param id Module id.
 #' @param form Object created with [form()].
-#' @param conn Optional existing DBI connection.
-#' @param user Optional user identifier or function returning a user identifier.
-#' @param include_deleted_default Logical default for including deleted records.
-#' @param show_audit Logical. Whether audit output should be rendered. Off by
-#'   default, matching `form_ui(show_audit = FALSE)`; set both to `TRUE` to show
-#'   the audit log. Mutations are recorded regardless.
-#' @param table_columns Optional columns shown in the records table.
-#' @param table_views Optional named list of predefined table views. Each entry is
-#'   a character vector of database column names. A function returning such a list
-#'   is also accepted.
-#' @param default_column_view Optional default table-view name. Can be a scalar or
-#'   a function/reactive returning a scalar.
-#' @param show_system_columns Logical. Whether extended system columns are shown.
-#' @param can_add Logical or function. Whether the current user may add records.
-#' @param can_view_record Logical or function. Whether the current user may open
-#'   the selected record in the read-only/edit modal.
-#' @param can_edit Logical or function. Whether the current user may save changes
-#'   to an opened record.
-#' @param can_delete Logical or function. Whether the current user may soft-delete
-#'   records.
-#' @param can_restore Logical or function. Whether the current user may restore
-#'   previous record versions.
-#' @param can_view_versions Logical or function. Whether the current user may open
-#'   the versions dialog.
-#' @param can_view_deleted_records Logical or function. Whether the current user
-#'   may open the deleted-records dialog.
-#' @param can_change_column_settings Logical or function. Whether the current user
-#'   may open and save shared column settings. Intended for admins/managers.
-#' @param can_select_column_view Logical or function. Whether the current user
-#'   may load an existing column view.
-#' @param can_view_audit Logical or function. Whether the current user may see
-#'   the audit-log table. Only effective when the audit table is part of the UI
-#'   (`form_ui(show_audit = TRUE)`); when `FALSE` the audit table is hidden
-#'   and no audit rows are sent to the client.
-#' @param can_view_table Logical or function. Whether the current user may see
-#'   the records table at all. When `FALSE` the table is hidden and no rows are
-#'   sent to the client.
-#' @param can_reset_table Logical or function. Whether the current user may use
-#'   the reset/refresh button that clears table filters, ordering, paging and
-#'   selection.
-#' @param hide_forbidden Logical. When `TRUE` (default), action buttons, the
-#'   reset button, the records table and the audit table whose `can_*`
-#'   permission is `FALSE` are hidden reactively, so the visible controls match
-#'   the permissions. The server-side guards stay in force regardless, so a
-#'   hidden control can never trigger its action. Set to `FALSE` to keep every
-#'   control visible and rely on the warning that a denied action shows.
-#' @param editable_fields Optional character vector of field ids the current
-#'   user may edit (or a function/reactive returning one). When supplied, every
-#'   other input field in the edit dialog is rendered read-only and is ignored on
-#'   save, so a user can be allowed to edit only specific inputs. `NULL` (default)
-#'   keeps each field's own `editable` setting; an empty vector locks every
-#'   input field.
+#' @param conn Optional existing DBI connection. When `NULL` the module opens
+#'   its own connection from `form$db`, closes it when the session ends, and
+#'   reopens it if the server drops it (see `connection()` in the return
+#'   value). A connection you pass in is yours: it is never closed or replaced.
+#' @param user Optional user identifier or function returning a user
+#'   identifier. Falls back to `permissions$user` when the adapters supply one.
+#' @param permissions Named list of permissions. Each entry is a logical, or a
+#'   function / reactive returning one, and defaults to `TRUE`:
+#'   \describe{
+#'     \item{`can_add`}{Add records.}
+#'     \item{`can_view_record`}{Open the selected record in the read-only/edit
+#'       dialog.}
+#'     \item{`can_edit`}{Save changes to an opened record.}
+#'     \item{`can_delete`}{Soft-delete records.}
+#'     \item{`can_restore`}{Restore deleted records and previous versions.}
+#'     \item{`can_view_versions`}{Open the versions accordion.}
+#'     \item{`can_view_deleted_records`}{Open the deleted-records dialog.}
+#'     \item{`can_change_column_settings`}{Open and save shared column
+#'       settings (admins).}
+#'     \item{`can_select_column_view`}{Load an existing column view.}
+#'     \item{`can_view_audit`}{See the audit-log table (only effective with
+#'       `form_ui(show_audit = TRUE)`); when `FALSE` no audit rows reach the
+#'       client.}
+#'     \item{`can_view_table`}{See the records table at all; when `FALSE` the
+#'       table is hidden and no rows are sent.}
+#'     \item{`can_reset_table`}{Use the reset/refresh button.}
+#'     \item{`hide_forbidden`}{Logical (default `TRUE`). Hide every control
+#'       whose permission is `FALSE` reactively. The server-side guards stay in
+#'       force regardless, so a hidden control can never trigger its action.}
+#'     \item{`editable_fields`}{Optional character vector of field ids the
+#'       current user may edit (or a function/reactive returning one). Every
+#'       other input is rendered read-only in the edit dialog and ignored on
+#'       save. `NULL` (default) keeps each field's own `editable` setting; an
+#'       empty vector locks every input.}
+#'     \item{`user`}{Optional; used as `user` when that argument is `NULL`.}
+#'   }
+#' @param table Named list of table display settings:
+#'   \describe{
+#'     \item{`options`}{Additional DT options for the records table.}
+#'     \item{`class`}{CSS class passed to [DT::datatable()] (default
+#'       `"display compact stripe hover"`).}
+#'     \item{`filter`}{Per-column search controls: `"none"` (default), `"top"`
+#'       or `"bottom"`.}
+#'     \item{`format`}{Optional function for display-only DT formatting. May
+#'       declare any of `table`, `data` and `context` and must return a DT
+#'       widget, e.g. `function(table) DT::formatStyle(table, "Status", ...)`.}
+#'     \item{`audit_options`, `version_options`, `deleted_records_options`}{
+#'       Additional DT options for the audit, versions and deleted-records
+#'       tables.}
+#'     \item{`datetime_format`}{Format for displayed timestamps. They are
+#'       rendered in the time zone of the machine running the app; set
+#'       `options(shinyformtools.datetime_timezone = "UTC")` (or any Olson
+#'       name) to pin it. Values stored without an offset, such as a user's
+#'       own date field, are never shifted.}
+#'   }
+#' @param columns Named list controlling which columns the records table shows:
+#'   \describe{
+#'     \item{`visible`}{Optional character vector of columns shown by default.}
+#'     \item{`views`}{Optional named list of predefined views, each a character
+#'       vector of database column names (or a function returning such a list).}
+#'     \item{`default_view`}{Default view name (default `"Standard"`); a
+#'       scalar or a function/reactive returning one.}
+#'     \item{`persist`}{Logical (default `TRUE`). Store per-user column choices
+#'       in the form database.}
+#'     \item{`show_system`}{Logical (default `FALSE`). Offer the extended
+#'       system columns.}
+#'     \item{`labels`}{Optional named character vector with labels for
+#'       display-only columns created by `display_transform`.}
+#'   }
+#' @param highlight Named list controlling the glow effects in the add/edit
+#'   forms:
+#'   \describe{
+#'     \item{`fields`}{Character vector of field ids to glow, or a
+#'       function/reactive returning one; an empty vector clears it.}
+#'     \item{`tab`}{Logical (default `TRUE`). Also glow the tab containing a
+#'       highlighted or changed field.}
+#'     \item{`color`}{Glow colour for `fields` (default `"#dc3545"`).}
+#'     \item{`show_changed`}{Logical (default `TRUE`). Glow edit-form fields
+#'       whose value differs from the value at creation.}
+#'     \item{`changed_color`}{Glow colour for `show_changed` (default
+#'       `"#2b8cff"`).}
+#'   }
 #' @param labels Optional named list overriding UI labels, modal texts and
 #'   notification messages. Set individual entries to `NULL` to hide the
 #'   corresponding button or modal title.
@@ -229,64 +281,23 @@ form_ui <- function(id,
 #'   `delete`, `versions` and `column_settings`. Each entry can be `"s"`,
 #'   `"m"`, `"l"`, a CSS width such as `"90vw"`, or a list with `size`,
 #'   `width`, `height` and `max_height`.
-#' @param persist_column_settings Logical. Whether per-user column choices are
-#'   stored in the form database.
 #' @param display_transform Optional function used to derive the records table
 #'   shown to the user from the raw database records. The function may use
 #'   `function(data)` or `function(data, context)` and must return a data frame.
 #'   If raw records contain `sft_id`, the returned data must keep `sft_id` so
 #'   row selections can be mapped back to the underlying record.
-#' @param display_column_labels Optional named character vector with labels for
-#'   additional display-only columns created by `display_transform`.
-#' @param input_bindings Optional list of dynamic input bindings created with
-#'   [dynamic_choices()], [dynamic_value()] or [dynamic_visibility()]. Bindings
-#'   are registered for both add and edit dialogs.
 #' @param modal_header Optional UI or function rendered at the top of add/edit
 #'   dialogs. Functions may declare any of `values`, `record`, `context`,
 #'   `prefix`, `input`, `output`, `session`, `ns` and `form`. This is intended
 #'   for display-only, cross-table context such as contact details or linked
 #'   record summaries.
-#' @param table_options Additional DT options for the records table.
-#' @param table_class CSS class passed to [DT::datatable()] for the records table.
-#' @param table_filter Per-column search controls for the records table, passed
-#'   to [DT::datatable()]. `"none"` (default), `"top"` or `"bottom"`. The control
-#'   adapts to each column's type (range slider for numeric/integer columns, a
-#'   select for factors, a text box otherwise).
-#' @param table_format Optional function for display-only DT formatting. Functions
-#'   may declare any of `table`, `data` and `context` and must return a DT table
-#'   widget. This replaces legacy `tableedit2` string hooks with regular R code,
-#'   for example `function(table) DT::formatStyle(table, "Status", ...)`.
-#' @param audit_options Additional DT options for the audit table.
-#' @param version_options Additional DT options for the version table.
-#' @param deleted_records_options Additional DT options for the deleted-records table.
-#' @param datetime_format Format used for displayed timestamps. Timestamps are
-#'   rendered in the time zone of the machine running the app -- for a deployed
-#'   Shiny app, the server. Set
-#'   `options(shinyformtools.datetime_timezone = "UTC")`, or to any Olson name
-#'   such as `"Asia/Tokyo"`, to pin it instead. That is what an installation
-#'   serving several regions wants: everyone then reads the same wall clock,
-#'   rather than each viewer having to know where the server stands. Values
-#'   stored without a time-zone offset, such as a user's own date field, are
-#'   never shifted -- only stamps that identify a moment in time are translated.
+#' @param input_bindings Optional list of dynamic input bindings created with
+#'   [dynamic_choices()], [dynamic_value()] or [dynamic_visibility()]. Bindings
+#'   are registered for both add and edit dialogs.
 #' @param refresh_triggers Optional reactive (or list of reactives) that this
 #'   table should re-fetch on. Pass another form's returned `changed` reactive to
 #'   make this table react to changes in that table, so dependent tables and
 #'   downstream outputs (maps, summaries) stay in sync.
-#' @param highlight_fields Optional character vector of field ids to highlight
-#'   with a glow in the add and edit forms, or a function/reactive returning one.
-#'   Use it to draw attention to specific inputs reactively (for example fields
-#'   that still need input). The set is re-applied whenever the reactive changes;
-#'   return an empty vector to clear the highlight.
-#' @param highlight_tab Logical. When `TRUE` (default), the tab that contains a
-#'   highlighted or changed field is highlighted too, so the relevant tab stands
-#'   out in a multi-tab form. Has no effect on single-tab forms.
-#' @param highlight_color Glow colour used for `highlight_fields`. Any CSS colour
-#'   string. Defaults to a red (`"#dc3545"`).
-#' @param show_changed Logical. When `TRUE` (default), an edit-form field whose
-#'   current value differs from the stored record value is glowed automatically,
-#'   so it is clear which fields were actually changed before saving.
-#' @param changed_color Glow colour used for `show_changed`. Any CSS colour
-#'   string. Defaults to a blue (`"#2b8cff"`).
 #' @param conflict_check Logical. When `TRUE` (default), saving an edit is
 #'   rejected if another user changed the record while the edit dialog was
 #'   open: instead of silently overwriting, the dialog switches to a conflict
@@ -295,15 +306,28 @@ form_ui <- function(id,
 #'   check is value-based and runs inside the update transaction (see the
 #'   `expected_record` argument of [update_record()]). Set to `FALSE` to
 #'   restore the previous last-write-wins behaviour.
-#' @param form_layout Where the add/edit forms render. `"modal"` (default) opens
-#'   them in a dialog; `"inline"` renders them in a panel above the records table,
-#'   with add and edit mutually exclusive. Must match the `form_layout` passed to
-#'   [form_ui()].
+#' @param include_deleted_default Logical default for including deleted records.
+#' @param form_layout Normally `NULL`: the server reads the layout
+#'   (`"modal"` or `"inline"`) that [form_ui()] rendered. Pass a value only to
+#'   override it, e.g. in tests without a UI.
+#' @param ... Deprecated arguments, accepted with a warning for one release and
+#'   mapped onto the lists above: every `can_*` flag, `hide_forbidden` and
+#'   `editable_fields` (-> `permissions`); `table_options`, `table_class`,
+#'   `table_filter`, `table_format`, `audit_options`, `version_options`,
+#'   `deleted_records_options`, `datetime_format` (-> `table`);
+#'   `table_columns`, `table_views`, `default_column_view`,
+#'   `persist_column_settings`, `show_system_columns`, `display_column_labels`
+#'   (-> `columns`); `highlight_fields`, `highlight_tab`, `highlight_color`,
+#'   `show_changed`, `changed_color` (-> `highlight`); `show_audit` (no effect:
+#'   the audit table renders whenever `form_ui(show_audit = TRUE)` placed it).
 #'
 #' @return A list of reactive helpers: `records`, `display_records` and
 #'   `selected_record` reactives, a `changed` reactive that increments on every
-#'   mutation (insert/update/delete/restore), a `refresh()` function, and the
-#'   `conn` and `form`.
+#'   mutation (insert/update/delete/restore), a `refresh()` function, the
+#'   `form`, the `conn` the module started with, and `connection()`, a function
+#'   returning the module's current connection. Prefer `connection()` when the
+#'   module owns its connection: it probes the handle and reopens it if the
+#'   server dropped it, whereas `conn` is the handle as it was at start-up.
 #' @examples
 #' \dontrun{
 #' library(shiny)
@@ -323,54 +347,76 @@ form_server <- function(id,
                             form,
                             conn = NULL,
                             user = NULL,
-                            include_deleted_default = FALSE,
-                            show_audit = FALSE,
-                            table_columns = NULL,
-                            table_views = NULL,
-                            default_column_view = "Standard",
-                            show_system_columns = FALSE,
-                            can_add = TRUE,
-                            can_view_record = TRUE,
-                            can_edit = TRUE,
-                            can_delete = TRUE,
-                            can_restore = TRUE,
-                            can_view_versions = TRUE,
-                            can_view_deleted_records = TRUE,
-                            can_change_column_settings = TRUE,
-                            can_select_column_view = TRUE,
-                            can_view_audit = TRUE,
-                            can_view_table = TRUE,
-                            can_reset_table = TRUE,
-                            hide_forbidden = TRUE,
-                            editable_fields = NULL,
+                            permissions = list(),
+                            table = list(),
+                            columns = list(),
+                            highlight = list(),
                             labels = list(),
                             modal_sizes = list(),
-                            persist_column_settings = TRUE,
                             display_transform = NULL,
-                            display_column_labels = NULL,
-                            input_bindings = NULL,
                             modal_header = NULL,
-                            table_options = list(),
-                            table_class = "display compact stripe hover",
-                            table_filter = "none",
-                            table_format = NULL,
-                            audit_options = list(),
-                            version_options = list(),
-                            deleted_records_options = list(),
-                            datetime_format = sft_default_datetime_format(),
+                            input_bindings = NULL,
                             refresh_triggers = NULL,
-                            highlight_fields = NULL,
-                            highlight_tab = TRUE,
-                            highlight_color = "#dc3545",
-                            show_changed = TRUE,
-                            changed_color = "#2b8cff",
                             conflict_check = TRUE,
-                            form_layout = c("modal", "inline")) {
+                            include_deleted_default = FALSE,
+                            form_layout = NULL,
+                            ...) {
   if (!inherits(form, "sft_form")) {
     stop("form must be a form object.", call. = FALSE)
   }
 
-  form_layout <- match.arg(form_layout)
+  settings <- sft_form_server_settings(
+    permissions = permissions,
+    table = table,
+    columns = columns,
+    highlight = highlight,
+    form_layout = form_layout,
+    dots = list(...)
+  )
+  form_layout <- settings$form_layout
+
+  # Unpack the bundles into the names the module body uses. Explicit
+  # assignments (not list2env) so R CMD check can see every binding.
+  can_add <- settings$permissions$can_add
+  can_view_record <- settings$permissions$can_view_record
+  can_edit <- settings$permissions$can_edit
+  can_delete <- settings$permissions$can_delete
+  can_restore <- settings$permissions$can_restore
+  can_view_versions <- settings$permissions$can_view_versions
+  can_view_deleted_records <- settings$permissions$can_view_deleted_records
+  can_change_column_settings <- settings$permissions$can_change_column_settings
+  can_select_column_view <- settings$permissions$can_select_column_view
+  can_view_audit <- settings$permissions$can_view_audit
+  can_view_table <- settings$permissions$can_view_table
+  can_reset_table <- settings$permissions$can_reset_table
+  hide_forbidden <- settings$permissions$hide_forbidden
+  editable_fields <- settings$permissions$editable_fields
+  if (is.null(user)) {
+    user <- settings$permissions$user
+  }
+
+  table_options <- settings$table$options
+  table_class <- settings$table$class
+  table_filter <- settings$table$filter
+  table_format <- settings$table$format
+  audit_options <- settings$table$audit_options
+  version_options <- settings$table$version_options
+  deleted_records_options <- settings$table$deleted_records_options
+  datetime_format <- settings$table$datetime_format
+
+  table_columns <- settings$columns$visible
+  table_views <- settings$columns$views
+  default_column_view <- settings$columns$default_view
+  persist_column_settings <- settings$columns$persist
+  show_system_columns <- settings$columns$show_system
+  display_column_labels <- settings$columns$labels
+
+  highlight_fields <- settings$highlight$fields
+  highlight_tab <- settings$highlight$tab
+  highlight_color <- settings$highlight$color
+  show_changed <- settings$highlight$show_changed
+  changed_color <- settings$highlight$changed_color
+
   labels <- sft_ui_labels(labels)
   modal_sizes <- sft_modal_sizes(modal_sizes)
   sft_check_form_region(modal_header, "modal_header")
@@ -385,6 +431,30 @@ form_server <- function(id,
       session$onSessionEnded(function() {
         db_disconnect(conn)
       })
+    }
+
+    # Accessor for the module's connection. Every registrar and every DB call
+    # in this module goes through it instead of holding the handle itself:
+    # `sft_live_connection()` may REPLACE a module-owned connection the server
+    # dropped (MariaDB wait_timeout), and a handle passed by value would keep
+    # pointing at the dead one. `<<-` rebinds `conn` in this frame, so the
+    # session-ended hook above closes the current handle, not the first one.
+    # A caller-supplied connection is never probed or replaced.
+    live_conn <- function() {
+      if (owns_connection) {
+        conn <<- sft_live_connection(conn, form$db)
+      }
+      conn
+    }
+
+    # The layout form_ui() rendered, reported through a hidden input, unless
+    # the caller overrode it. Read inside observers, so it is reactive-safe.
+    layout <- function() {
+      if (!is.null(form_layout)) {
+        return(form_layout)
+      }
+      value <- shiny::isolate(input$sft_form_layout)
+      if (identical(value, "inline")) "inline" else "modal"
     }
 
     initial_user <- if (!is.null(user) && !is.function(user)) {
@@ -493,12 +563,11 @@ form_server <- function(id,
           condition = sft_module_permission(can_view_table, default = TRUE)
         )
 
-        if (isTRUE(show_audit)) {
-          shinyjs::toggle(
-            id = "audit_container",
-            condition = sft_module_permission(can_view_audit, default = TRUE)
-          )
-        }
+        # No-op when form_ui() did not render the audit container.
+        shinyjs::toggle(
+          id = "audit_container",
+          condition = sft_module_permission(can_view_audit, default = TRUE)
+        )
       })
     }
 
@@ -516,16 +585,26 @@ form_server <- function(id,
     # by the add / edit / delete submit handlers.
     run_mutation <- function(action, success_label) {
       # Heal a connection the server dropped while the session sat idle
-      # (MariaDB wait_timeout). Only the module's own connection is replaced;
-      # `<<-` updates the connection every observer reads from this scope, so no
-      # call site changes. A caller-supplied connection is left untouched.
-      if (owns_connection) {
-        conn <<- sft_live_connection(conn, form$db)
-      }
+      # (MariaDB wait_timeout) before writing.
+      live_conn()
 
       tryCatch(
         {
-          action()
+          # Validation warnings (`warning_if()` rules, `on_edit_missing_required
+          # = "warn"`) are raised with base warning(): surface each one as a
+          # notification and carry on, since a warning must not block the save.
+          # Without this handler they only reach the R console, never the user.
+          withCallingHandlers(
+            action(),
+            warning = function(w) {
+              shiny::showNotification(
+                conditionMessage(w),
+                type = "warning",
+                duration = 8
+              )
+              invokeRestart("muffleWarning")
+            }
+          )
 
           shiny::removeModal()
           inline_active(NULL)
@@ -562,13 +641,9 @@ form_server <- function(id,
 
       # Same reconnect guard as run_mutation(): a row selection or refresh after
       # a long idle period must not fail on a server-dropped connection.
-      if (owns_connection) {
-        conn <<- sft_live_connection(conn, form$db)
-      }
-
       fetch_records(
         form = form,
-        conn = conn,
+        conn = live_conn(),
         include_deleted = isTRUE(
           sft_module_include_deleted(
             input = input,
@@ -581,7 +656,7 @@ form_server <- function(id,
     display_context <- function() {
       sft_form_context(
         form = form,
-        conn = conn,
+        conn = live_conn(),
         input = input,
         output = output,
         session = session,
@@ -614,7 +689,7 @@ form_server <- function(id,
       session = session,
       form = form,
       current_edit_row = current_edit_row,
-      conn = conn,
+      live_conn = live_conn,
       highlight_fields = highlight_fields,
       highlight_tab = highlight_tab,
       highlight_color = highlight_color,
@@ -628,7 +703,7 @@ form_server <- function(id,
       session = session,
       form = form,
       labels = labels,
-      conn = conn,
+      live_conn = live_conn,
       edit_conflict = edit_conflict,
       edit_conflict_baseline = edit_conflict_baseline
     )
@@ -703,13 +778,13 @@ form_server <- function(id,
 
       if (isTRUE(persist_column_settings) && !identical(record_columns_loaded_for(), user_id)) {
         view_name <- sft_get_active_column_view(
-          conn = conn,
+          conn = live_conn(),
           form = form,
           user = user_id
         )
 
         saved_columns <- sft_resolve_saved_column_view(
-          conn = conn,
+          conn = live_conn(),
           form = form,
           user = user_id,
           table_views = table_views,
@@ -725,7 +800,7 @@ form_server <- function(id,
           )
 
           fallback_columns <- sft_resolve_saved_column_view(
-            conn = conn,
+            conn = live_conn(),
             form = form,
             user = user_id,
             table_views = table_views,
@@ -737,7 +812,7 @@ form_server <- function(id,
             active_column_view(fallback_view)
           } else {
             legacy_columns <- sft_get_column_settings(
-              conn = conn,
+              conn = live_conn(),
               form = form,
               user = user_id
             )
@@ -783,7 +858,7 @@ form_server <- function(id,
         return()
       }
 
-      if (identical(form_layout, "inline")) {
+      if (identical(layout(), "inline")) {
         inline_active("add")
       } else {
         sft_show_add_modal(
@@ -882,7 +957,7 @@ form_server <- function(id,
       edit_conflict_baseline(row)
       restore_record_id(row$sft_id[1])
 
-      if (identical(form_layout, "inline")) {
+      if (identical(layout(), "inline")) {
         inline_active("edit")
       } else {
         sft_show_edit_modal(
@@ -1092,7 +1167,7 @@ form_server <- function(id,
       output = output,
       session = session,
       form = form,
-      conn = conn,
+      live_conn = live_conn,
       user = user,
       labels = labels,
       modal_sizes = modal_sizes,
@@ -1118,7 +1193,7 @@ form_server <- function(id,
       output = output,
       session = session,
       form = form,
-      conn = conn,
+      live_conn = live_conn,
       user = user,
       labels = labels,
       modal_sizes = modal_sizes,
@@ -1159,8 +1234,7 @@ form_server <- function(id,
       output = output,
       session = session,
       form = form,
-      conn = conn,
-      show_audit = show_audit,
+      live_conn = live_conn,
       show_system_columns = show_system_columns,
       table_options = table_options,
       table_class = table_class,
@@ -1187,6 +1261,7 @@ form_server <- function(id,
       changed = shiny::reactive(refresh_tick()),
       refresh = refresh,
       conn = conn,
+      connection = live_conn,
       form = form
     )
   })

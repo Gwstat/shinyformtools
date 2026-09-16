@@ -211,13 +211,15 @@ server <- function(input, output, session) {
     id = "tour",
     form = tour_form,
     user = "demo",
-    table_columns = c("sft_id", "name", "age", "team", "city", "active", "skills"),
+    columns = list(
+      visible = c("sft_id", "name", "age", "team", "city", "active", "skills"),
+      persist = FALSE
+    ),
     modal_header = preview_header,
     modal_sizes = list(
       add = list(size = "l", width = "92vw", max_height = "80vh"),
       edit = list(size = "l", width = "92vw", max_height = "80vh")
-    ),
-    persist_column_settings = FALSE
+    )
   )
 }
 #> END

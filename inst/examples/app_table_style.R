@@ -1,17 +1,17 @@
 # Styling and transforming the records DataTable (no pagination, per-column
-# search, colorization) - all through form_server() arguments.
+# search, colorization) - all through the form_server(table = list(...)) bundle.
 #
-#   1. No pagination - table_options = list(paging = FALSE, dom = "t"):
+#   1. No pagination - options = list(paging = FALSE, dom = "t"):
 #      `dom = "t"` shows just the table (no length menu, global search box, info
 #      line or pager); `paging = FALSE` puts every row on one scrolling page.
 #
-#   2. Per-column search adapting to the column type - table_filter = "top":
+#   2. Per-column search adapting to the column type - filter = "top":
 #      DT adds a search control to each column header that matches the column's
 #      R type: a range slider for the numeric "Score", a dropdown for the
 #      "Team" factor, and a text box for "Name".
 #
-#   3. Colorization - table_format = function(table) ...:
-#      table_format receives the built DT widget (its columns already carry their
+#   3. Colorization - format = function(table) ...:
+#      `format` receives the built DT widget (its columns already carry their
 #      display labels) and returns a styled widget. Here DT::formatStyle() colours
 #      the Score cell background by value band and the Team text by category.
 #
@@ -24,8 +24,8 @@ db_path <- tempfile(fileext = ".sqlite")
 
 #> STEP: Describe the form
 #> NOTE: A plain form() with three fields (Name, Team, Score). The records table
-#> NOTE: styling below is layered on entirely through form_server() arguments -
-#> NOTE: the form description itself is unchanged.
+#> NOTE: styling below is layered on entirely through form_server()'s table
+#> NOTE: list - the form description itself is unchanged.
 people_form <- form(
   form_id = "people_style",
   form_name = "People",
@@ -112,22 +112,23 @@ how_to <- function() {
 }
 
 #> STEP: Wire the server with table styling
-#> NOTE: Every table style is just a form_server() argument: table_options turns
-#> NOTE: off paging and chrome, table_filter = "top" adds type-aware per-column
-#> NOTE: search controls, and table_format applies style_table() to the widget.
+#> NOTE: Every table style is an entry of form_server()'s table list: options
+#> NOTE: turns off paging and chrome, filter = "top" adds type-aware per-column
+#> NOTE: search controls, and format applies style_table() to the widget.
 server <- function(input, output, session) {
   form_server(
     id = "people",
     form = people_form,
     user = "demo",
-    table_columns = c("sft_id", "name", "team", "score"),
-    # 1. No pagination / no global chrome - just the table.
-    table_options = list(paging = FALSE, dom = "t"),
-    # 2. Per-column search controls that adapt to each column's type.
-    table_filter = "top",
-    # 3. Colorization applied to the built DT widget.
-    table_format = function(table) style_table(table),
-    persist_column_settings = FALSE
+    columns = list(visible = c("sft_id", "name", "team", "score"), persist = FALSE),
+    table = list(
+      # 1. No pagination / no global chrome - just the table.
+      options = list(paging = FALSE, dom = "t"),
+      # 2. Per-column search controls that adapt to each column's type.
+      filter = "top",
+      # 3. Colorization applied to the built DT widget.
+      format = function(table) style_table(table)
+    )
   )
 }
 #> END

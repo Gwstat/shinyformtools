@@ -3,13 +3,12 @@
 # sft_register_column_settings(): a non-namespaced registrar called from the
 # module server (so it is exercised by form_server's tests). It renders the
 # records DataTable, keeps it in sync via a proxy on every mutation (re-selecting
-# the active row), and renders the audit table when show_audit is TRUE.
+# the active row), and registers the audit table render.
 sft_register_records_table <- function(input,
                                        output,
                                        session,
                                        form,
-                                       conn,
-                                       show_audit,
+                                       live_conn,
                                        show_system_columns,
                                        table_options,
                                        table_class,
@@ -94,34 +93,34 @@ sft_register_records_table <- function(input,
     ignoreInit = TRUE
   )
 
-  if (isTRUE(show_audit)) {
-    output$audit <- DT::renderDT({
-      if (!sft_module_permission(can_view_audit, default = TRUE)) {
-        return(NULL)
-      }
+  # The audit output is always registered: Shiny computes it only when
+  # form_ui(show_audit = TRUE) placed the container, so no server flag is needed.
+  output$audit <- DT::renderDT({
+    if (!sft_module_permission(can_view_audit, default = TRUE)) {
+      return(NULL)
+    }
 
-      row <- selected_record()
+    row <- selected_record()
 
-      audit <- if (is.null(row)) {
-        fetch_audit_log(
-          form = form,
-          conn = conn
-        )
-      } else {
-        fetch_audit_log(
-          form = form,
-          conn = conn,
-          record_id = row$sft_id[1]
-        )
-      }
-
-      audit_datatable(
-        data = audit,
-        options = audit_options,
-        datetime_format = datetime_format
+    audit <- if (is.null(row)) {
+      fetch_audit_log(
+        form = form,
+        conn = live_conn()
       )
-    })
-  }
+    } else {
+      fetch_audit_log(
+        form = form,
+        conn = live_conn(),
+        record_id = row$sft_id[1]
+      )
+    }
+
+    audit_datatable(
+      data = audit,
+      options = audit_options,
+      datetime_format = datetime_format
+    )
+  })
 
   invisible(NULL)
 }

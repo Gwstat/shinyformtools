@@ -119,7 +119,8 @@ testthat::test_that("inline add respects can_add = FALSE", {
 
   shiny::testServer(
     form_server,
-    args = list(form = form, conn = conn, form_layout = "inline", can_add = FALSE),
+    args = list(form = form, conn = conn, form_layout = "inline",
+                permissions = list(can_add = FALSE)),
     {
       session$setInputs(open_add = 1)
       # Permission denied: the panel never opens.

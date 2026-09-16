@@ -69,8 +69,14 @@ sft_check_form_region <- function(region, name) {
 #'   `sft_id` does not already guarantee - it is a nicer thing to read out over
 #'   the phone, not a stronger identifier. With it disabled, `sft_id` is the id
 #'   shown in the records table and in dialog titles.
-#' @param schema_policy Schema handling policy. Currently `"safe"` or
-#'   `"manual"`.
+#' @param schema_policy How schema drift is handled when the form touches the
+#'   database. `"safe"` (default): every CRUD call and `form_server()` first
+#'   probe the schema and, when it is missing or out of date, apply the
+#'   additive migration automatically (unsafe actions such as type changes
+#'   still stop). `"manual"`: nothing is migrated behind a CRUD call; instead
+#'   the call fails with a message asking for [init_db()], so a deployment can
+#'   control exactly when its schema changes. [init_db()], [plan_migration()]
+#'   and [apply_migration()] work under either policy.
 #' @param on_edit_missing_required How to treat new mandatory fields when old
 #'   records are edited. One of `"warn"`, `"require"` or `"ignore"`.
 #' @param tab_labels Optional labels for tab indices. Named labels use the tab

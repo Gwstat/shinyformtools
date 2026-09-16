@@ -10,7 +10,8 @@
 #   - rights_permissions(rules, user, form_id) turns the rules into the can_*
 #     functions form_server() expects, resolved per user and per form. Because
 #     the rules are an sft form, editing them is reactive and (with the default
-#     form_server(hide_forbidden = TRUE)) updates the visible buttons live.
+#     form_server(permissions = list(hide_forbidden = TRUE))) updates the
+#     visible buttons live.
 #   - Admins are superusers: they see every table and manage the rights table in
 #     an admin-only "Permissions" tab. shinymanager's own admin page is not
 #     extensible, so the rights manager lives in the secured app itself; drop the
@@ -19,7 +20,7 @@
 # The Permissions tab also carries a short guide to what each can_* column
 # grants, so you can see every permission's effect right where you set it: tick
 # a column in a rule, then log in as that user to watch the matching control
-# appear or disappear (form_server(hide_forbidden = TRUE)).
+# appear or disappear (hide_forbidden = TRUE in the permissions list).
 #
 # Logins (user / password): admin / admin, editor / editor, viewer / viewer.
 #
@@ -238,7 +239,7 @@ ui <- shinymanager::secure_app(
 #> NOTE: resolves the matching rules into the can_* functions form_server()
 #> NOTE: expects, per user and per form. Admins are superusers (see everything).
 #> NOTE: Because the rules are a reactive sft form, edits apply live and, with
-#> NOTE: form_server(hide_forbidden = TRUE), the visible controls follow them.
+#> NOTE: hide_forbidden = TRUE (the default), the visible controls follow them.
 server <- function(input, output, session) {
   res_auth <- shinymanager::secure_server(
     check_credentials = shinymanager::check_credentials(
@@ -260,12 +261,16 @@ server <- function(input, output, session) {
   rights <- form_server(
     "permissions", rights_form, conn = conn, user = current_user,
     display_transform = pretty_forms,
-    table_columns = c("sft_id", "user", "forms",
-                      "can_add", "can_edit", "can_delete", "can_view_record"),
-    can_add = is_admin, can_edit = is_admin, can_delete = is_admin,
-    can_view_record = is_admin, can_view_versions = is_admin,
-    can_view_deleted_records = is_admin, can_restore = is_admin,
-    persist_column_settings = FALSE
+    columns = list(
+      visible = c("sft_id", "user", "forms",
+                  "can_add", "can_edit", "can_delete", "can_view_record"),
+      persist = FALSE
+    ),
+    permissions = list(
+      can_add = is_admin, can_edit = is_admin, can_delete = is_admin,
+      can_view_record = is_admin, can_view_versions = is_admin,
+      can_view_deleted_records = is_admin, can_restore = is_admin
+    )
   )
 
   # Only show the rights manager to admins. The guide above the table explains
@@ -300,11 +305,12 @@ server <- function(input, output, session) {
     } else {
       c("sft_id", "name", "email", "team", "sft_updated_at")
     }
-    perms <- rights_permissions(rights$records, user = current_user,
-                                form_id = fid, superuser = is_admin)
-    do.call(form_server, c(
-      list(id = fid, form = f, conn = conn, table_columns = cols), perms
-    ))
+    form_server(
+      id = fid, form = f, conn = conn,
+      columns = list(visible = cols),
+      permissions = rights_permissions(rights$records, user = current_user,
+                                       form_id = fid, superuser = is_admin)
+    )
   }
 }
 #> END

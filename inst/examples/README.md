@@ -96,9 +96,9 @@ Start with **app_crud_basic**; the rest each focus on one capability.
   rendered as inert text rather than executed. Requires the optional `commonmark`
   package.
 
-- **app_inline_forms** — `form_layout = "inline"` on `form_ui()` and
-  `form_server()` renders the add/edit form in a panel above the table instead of
-  a modal dialog, with add and edit mutually exclusive.
+- **app_inline_forms** — `form_layout = "inline"` on `form_ui()` renders the
+  add/edit form in a panel above the table instead of a modal dialog, with add
+  and edit mutually exclusive; `form_server()` picks the layout up from the UI.
 
 - **app_questionnaire** — a survey / questionnaire. Each question carries a
   `slide` index (`form_field(slide = N)`); the slides are shown as a
@@ -149,10 +149,10 @@ Start with **app_crud_basic**; the rest each focus on one capability.
   `use_english()` clears the switch.
 
 - **app_table_style** — styling and transforming the records DataTable through
-  `form_server()` arguments. `table_options = list(paging = FALSE, dom = "t")`
-  drops the pager and global chrome; `table_filter = "top"` adds per-column
+  `form_server(table = list(...))`. `options = list(paging = FALSE, dom = "t")`
+  drops the pager and global chrome; `filter = "top"` adds per-column
   search controls that adapt to each column's type (range slider for a numeric
-  column, dropdown for a factor, text box otherwise); `table_format` runs
+  column, dropdown for a factor, text box otherwise); `format` runs
   `DT::formatStyle()` to colour cells by value band and category. (For the
   ready-made visual presets, see **app_design_presets**.)
 
@@ -173,13 +173,13 @@ Start with **app_crud_basic**; the rest each focus on one capability.
   optional `sf` and `leaflet` packages.
 
 - **app_highlight** — reactively glowing inputs to draw the eye. A two-tab form
-  (`form_field(tab = ...)`) with two highlight channels on `form_server()`. The
-  glow lands on the input control only, not its label. A **red glow** flags chosen
-  fields: `highlight_fields` takes a reactive (here a checkbox group), so the glow
-  tracks the selection live in both the add and edit forms, and
-  `highlight_tab = TRUE` glows the tab that holds a flagged field too. A **blue
-  glow** is automatic (`show_changed = TRUE`): in the edit form a field lights up
+  (`form_field(tab = ...)`) with two highlight channels in
+  `form_server(highlight = list(...))`. The glow lands on the input control only,
+  not its label. A **red glow** flags chosen fields: `fields` takes a reactive
+  (here a checkbox group), so the glow tracks the selection live in both the add
+  and edit forms, and `tab = TRUE` glows the tab that holds a flagged field too.
+  A **blue glow** is automatic (`show_changed = TRUE`): in the edit form a field lights up
   when its current value differs from what it was when the record was first added
   — i.e. it has been edited at some point since creation (a type-tolerant compare,
-  so `5` vs `"5"` does not false-positive). Colours are overridable via
-  `highlight_color` / `changed_color`.
+  so `5` vs `"5"` does not false-positive). Colours are overridable via the
+  `color` / `changed_color` entries of the list.

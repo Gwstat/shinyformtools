@@ -2,14 +2,15 @@
 #
 # Two independent highlight channels, both driven from form_server():
 #
-#   1. Caller-driven red glow - highlight_fields (+ highlight_tab):
+#   1. Caller-driven red glow - highlight = list(fields = ..., tab = ...):
 #      Tick fields in the "Flag for attention" box. The chosen inputs glow red in
-#      the add AND edit forms, and (highlight_tab = TRUE) the tab that holds a
-#      flagged field glows too - handy when the field lives on a tab you are not
-#      looking at. highlight_fields is a reactive, so the glow tracks the box
-#      live; clearing the box clears the glow.
+#      the add AND edit forms, and (tab = TRUE) the tab that holds a flagged
+#      field glows too - handy when the field lives on a tab you are not looking
+#      at. `fields` is a reactive, so the glow tracks the box live; clearing the
+#      box clears the glow.
 #
-#   2. Automatic blue "changed" glow - show_changed (on by default):
+#   2. Automatic blue "changed" glow - highlight = list(show_changed = TRUE),
+#      the default:
 #      Open Edit on a row: any field whose current value differs from the value
 #      it had when the record was first added (its original audit-log version)
 #      glows blue. It marks fields that have been edited at some point since
@@ -17,8 +18,8 @@
 #      its string do not false-positive), so only real changes light up.
 #
 # The form is laid out over two tabs (form_field(tab = ...)) so the tab glow has
-# something to point at. Colours are overridable via highlight_color /
-# changed_color.
+# something to point at. Colours are overridable via the `color` and
+# `changed_color` entries of the highlight list.
 #
 # Run with: shinyformtools::run_example("app_highlight")
 
@@ -107,30 +108,34 @@ how_to <- function() {
 }
 
 #> STEP: Wire the highlight arguments on the server
-#> NOTE: highlight_fields takes a reactive, so the red glow tracks the checkbox
-#> NOTE: group live; highlight_tab also glows the owning tab. show_changed (on by
+#> NOTE: highlight$fields takes a reactive, so the red glow tracks the checkbox
+#> NOTE: group live; highlight$tab also glows the owning tab. show_changed (on by
 #> NOTE: default) adds the automatic blue glow on edited fields. Colours are
-#> NOTE: overridable via highlight_color / changed_color.
+#> NOTE: overridable via highlight$color / highlight$changed_color.
 server <- function(input, output, session) {
   form_server(
     id = "profile",
     form = profile_form,
     user = "demo",
-    persist_column_settings = FALSE,
-    table_columns = c("sft_id", "name", "email", "age",
-                      "city", "postcode", "country"),
-    # 1. Reactive red glow on the flagged fields, plus their tab.
-    highlight_fields = reactive(input$flag),
-    highlight_tab = TRUE,
-    # 2. Automatic blue glow when an edit-form value differs from the stored one.
-    show_changed = TRUE
+    columns = list(
+      visible = c("sft_id", "name", "email", "age",
+                  "city", "postcode", "country"),
+      persist = FALSE
+    ),
+    highlight = list(
+      # 1. Reactive red glow on the flagged fields, plus their tab.
+      fields = reactive(input$flag),
+      tab = TRUE,
+      # 2. Automatic blue glow when an edit-form value differs from the stored one.
+      show_changed = TRUE
+    )
   )
 }
 #> END
 
 #> STEP: Build the UI
 #> NOTE: form_ui() injects the reactive highlight stylesheet (a single <style>
-#> NOTE: block kept in sync with highlight_fields/show_changed) alongside the
+#> NOTE: block kept in sync with highlight$fields/show_changed) alongside the
 #> NOTE: action buttons, records table and audit log.
 ui <- fluidPage(
   titlePanel("Reactive field & tab highlighting"),

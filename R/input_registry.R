@@ -183,7 +183,7 @@ sft_input_function <- function(input_type) {
     sliderTextInput = shinyWidgets::sliderTextInput,
     multiInput = shinyWidgets::multiInput,
     timeInput = shinyTime::timeInput,
-    ibanInput = IBANInput,
+    ibanInput = ibanInput,
     NULL
   )
 
@@ -468,8 +468,11 @@ sft_ui_value <- function(field, value) {
       )
     }
 
+    # A stored value nothing can parse yields NULL, i.e. the input keeps its
+    # current state. It used to return Sys.time(), which quietly turned an
+    # unreadable stored time into "now" on the next save.
     if (is.na(parsed)) {
-      return(Sys.time())
+      return(NULL)
     }
 
     return(parsed)

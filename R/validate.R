@@ -231,9 +231,11 @@ sft_validate_unique_fields <- function(form,
 #' @param form Object created with [form()].
 #' @param record Named list or one-row data frame.
 #' @param conn Optional DBI connection. Required for unique checks.
-#' @param current_id Optional current `sft_id` for update checks.
+#' @param record_id Optional `sft_id` of the record being updated, so its own
+#'   stored values do not count as duplicates in unique checks.
 #' @param require_all_mandatory Logical. Whether missing mandatory fields are
 #'   treated as validation errors.
+#' @param current_id Deprecated name of `record_id`; accepted with a warning.
 #'
 #' @return Invisibly returns `TRUE`.
 #' @examples
@@ -255,11 +257,20 @@ sft_validate_unique_fields <- function(form,
 validate_record <- function(form,
                                 record,
                                 conn = NULL,
-                                current_id = NULL,
-                                require_all_mandatory = TRUE) {
+                                record_id = NULL,
+                                require_all_mandatory = TRUE,
+                                current_id = NULL) {
   if (!inherits(form, "sft_form")) {
     stop("form must be a form object.", call. = FALSE)
   }
+
+  if (!is.null(current_id)) {
+    sft_deprecate_warn("`validate_record(current_id = )`", "`validate_record(record_id = )`")
+    if (is.null(record_id)) {
+      record_id <- current_id
+    }
+  }
+  current_id <- record_id
 
   if (is.data.frame(record)) {
     if (nrow(record) != 1L) {

@@ -340,8 +340,8 @@ fetch_schema_migrations <- function(form, conn = NULL) {
 
 #' Inspect the database schema for a form
 #'
-#' @param conn A DBI connection.
 #' @param form Object created with [form()].
+#' @param conn A DBI connection.
 #'
 #' @return A list describing the current and expected schema.
 #' @examples
@@ -353,13 +353,17 @@ fetch_schema_migrations <- function(form, conn = NULL) {
 #' conn <- db_connect(db)
 #'
 #' # Before the table is created, it reports the expected columns as missing.
-#' inspection <- inspect_schema(conn, contacts)
+#' inspection <- inspect_schema(contacts, conn)
 #' inspection$table_exists
 #' inspection$missing_columns
 #'
 #' db_disconnect(conn)
 #' @export
-inspect_schema <- function(conn, form) {
+inspect_schema <- function(form, conn) {
+  swapped <- sft_accept_swapped_form_conn(form, conn, "inspect_schema")
+  form <- swapped$form
+  conn <- swapped$conn
+
   if (!inherits(form, "sft_form")) {
     stop("form must be a form object.", call. = FALSE)
   }
@@ -432,8 +436,8 @@ comparable_columns <- intersect(
 
 #' Plan a database schema migration
 #'
-#' @param conn A DBI connection.
 #' @param form Object created with [form()].
+#' @param conn A DBI connection.
 #'
 #' @return A migration plan object.
 #' @examples
@@ -445,17 +449,21 @@ comparable_columns <- intersect(
 #' conn <- db_connect(db)
 #'
 #' # On a fresh database the plan contains a single create_table action.
-#' plan <- plan_migration(conn, contacts)
+#' plan <- plan_migration(contacts, conn)
 #' plan$actions$action
 #'
 #' db_disconnect(conn)
 #' @export
-plan_migration <- function(conn, form) {
+plan_migration <- function(form, conn) {
+  swapped <- sft_accept_swapped_form_conn(form, conn, "plan_migration")
+  form <- swapped$form
+  conn <- swapped$conn
+
   if (!inherits(form, "sft_form")) {
     stop("form must be a form object.", call. = FALSE)
   }
 
-  inspection <- inspect_schema(conn, form)
+  inspection <- inspect_schema(form, conn)
   actions <- sft_empty_migration_actions()
 
   if (!isTRUE(inspection$table_exists)) {
@@ -754,8 +762,8 @@ sft_run_migration_actions <- function(conn, form, actions, user = NULL) {
 
 #' Apply a safe database schema migration
 #'
-#' @param conn A DBI connection.
 #' @param form Object created with [form()].
+#' @param conn A DBI connection.
 #' @param plan Optional migration plan from [plan_migration()].
 #' @param user Optional user name for schema migration logs.
 #'
@@ -769,19 +777,23 @@ sft_run_migration_actions <- function(conn, form, actions, user = NULL) {
 #' conn <- db_connect(db)
 #'
 #' # Apply the safe actions (here: create the table).
-#' apply_migration(conn, contacts)
+#' apply_migration(contacts, conn)
 #'
 #' # A second plan now has nothing left to do.
-#' nrow(plan_migration(conn, contacts)$actions)
+#' nrow(plan_migration(contacts, conn)$actions)
 #'
 #' db_disconnect(conn)
 #' @export
-apply_migration <- function(conn,
-                                form,
+apply_migration <- function(form,
+                                conn,
                                 plan = NULL,
                                 user = NULL) {
+  swapped <- sft_accept_swapped_form_conn(form, conn, "apply_migration")
+  form <- swapped$form
+  conn <- swapped$conn
+
   if (is.null(plan)) {
-    plan <- plan_migration(conn, form)
+    plan <- plan_migration(form, conn)
   }
 
   if (!inherits(plan, "sft_migration_plan")) {
@@ -840,7 +852,7 @@ apply_migration <- function(conn,
 #' )
 #' conn <- db_connect(db)
 #'
-#' plan <- plan_migration(conn, contacts)
+#' plan <- plan_migration(contacts, conn)
 #' print(plan)
 #'
 #' db_disconnect(conn)

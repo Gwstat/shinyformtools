@@ -1,6 +1,6 @@
 Package: shinyformtools
 Title: Declarative Database-Backed Shiny Forms
-Version: 0.1.0
+Version: 0.2.0
 Authors@R: 
     person("Georg", "Wiegleb", , "gwiestat@gmail.com", role = c("aut", "cre"))
 Description: Build database-backed 'Shiny' form modules from a single

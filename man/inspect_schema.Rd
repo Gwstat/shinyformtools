@@ -4,12 +4,12 @@
 \alias{inspect_schema}
 \title{Inspect the database schema for a form}
 \usage{
-inspect_schema(conn, form)
+inspect_schema(form, conn)
 }
 \arguments{
-\item{conn}{A DBI connection.}
-
 \item{form}{Object created with \code{\link[=form]{form()}}.}
+
+\item{conn}{A DBI connection.}
 }
 \value{
 A list describing the current and expected schema.
@@ -26,7 +26,7 @@ contacts <- form(
 conn <- db_connect(db)
 
 # Before the table is created, it reports the expected columns as missing.
-inspection <- inspect_schema(conn, contacts)
+inspection <- inspect_schema(contacts, conn)
 inspection$table_exists
 inspection$missing_columns
 

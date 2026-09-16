@@ -276,7 +276,7 @@ sft_register_highlight <- function(output,
                                    session,
                                    form,
                                    current_edit_row,
-                                   conn = NULL,
+                                   live_conn = NULL,
                                    highlight_fields = NULL,
                                    highlight_tab = TRUE,
                                    highlight_color = "#dc3545",
@@ -292,6 +292,7 @@ sft_register_highlight <- function(output,
     }
 
     changed_ids <- if (isTRUE(show_changed)) {
+      conn <- if (is.function(live_conn)) live_conn() else NULL
       sft_changed_since_creation_ids(conn, form, current_edit_row())
     } else {
       character()

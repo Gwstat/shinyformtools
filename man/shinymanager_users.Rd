@@ -4,16 +4,23 @@
 \alias{shinymanager_users}
 \title{User names from a shinymanager credential database}
 \usage{
-shinymanager_users(db, passphrase = NULL, user_field = "user")
+shinymanager_users(
+  credentials,
+  passphrase = NULL,
+  user_field = "user",
+  db = NULL
+)
 }
 \arguments{
-\item{db}{Path to the encrypted credential SQLite database, or a data frame
-of credentials (the latter is handy for tests).}
+\item{credentials}{Path to the encrypted credential SQLite database, or a
+data frame of credentials (the latter is handy for tests).}
 
 \item{passphrase}{Passphrase for the encrypted database (ignored for a data
 frame).}
 
 \item{user_field}{Name of the user column.}
+
+\item{db}{Deprecated name of \code{credentials}; accepted with a warning.}
 }
 \value{
 A sorted character vector of unique user names.

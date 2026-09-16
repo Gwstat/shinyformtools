@@ -100,8 +100,10 @@ server <- function(input, output, session) {
     id = "contacts",
     form = contacts_form,
     user = "demo",
-    table_columns = c("sft_id", "name", "email", "team", "sft_is_deleted", "sft_updated_at"),
-    persist_column_settings = FALSE
+    columns = list(
+      visible = c("sft_id", "name", "email", "team", "sft_is_deleted", "sft_updated_at"),
+      persist = FALSE
+    )
   )
 
   # Same data, but one situational rename overrides the global German default.
@@ -111,8 +113,7 @@ server <- function(input, output, session) {
     form = contacts_form,
     user = "demo",
     labels = list(open_edit = "Editieren"),
-    table_columns = c("sft_id", "name", "team"),
-    persist_column_settings = FALSE
+    columns = list(visible = c("sft_id", "name", "team"), persist = FALSE)
   )
 }
 #> END

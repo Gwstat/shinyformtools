@@ -101,8 +101,10 @@ testthat::test_that("deleted records and versions are not served without permiss
     args = list(
       form = form,
       conn = conn,
-      can_view_deleted_records = FALSE,
-      can_view_versions = FALSE
+      permissions = list(
+        can_view_deleted_records = FALSE,
+        can_view_versions = FALSE
+      )
     ),
     {
       # Outputs compute as soon as something subscribes, so a client-injected

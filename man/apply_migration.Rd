@@ -4,12 +4,12 @@
 \alias{apply_migration}
 \title{Apply a safe database schema migration}
 \usage{
-apply_migration(conn, form, plan = NULL, user = NULL)
+apply_migration(form, conn, plan = NULL, user = NULL)
 }
 \arguments{
-\item{conn}{A DBI connection.}
-
 \item{form}{Object created with \code{\link[=form]{form()}}.}
+
+\item{conn}{A DBI connection.}
 
 \item{plan}{Optional migration plan from \code{\link[=plan_migration]{plan_migration()}}.}
 
@@ -30,10 +30,10 @@ contacts <- form(
 conn <- db_connect(db)
 
 # Apply the safe actions (here: create the table).
-apply_migration(conn, contacts)
+apply_migration(contacts, conn)
 
 # A second plan now has nothing left to do.
-nrow(plan_migration(conn, contacts)$actions)
+nrow(plan_migration(contacts, conn)$actions)
 
 db_disconnect(conn)
 }

@@ -263,10 +263,12 @@ sft_form_button_row <- function(ns,
 #' and column buttons are opt-in.
 #'
 #' @param id Module id matching [form_ui()] and [form_server()].
-#' @param show_add,show_edit,show_delete,show_refresh_table,show_versions,show_deleted_records,show_column_settings,show_column_selection Logical flags controlling individual buttons. `show_deleted_records`, `show_column_settings` and `show_column_selection` default to `FALSE`, matching [form_ui()]. `show_versions` is kept for compatibility but the standalone versions button is no longer rendered by the default button row.
+#' @param show_add,show_edit,show_delete,show_refresh_table,show_deleted_records,show_column_settings,show_column_selection Logical flags controlling individual buttons. `show_deleted_records`, `show_column_settings` and `show_column_selection` default to `FALSE`, matching [form_ui()].
 #' @param labels Optional named list overriding UI labels and button texts.
 #' @param button_options Optional named list controlling action-button alignment
 #'   and classes. The same structure as in [form_ui()] is supported.
+#' @param ... Deprecated: `show_versions` (no effect; versions are shown inside
+#'   the edit dialog when permitted).
 #'
 #' @return Shiny UI.
 #' @examples
@@ -293,13 +295,18 @@ form_buttons <- function(id,
                              show_edit = TRUE,
                              show_delete = TRUE,
                              show_refresh_table = TRUE,
-                             show_versions = FALSE,
                              show_deleted_records = FALSE,
                              show_column_settings = FALSE,
                              show_column_selection = FALSE,
                              labels = list(),
-                             button_options = list()) {
+                             button_options = list(),
+                             ...) {
   ns <- shiny::NS(id)
+  sft_map_deprecated_args(
+    dots = list(...),
+    mapping = list(show_versions = list(bundle = NULL, key = NULL)),
+    fn = "form_buttons"
+  )
 
   shiny::tagList(
     sft_button_css(),
@@ -311,7 +318,6 @@ form_buttons <- function(id,
       show_edit = show_edit,
       show_delete = show_delete,
       show_refresh_table = show_refresh_table,
-      show_versions = show_versions,
       show_deleted_records = show_deleted_records,
       show_column_settings = show_column_settings,
       show_column_selection = show_column_selection

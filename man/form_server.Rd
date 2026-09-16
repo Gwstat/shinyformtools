@@ -9,49 +9,20 @@ form_server(
   form,
   conn = NULL,
   user = NULL,
-  include_deleted_default = FALSE,
-  show_audit = FALSE,
-  table_columns = NULL,
-  table_views = NULL,
-  default_column_view = "Standard",
-  show_system_columns = FALSE,
-  can_add = TRUE,
-  can_view_record = TRUE,
-  can_edit = TRUE,
-  can_delete = TRUE,
-  can_restore = TRUE,
-  can_view_versions = TRUE,
-  can_view_deleted_records = TRUE,
-  can_change_column_settings = TRUE,
-  can_select_column_view = TRUE,
-  can_view_audit = TRUE,
-  can_view_table = TRUE,
-  can_reset_table = TRUE,
-  hide_forbidden = TRUE,
-  editable_fields = NULL,
+  permissions = list(),
+  table = list(),
+  columns = list(),
+  highlight = list(),
   labels = list(),
   modal_sizes = list(),
-  persist_column_settings = TRUE,
   display_transform = NULL,
-  display_column_labels = NULL,
-  input_bindings = NULL,
   modal_header = NULL,
-  table_options = list(),
-  table_class = "display compact stripe hover",
-  table_filter = "none",
-  table_format = NULL,
-  audit_options = list(),
-  version_options = list(),
-  deleted_records_options = list(),
-  datetime_format = sft_default_datetime_format(),
+  input_bindings = NULL,
   refresh_triggers = NULL,
-  highlight_fields = NULL,
-  highlight_tab = TRUE,
-  highlight_color = "#dc3545",
-  show_changed = TRUE,
-  changed_color = "#2b8cff",
   conflict_check = TRUE,
-  form_layout = c("modal", "inline")
+  include_deleted_default = FALSE,
+  form_layout = NULL,
+  ...
 )
 }
 \arguments{
@@ -59,79 +30,93 @@ form_server(
 
 \item{form}{Object created with \code{\link[=form]{form()}}.}
 
-\item{conn}{Optional existing DBI connection.}
+\item{conn}{Optional existing DBI connection. When \code{NULL} the module opens
+its own connection from \code{form$db}, closes it when the session ends, and
+reopens it if the server drops it (see \code{connection()} in the return
+value). A connection you pass in is yours: it is never closed or replaced.}
 
-\item{user}{Optional user identifier or function returning a user identifier.}
+\item{user}{Optional user identifier or function returning a user
+identifier. Falls back to \code{permissions$user} when the adapters supply one.}
 
-\item{include_deleted_default}{Logical default for including deleted records.}
+\item{permissions}{Named list of permissions. Each entry is a logical, or a
+function / reactive returning one, and defaults to \code{TRUE}:
+\describe{
+\item{\code{can_add}}{Add records.}
+\item{\code{can_view_record}}{Open the selected record in the read-only/edit
+dialog.}
+\item{\code{can_edit}}{Save changes to an opened record.}
+\item{\code{can_delete}}{Soft-delete records.}
+\item{\code{can_restore}}{Restore deleted records and previous versions.}
+\item{\code{can_view_versions}}{Open the versions accordion.}
+\item{\code{can_view_deleted_records}}{Open the deleted-records dialog.}
+\item{\code{can_change_column_settings}}{Open and save shared column
+settings (admins).}
+\item{\code{can_select_column_view}}{Load an existing column view.}
+\item{\code{can_view_audit}}{See the audit-log table (only effective with
+\code{form_ui(show_audit = TRUE)}); when \code{FALSE} no audit rows reach the
+client.}
+\item{\code{can_view_table}}{See the records table at all; when \code{FALSE} the
+table is hidden and no rows are sent.}
+\item{\code{can_reset_table}}{Use the reset/refresh button.}
+\item{\code{hide_forbidden}}{Logical (default \code{TRUE}). Hide every control
+whose permission is \code{FALSE} reactively. The server-side guards stay in
+force regardless, so a hidden control can never trigger its action.}
+\item{\code{editable_fields}}{Optional character vector of field ids the
+current user may edit (or a function/reactive returning one). Every
+other input is rendered read-only in the edit dialog and ignored on
+save. \code{NULL} (default) keeps each field's own \code{editable} setting; an
+empty vector locks every input.}
+\item{\code{user}}{Optional; used as \code{user} when that argument is \code{NULL}.}
+}}
 
-\item{show_audit}{Logical. Whether audit output should be rendered. Off by
-default, matching \code{form_ui(show_audit = FALSE)}; set both to \code{TRUE} to show
-the audit log. Mutations are recorded regardless.}
+\item{table}{Named list of table display settings:
+\describe{
+\item{\code{options}}{Additional DT options for the records table.}
+\item{\code{class}}{CSS class passed to \code{\link[DT:datatable]{DT::datatable()}} (default
+\code{"display compact stripe hover"}).}
+\item{\code{filter}}{Per-column search controls: \code{"none"} (default), \code{"top"}
+or \code{"bottom"}.}
+\item{\code{format}}{Optional function for display-only DT formatting. May
+declare any of \code{table}, \code{data} and \code{context} and must return a DT
+widget, e.g. \code{function(table) DT::formatStyle(table, "Status", ...)}.}
+\item{\code{audit_options}, \code{version_options}, \code{deleted_records_options}}{
+Additional DT options for the audit, versions and deleted-records
+tables.}
+\item{\code{datetime_format}}{Format for displayed timestamps. They are
+rendered in the time zone of the machine running the app; set
+\code{options(shinyformtools.datetime_timezone = "UTC")} (or any Olson
+name) to pin it. Values stored without an offset, such as a user's
+own date field, are never shifted.}
+}}
 
-\item{table_columns}{Optional columns shown in the records table.}
+\item{columns}{Named list controlling which columns the records table shows:
+\describe{
+\item{\code{visible}}{Optional character vector of columns shown by default.}
+\item{\code{views}}{Optional named list of predefined views, each a character
+vector of database column names (or a function returning such a list).}
+\item{\code{default_view}}{Default view name (default \code{"Standard"}); a
+scalar or a function/reactive returning one.}
+\item{\code{persist}}{Logical (default \code{TRUE}). Store per-user column choices
+in the form database.}
+\item{\code{show_system}}{Logical (default \code{FALSE}). Offer the extended
+system columns.}
+\item{\code{labels}}{Optional named character vector with labels for
+display-only columns created by \code{display_transform}.}
+}}
 
-\item{table_views}{Optional named list of predefined table views. Each entry is
-a character vector of database column names. A function returning such a list
-is also accepted.}
-
-\item{default_column_view}{Optional default table-view name. Can be a scalar or
-a function/reactive returning a scalar.}
-
-\item{show_system_columns}{Logical. Whether extended system columns are shown.}
-
-\item{can_add}{Logical or function. Whether the current user may add records.}
-
-\item{can_view_record}{Logical or function. Whether the current user may open
-the selected record in the read-only/edit modal.}
-
-\item{can_edit}{Logical or function. Whether the current user may save changes
-to an opened record.}
-
-\item{can_delete}{Logical or function. Whether the current user may soft-delete
-records.}
-
-\item{can_restore}{Logical or function. Whether the current user may restore
-previous record versions.}
-
-\item{can_view_versions}{Logical or function. Whether the current user may open
-the versions dialog.}
-
-\item{can_view_deleted_records}{Logical or function. Whether the current user
-may open the deleted-records dialog.}
-
-\item{can_change_column_settings}{Logical or function. Whether the current user
-may open and save shared column settings. Intended for admins/managers.}
-
-\item{can_select_column_view}{Logical or function. Whether the current user
-may load an existing column view.}
-
-\item{can_view_audit}{Logical or function. Whether the current user may see
-the audit-log table. Only effective when the audit table is part of the UI
-(\code{form_ui(show_audit = TRUE)}); when \code{FALSE} the audit table is hidden
-and no audit rows are sent to the client.}
-
-\item{can_view_table}{Logical or function. Whether the current user may see
-the records table at all. When \code{FALSE} the table is hidden and no rows are
-sent to the client.}
-
-\item{can_reset_table}{Logical or function. Whether the current user may use
-the reset/refresh button that clears table filters, ordering, paging and
-selection.}
-
-\item{hide_forbidden}{Logical. When \code{TRUE} (default), action buttons, the
-reset button, the records table and the audit table whose \verb{can_*}
-permission is \code{FALSE} are hidden reactively, so the visible controls match
-the permissions. The server-side guards stay in force regardless, so a
-hidden control can never trigger its action. Set to \code{FALSE} to keep every
-control visible and rely on the warning that a denied action shows.}
-
-\item{editable_fields}{Optional character vector of field ids the current
-user may edit (or a function/reactive returning one). When supplied, every
-other input field in the edit dialog is rendered read-only and is ignored on
-save, so a user can be allowed to edit only specific inputs. \code{NULL} (default)
-keeps each field's own \code{editable} setting; an empty vector locks every
-input field.}
+\item{highlight}{Named list controlling the glow effects in the add/edit
+forms:
+\describe{
+\item{\code{fields}}{Character vector of field ids to glow, or a
+function/reactive returning one; an empty vector clears it.}
+\item{\code{tab}}{Logical (default \code{TRUE}). Also glow the tab containing a
+highlighted or changed field.}
+\item{\code{color}}{Glow colour for \code{fields} (default \code{"#dc3545"}).}
+\item{\code{show_changed}}{Logical (default \code{TRUE}). Glow edit-form fields
+whose value differs from the value at creation.}
+\item{\code{changed_color}}{Glow colour for \code{show_changed} (default
+\code{"#2b8cff"}).}
+}}
 
 \item{labels}{Optional named list overriding UI labels, modal texts and
 notification messages. Set individual entries to \code{NULL} to hide the
@@ -142,21 +127,11 @@ corresponding button or modal title.}
 \code{"m"}, \code{"l"}, a CSS width such as \code{"90vw"}, or a list with \code{size},
 \code{width}, \code{height} and \code{max_height}.}
 
-\item{persist_column_settings}{Logical. Whether per-user column choices are
-stored in the form database.}
-
 \item{display_transform}{Optional function used to derive the records table
 shown to the user from the raw database records. The function may use
 \verb{function(data)} or \verb{function(data, context)} and must return a data frame.
 If raw records contain \code{sft_id}, the returned data must keep \code{sft_id} so
 row selections can be mapped back to the underlying record.}
-
-\item{display_column_labels}{Optional named character vector with labels for
-additional display-only columns created by \code{display_transform}.}
-
-\item{input_bindings}{Optional list of dynamic input bindings created with
-\code{\link[=dynamic_choices]{dynamic_choices()}}, \code{\link[=dynamic_value]{dynamic_value()}} or \code{\link[=dynamic_visibility]{dynamic_visibility()}}. Bindings
-are registered for both add and edit dialogs.}
 
 \item{modal_header}{Optional UI or function rendered at the top of add/edit
 dialogs. Functions may declare any of \code{values}, \code{record}, \code{context},
@@ -164,60 +139,14 @@ dialogs. Functions may declare any of \code{values}, \code{record}, \code{contex
 for display-only, cross-table context such as contact details or linked
 record summaries.}
 
-\item{table_options}{Additional DT options for the records table.}
-
-\item{table_class}{CSS class passed to \code{\link[DT:datatable]{DT::datatable()}} for the records table.}
-
-\item{table_filter}{Per-column search controls for the records table, passed
-to \code{\link[DT:datatable]{DT::datatable()}}. \code{"none"} (default), \code{"top"} or \code{"bottom"}. The control
-adapts to each column's type (range slider for numeric/integer columns, a
-select for factors, a text box otherwise).}
-
-\item{table_format}{Optional function for display-only DT formatting. Functions
-may declare any of \code{table}, \code{data} and \code{context} and must return a DT table
-widget. This replaces legacy \code{tableedit2} string hooks with regular R code,
-for example \code{function(table) DT::formatStyle(table, "Status", ...)}.}
-
-\item{audit_options}{Additional DT options for the audit table.}
-
-\item{version_options}{Additional DT options for the version table.}
-
-\item{deleted_records_options}{Additional DT options for the deleted-records table.}
-
-\item{datetime_format}{Format used for displayed timestamps. Timestamps are
-rendered in the time zone of the machine running the app -- for a deployed
-Shiny app, the server. Set
-\code{options(shinyformtools.datetime_timezone = "UTC")}, or to any Olson name
-such as \code{"Asia/Tokyo"}, to pin it instead. That is what an installation
-serving several regions wants: everyone then reads the same wall clock,
-rather than each viewer having to know where the server stands. Values
-stored without a time-zone offset, such as a user's own date field, are
-never shifted -- only stamps that identify a moment in time are translated.}
+\item{input_bindings}{Optional list of dynamic input bindings created with
+\code{\link[=dynamic_choices]{dynamic_choices()}}, \code{\link[=dynamic_value]{dynamic_value()}} or \code{\link[=dynamic_visibility]{dynamic_visibility()}}. Bindings
+are registered for both add and edit dialogs.}
 
 \item{refresh_triggers}{Optional reactive (or list of reactives) that this
 table should re-fetch on. Pass another form's returned \code{changed} reactive to
 make this table react to changes in that table, so dependent tables and
 downstream outputs (maps, summaries) stay in sync.}
-
-\item{highlight_fields}{Optional character vector of field ids to highlight
-with a glow in the add and edit forms, or a function/reactive returning one.
-Use it to draw attention to specific inputs reactively (for example fields
-that still need input). The set is re-applied whenever the reactive changes;
-return an empty vector to clear the highlight.}
-
-\item{highlight_tab}{Logical. When \code{TRUE} (default), the tab that contains a
-highlighted or changed field is highlighted too, so the relevant tab stands
-out in a multi-tab form. Has no effect on single-tab forms.}
-
-\item{highlight_color}{Glow colour used for \code{highlight_fields}. Any CSS colour
-string. Defaults to a red (\code{"#dc3545"}).}
-
-\item{show_changed}{Logical. When \code{TRUE} (default), an edit-form field whose
-current value differs from the stored record value is glowed automatically,
-so it is clear which fields were actually changed before saving.}
-
-\item{changed_color}{Glow colour used for \code{show_changed}. Any CSS colour
-string. Defaults to a blue (\code{"#2b8cff"}).}
 
 \item{conflict_check}{Logical. When \code{TRUE} (default), saving an edit is
 rejected if another user changed the record while the edit dialog was
@@ -228,19 +157,38 @@ check is value-based and runs inside the update transaction (see the
 \code{expected_record} argument of \code{\link[=update_record]{update_record()}}). Set to \code{FALSE} to
 restore the previous last-write-wins behaviour.}
 
-\item{form_layout}{Where the add/edit forms render. \code{"modal"} (default) opens
-them in a dialog; \code{"inline"} renders them in a panel above the records table,
-with add and edit mutually exclusive. Must match the \code{form_layout} passed to
-\code{\link[=form_ui]{form_ui()}}.}
+\item{include_deleted_default}{Logical default for including deleted records.}
+
+\item{form_layout}{Normally \code{NULL}: the server reads the layout
+(\code{"modal"} or \code{"inline"}) that \code{\link[=form_ui]{form_ui()}} rendered. Pass a value only to
+override it, e.g. in tests without a UI.}
+
+\item{...}{Deprecated arguments, accepted with a warning for one release and
+mapped onto the lists above: every \verb{can_*} flag, \code{hide_forbidden} and
+\code{editable_fields} (-> \code{permissions}); \code{table_options}, \code{table_class},
+\code{table_filter}, \code{table_format}, \code{audit_options}, \code{version_options},
+\code{deleted_records_options}, \code{datetime_format} (-> \code{table});
+\code{table_columns}, \code{table_views}, \code{default_column_view},
+\code{persist_column_settings}, \code{show_system_columns}, \code{display_column_labels}
+(-> \code{columns}); \code{highlight_fields}, \code{highlight_tab}, \code{highlight_color},
+\code{show_changed}, \code{changed_color} (-> \code{highlight}); \code{show_audit} (no effect:
+the audit table renders whenever \code{form_ui(show_audit = TRUE)} placed it).}
 }
 \value{
 A list of reactive helpers: \code{records}, \code{display_records} and
 \code{selected_record} reactives, a \code{changed} reactive that increments on every
-mutation (insert/update/delete/restore), a \code{refresh()} function, and the
-\code{conn} and \code{form}.
+mutation (insert/update/delete/restore), a \code{refresh()} function, the
+\code{form}, the \code{conn} the module started with, and \code{connection()}, a function
+returning the module's current connection. Prefer \code{connection()} when the
+module owns its connection: it probes the handle and reopens it if the
+server dropped it, whereas \code{conn} is the handle as it was at start-up.
 }
 \description{
-Form module server
+Options come in four named lists, each with defaults, so a call only names
+what it changes: \code{permissions} (who may do what), \code{table} (how the DT tables
+look), \code{columns} (which columns show, saved views) and \code{highlight} (glow
+effects in the forms). The permission adapters \code{\link[=shinymanager_permissions]{shinymanager_permissions()}}
+and \code{\link[=rights_permissions]{rights_permissions()}} return a \code{permissions} list directly.
 }
 \examples{
 \dontrun{

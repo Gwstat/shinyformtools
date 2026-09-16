@@ -201,7 +201,7 @@ sft_register_edit_conflict <- function(input,
                                        session,
                                        form,
                                        labels,
-                                       conn,
+                                       live_conn,
                                        edit_conflict,
                                        edit_conflict_baseline) {
   output$sft_edit_conflict_ui <- shiny::renderUI({
@@ -215,7 +215,7 @@ sft_register_edit_conflict <- function(input,
     ns <- session$ns
 
     meta <- sft_conflict_changes_meta(
-      conn = conn,
+      conn = live_conn(),
       form = form,
       record_id = conflict$current_record$sft_id[1],
       since = baseline$sft_updated_at[1],

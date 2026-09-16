@@ -131,9 +131,10 @@ server <- function(input, output, session) {
     id = "contacts",
     form = contacts_form,
     user = "demo",
-    show_audit = TRUE,
-    table_columns = c("sft_id", "name", "email", "team", "gender", "active", "sft_updated_at"),
-    persist_column_settings = FALSE
+    columns = list(
+      visible = c("sft_id", "name", "email", "team", "gender", "active", "sft_updated_at"),
+      persist = FALSE
+    )
   )
 }
 #> END
@@ -141,9 +142,10 @@ server <- function(input, output, session) {
 #> STEP: Build the UI
 #> NOTE: form_ui() with the same id draws the action buttons and the records
 #> NOTE: table. Only the CRUD core is on by default, so this example opts into
-#> NOTE: the two extras it wants to show: the audit log (show_audit, on both
-#> NOTE: form_ui and form_server) and the deleted-records dialog you restore
-#> NOTE: from. table_style picks a visual preset for the tables ("classic",
+#> NOTE: the two extras it wants to show: the audit log (show_audit) and the
+#> NOTE: deleted-records dialog you restore from. Both are form_ui() switches;
+#> NOTE: form_server() needs nothing extra for them.
+#> NOTE: table_style picks a visual preset for the tables ("classic",
 #> NOTE: "clean", "publication", "compact"); it can also be set app-wide via
 #> NOTE: options(shinyformtools.table_style = "clean").
 ui <- fluidPage(

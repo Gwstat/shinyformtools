@@ -93,7 +93,7 @@ testthat::test_that("deleted rules are ignored", {
 
 testthat::test_that("permissions list matches form_server arguments", {
   perms <- rights_permissions(data.frame(), user = "u", form_id = "x")
-  testthat::expect_true(all(names(perms) %in% names(formals(form_server))))
+  testthat::expect_true(all(names(perms) %in% names(sft_permission_defaults())))
 })
 
 testthat::test_that("shinymanager_users reads a credentials data frame", {

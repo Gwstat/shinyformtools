@@ -469,7 +469,7 @@ sft_register_column_settings <- function(input,
                                           output,
                                           session,
                                           form,
-                                          conn,
+                                          live_conn,
                                           user,
                                           labels,
                                           modal_sizes,
@@ -486,7 +486,7 @@ sft_register_column_settings <- function(input,
   resolve_column_view_columns <- function(view_name) {
     sft_resolve_column_view_columns(
       view_name = view_name,
-      conn = conn,
+      conn = live_conn(),
       form = form,
       user = sft_module_current_user(input, user),
       table_views = table_views,
@@ -505,7 +505,7 @@ sft_register_column_settings <- function(input,
 
     if (isTRUE(persist_column_settings)) {
       sft_set_active_column_view(
-        conn = conn,
+        conn = live_conn(),
         form = form,
         user = sft_module_current_user(input, user),
         view_name = view_name
@@ -562,7 +562,7 @@ sft_register_column_settings <- function(input,
     view_names <- sft_column_view_names(
       table_views = table_views,
       persist_column_settings = persist_column_settings,
-      conn = conn,
+      conn = live_conn(),
       form = form
     )
 
@@ -648,7 +648,7 @@ sft_register_column_settings <- function(input,
 
     if (isTRUE(persist_column_settings)) {
       sft_set_shared_column_view(
-        conn = conn,
+        conn = live_conn(),
         form = form,
         view_name = view_name,
         columns = resolved_columns

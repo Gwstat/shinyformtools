@@ -11,7 +11,7 @@ sft_register_deleted_versions <- function(input,
                                            output,
                                            session,
                                            form,
-                                           conn,
+                                           live_conn,
                                            user,
                                            labels,
                                            modal_sizes,
@@ -42,7 +42,7 @@ sft_register_deleted_versions <- function(input,
 
     data <- fetch_records(
       form = form,
-      conn = conn,
+      conn = live_conn(),
       include_deleted = TRUE
     )
 
@@ -86,7 +86,7 @@ sft_register_deleted_versions <- function(input,
 
     list_restorable_versions(
       form = form,
-      conn = conn,
+      conn = live_conn(),
       record_id = record_id
     )
   })
@@ -189,7 +189,7 @@ sft_register_deleted_versions <- function(input,
         restore_record(
           form = form,
           record_id = row$sft_id[1],
-          conn = conn,
+          conn = live_conn(),
           user = sft_module_current_user(input, user),
           reason = "Restored latest version via deleted-records dialog."
         )
@@ -298,7 +298,7 @@ sft_register_deleted_versions <- function(input,
           form = form,
           record_id = record_id,
           version_no = version_no,
-          conn = conn,
+          conn = live_conn(),
           user = sft_module_current_user(input, user),
           reason = paste0(
             "Restored via module dialog from version ",

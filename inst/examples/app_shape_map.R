@@ -102,15 +102,16 @@ server <- function(input, output, session) {
     "districts",
     form = district_form,
     conn = setup_conn,
-    table_columns = c("fips", "name", "births"),
-    can_add = FALSE,
-    # Restoring a specific older version is offered in the view-case accordion;
-    # restoring a deleted record (latest version) is one click in the deleted
-    # records dialog.
-    can_view_versions = TRUE,
-    can_change_column_settings = FALSE,
-    can_select_column_view = FALSE,
-    persist_column_settings = FALSE
+    columns = list(visible = c("fips", "name", "births"), persist = FALSE),
+    permissions = list(
+      can_add = FALSE,
+      # Restoring a specific older version is offered in the view-case accordion;
+      # restoring a deleted record (latest version) is one click in the deleted
+      # records dialog.
+      can_view_versions = TRUE,
+      can_change_column_settings = FALSE,
+      can_select_column_view = FALSE
+    )
   )
 
   output$map <- leaflet::renderLeaflet({
@@ -153,8 +154,7 @@ ui <- fluidPage(
   form_ui(
     "districts",
     show_add = FALSE,
-    show_refresh_table = FALSE,
-    show_versions = FALSE
+    show_refresh_table = FALSE
   ),
   # The map gets its own contained div so it never overlaps the table.
   shiny::tags$div(

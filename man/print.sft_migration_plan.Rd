@@ -25,7 +25,7 @@ contacts <- form(
 )
 conn <- db_connect(db)
 
-plan <- plan_migration(conn, contacts)
+plan <- plan_migration(contacts, conn)
 print(plan)
 
 db_disconnect(conn)

@@ -8,8 +8,9 @@ validate_record(
   form,
   record,
   conn = NULL,
-  current_id = NULL,
-  require_all_mandatory = TRUE
+  record_id = NULL,
+  require_all_mandatory = TRUE,
+  current_id = NULL
 )
 }
 \arguments{
@@ -19,10 +20,13 @@ validate_record(
 
 \item{conn}{Optional DBI connection. Required for unique checks.}
 
-\item{current_id}{Optional current \code{sft_id} for update checks.}
+\item{record_id}{Optional \code{sft_id} of the record being updated, so its own
+stored values do not count as duplicates in unique checks.}
 
 \item{require_all_mandatory}{Logical. Whether missing mandatory fields are
 treated as validation errors.}
+
+\item{current_id}{Deprecated name of \code{record_id}; accepted with a warning.}
 }
 \value{
 Invisibly returns \code{TRUE}.

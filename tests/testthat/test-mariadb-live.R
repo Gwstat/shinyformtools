@@ -50,7 +50,7 @@ testthat::test_that("the schema lands on a live server with the intended types",
 
   # A second pass has nothing left to do, i.e. the probe settles.
   testthat::expect_true(sft_schema_is_current(conn, contacts))
-  testthat::expect_equal(nrow(plan_migration(conn, contacts)$actions), 0L)
+  testthat::expect_equal(nrow(plan_migration(contacts, conn)$actions), 0L)
 })
 
 testthat::test_that("a record's whole lifecycle survives a round trip", {
@@ -176,7 +176,7 @@ testthat::test_that("a database from an older package version is widened and kee
 
   testthat::expect_false(sft_schema_is_current(conn, contacts))
 
-  plan <- plan_migration(conn, contacts)
+  plan <- plan_migration(contacts, conn)
   testthat::expect_setequal(
     plan$actions$db_column[plan$actions$action == "retire_column"],
     c("sft_form_id", "sft_uuid")
@@ -258,9 +258,9 @@ testthat::test_that("dropping a unique field removes its index", {
   )
 
   testthat::expect_true(
-    "drop_index" %in% plan_migration(conn, relaxed)$actions$action
+    "drop_index" %in% plan_migration(relaxed, conn)$actions$action
   )
-  apply_migration(conn, relaxed, user = "test")
+  apply_migration(relaxed, conn, user = "test")
   testthat::expect_false(
     "uq_contacts__email" %in% sft_list_index_names(conn, "contacts")
   )

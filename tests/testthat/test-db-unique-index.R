@@ -175,10 +175,10 @@ testthat::test_that("the migration planner manages unique indexes as actions", {
     )
   )
 
-  plan_add <- plan_migration(conn, form_v2)
+  plan_add <- plan_migration(form_v2, conn)
   testthat::expect_true("create_index" %in% plan_add$actions$action)
 
-  apply_migration(conn, form_v2, plan = plan_add)
+  apply_migration(form_v2, conn, plan = plan_add)
   testthat::expect_true(
     "uq_members__email" %in% sft_list_index_names(conn, "members")
   )
@@ -195,10 +195,10 @@ testthat::test_that("the migration planner manages unique indexes as actions", {
     )
   )
 
-  plan_drop <- plan_migration(conn, form_v3)
+  plan_drop <- plan_migration(form_v3, conn)
   testthat::expect_true("drop_index" %in% plan_drop$actions$action)
 
-  apply_migration(conn, form_v3, plan = plan_drop)
+  apply_migration(form_v3, conn, plan = plan_drop)
   testthat::expect_false(
     "uq_members__email" %in% sft_list_index_names(conn, "members")
   )

@@ -118,7 +118,7 @@ testthat::test_that("sft_plan_migration detects a missing table", {
     fields = fields
   )
 
-  plan <- plan_migration(conn, form)
+  plan <- plan_migration(form, conn)
 
   testthat::expect_s3_class(plan, "sft_migration_plan")
   testthat::expect_equal(nrow(plan$actions), 1L)
@@ -161,12 +161,12 @@ testthat::test_that("sft_apply_migration adds a new field column", {
     )
   )
 
-  plan <- plan_migration(conn, form_v2)
+  plan <- plan_migration(form_v2, conn)
 
   testthat::expect_true("add_column" %in% plan$actions$action)
   testthat::expect_true("email" %in% plan$actions$db_column)
 
-  apply_migration(conn, form_v2, plan = plan)
+  apply_migration(form_v2, conn, plan = plan)
 
   table_info <- DBI::dbGetQuery(conn, "PRAGMA table_info(simple)")
 
@@ -209,12 +209,12 @@ testthat::test_that("sft_apply_migration retires removed fields without dropping
     )
   )
 
-  plan <- plan_migration(conn, form_v2)
+  plan <- plan_migration(form_v2, conn)
 
   testthat::expect_true("retire_column" %in% plan$actions$action)
   testthat::expect_true("email" %in% plan$actions$db_column)
 
-  apply_migration(conn, form_v2, plan = plan)
+  apply_migration(form_v2, conn, plan = plan)
 
   table_info <- DBI::dbGetQuery(conn, "PRAGMA table_info(simple)")
 
@@ -232,7 +232,7 @@ testthat::test_that("sft_apply_migration retires removed fields without dropping
 
   testthat::expect_equal(field_meta$status, "retired")
 
-  plan_after <- plan_migration(conn, form_v2)
+  plan_after <- plan_migration(form_v2, conn)
 
   testthat::expect_false("retire_column" %in% plan_after$actions$action)
 })
@@ -269,11 +269,11 @@ testthat::test_that("renamed fields reuse existing database columns without addi
     )
   )
 
-  plan <- plan_migration(conn, form_v2)
+  plan <- plan_migration(form_v2, conn)
 
   testthat::expect_equal(nrow(plan$actions), 0L)
 
-  apply_migration(conn, form_v2, plan = plan)
+  apply_migration(form_v2, conn, plan = plan)
 
   table_info <- DBI::dbGetQuery(conn, "PRAGMA table_info(rename_test)")
 
@@ -344,7 +344,7 @@ testthat::test_that("a failed migration rolls back on a transactional-DDL backen
   )
 
   testthat::expect_error(
-    apply_migration(conn = conn, form = form_v2),
+    apply_migration(form_v2, conn),
     "forced migration failure"
   )
 

@@ -60,14 +60,14 @@ permission-aware administrative use cases.
 - **Server-side validation** with `validation_rule()`, `required_if()`,
   `forbid_if()`, and `warning_if()` — rules that cannot be bypassed from the
   client.
-- **Permissions** — fine-grained `can_*` controls on `form_server()`, a rights
-  table built with `permissions_form()` / `rights_permissions()`, and a
-  `shinymanager` adapter.
+- **Permissions** — fine-grained `can_*` controls in
+  `form_server(permissions = list(...))`, a rights table built with
+  `permissions_form()` / `rights_permissions()`, and a `shinymanager` adapter.
 - **Shape fields** — attach a fixed, non-editable geometry to each record with
   `shape_field()` / `attach_shapes()`, stored backend-neutrally as text.
-- **Field highlighting** — `form_server(highlight_fields = ...)` glows chosen
-  inputs (and their tab) to draw the eye; `show_changed` auto-glows edit fields
-  that have changed since the record was created.
+- **Field highlighting** — `form_server(highlight = list(fields = ...))` glows
+  chosen inputs (and their tab) to draw the eye; `show_changed` auto-glows edit
+  fields that have changed since the record was created.
 - **Three backends** — `SQLite`, `MariaDB`, and `DuckDB` behind one interface.
 
 ## Installation
@@ -166,12 +166,13 @@ history for the edited record.
 
 ## Permissions
 
-`form_server()` exposes a `can_*` argument for each action (add, edit, delete,
-restore, view versions, view the audit log, and so on); with the default
-`hide_forbidden = TRUE` the matching controls are hidden when a permission is
-`FALSE`, and the server-side guards are enforced regardless. For multi-user
-apps, `permissions_form()` stores permissions as an editable rights table and
-`rights_permissions()` resolves them into the `can_*` functions, reactively.
+`form_server(permissions = list(...))` takes a `can_*` entry for each action
+(add, edit, delete, restore, view versions, view the audit log, and so on); with
+the default `hide_forbidden = TRUE` the matching controls are hidden when a
+permission is `FALSE`, and the server-side guards are enforced regardless. For
+multi-user apps, `permissions_form()` stores permissions as an editable rights
+table and `rights_permissions()` resolves them into exactly such a list,
+reactively, so it can be passed straight to `permissions`.
 
 ## Security
 
@@ -189,7 +190,7 @@ interpolated into SQL, and SQL-injection regressions are covered by tests in
 
 ## Example apps
 
-Seventeen self-contained demo apps ship with the package; each shows a
+Eighteen self-contained demo apps ship with the package; each shows a
 **"How it is built"** walkthrough beside the running form. List and run them:
 
 ```r
@@ -223,7 +224,11 @@ run_example("app_crud_basic")
   `form_buttons()` (the same module id, so it opens the report form); submitted
   reports land in the table below.
 - **app_table_style** — style and transform the records table through
-  `table_options` / `table_filter` / `table_format` (`DT::formatStyle()`).
+  `form_server(table = list(options, filter, format))` (`DT::formatStyle()`).
+- **app_design_presets** — the visual presets for the module's tables: radio
+  buttons switch `form_ui(table_style = ...)` live between `"classic"`,
+  `"clean"`, `"publication"` and `"compact"`; also settable app-wide via
+  `options(shinyformtools.table_style = ...)`.
 - **app_markdown** — `form_field(markdown = TRUE)` renders stored text as
   (HTML-sanitized) Markdown in the table. Needs `commonmark`.
 - **app_backends** — one form, two backends side by side: **SQLite** and
@@ -240,9 +245,9 @@ run_example("app_crud_basic")
   `shape_field()` + `attach_shapes()` drawn on a leaflet map via `decode_shape()`.
   Needs `sf` and `leaflet`.
 - **app_highlight** — reactive field/tab highlighting on a two-tab form:
-  `highlight_fields` red-glows chosen inputs (and their tab) live, and
-  `show_changed` blue-glows edit fields that have changed since the record was
-  added.
+  `form_server(highlight = list(fields = ...))` red-glows chosen inputs (and
+  their tab) live, and `show_changed` blue-glows edit fields that have changed
+  since the record was added.
 
 Each example is documented in more detail in
 [`inst/examples/README.md`](inst/examples/README.md).

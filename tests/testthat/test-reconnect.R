@@ -158,3 +158,46 @@ test_that("a caller-supplied connection is never silently replaced", {
     }
   )
 })
+
+# The registrars (audit table, deleted records, versions, column views, conflict
+# attribution, highlight) do not hold the connection handle: they receive the
+# `live_conn()` accessor. Before that, `conn` reached them by value, and after
+# the guard had replaced the module's connection they kept using the dead one.
+#
+# Outputs only re-run on a flush, so the test renders the deleted-records table
+# once (forcing the registrar's first use of the connection), kills the
+# connection, invalidates via refresh_tick and flushes. With the handle passed
+# by value that render died with "Invalid or closed connection".
+test_that("a registrar-driven read works after the module's connection was dropped", {
+  skip_if_not_installed("DT")
+
+  db_path <- tempfile(fileext = ".sqlite")
+  contacts <- sft_test_reconnect_form(db_path)
+
+  seed_conn <- db_connect(contacts$db)
+  init_db(contacts, conn = seed_conn, user = "alice")
+  insert_record(contacts, list(name = "Ada"), conn = seed_conn, user = "alice")
+  db_disconnect(seed_conn)
+
+  shiny::testServer(
+    form_server,
+    args = list(
+      id = "reconnect",
+      form = contacts,
+      user = function() "alice"
+    ),
+    {
+      session$flushReact()
+      invisible(output$deleted_records)
+
+      DBI::dbDisconnect(conn)
+      refresh_tick(refresh_tick() + 1L)
+      session$flushReact()
+
+      expect_no_error(output$deleted_records)
+
+      # The healed connection is the one the module now hands out.
+      expect_true(DBI::dbIsValid(session$returned$connection()))
+    }
+  )
+})

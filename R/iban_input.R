@@ -119,7 +119,7 @@ is_valid_iban <- function(value, DE = TRUE) {
 #' \dontrun{
 #' library(shiny)
 #' ui <- fluidPage(
-#'   IBANInput("iban", "Bank account (IBAN)", value = "DE89370400440532013000")
+#'   ibanInput("iban", "Bank account (IBAN)", value = "DE89370400440532013000")
 #' )
 #' server <- function(input, output, session) {
 #'   observe(print(input$iban))
@@ -127,7 +127,7 @@ is_valid_iban <- function(value, DE = TRUE) {
 #' shinyApp(ui, server)
 #' }
 #' @export
-IBANInput <- function(inputId, label, value = "", DE = TRUE) {
+ibanInput <- function(inputId, label, value = "", DE = TRUE) {
   input_id_json <- jsonlite::toJSON(inputId, auto_unbox = TRUE)
   de_json <- jsonlite::toJSON(isTRUE(DE), auto_unbox = TRUE)
 
@@ -246,22 +246,49 @@ IBANInput <- function(inputId, label, value = "", DE = TRUE) {
 #' \dontrun{
 #' library(shiny)
 #' ui <- fluidPage(
-#'   IBANInput("iban", "IBAN"),
+#'   ibanInput("iban", "IBAN"),
 #'   actionButton("fill", "Insert example IBAN")
 #' )
 #' server <- function(input, output, session) {
 #'   observeEvent(input$fill, {
-#'     updateIBANInput(session, "iban", value = "DE89370400440532013000")
+#'     updateIbanInput(session, "iban", value = "DE89370400440532013000")
 #'   })
 #' }
 #' shinyApp(ui, server)
 #' }
 #' @export
-updateIBANInput <- function(session, inputId, label = NULL, value = NULL) {
+updateIbanInput <- function(session, inputId, label = NULL, value = NULL) {
   shiny::updateTextInput(
     session = session,
     inputId = inputId,
     label = label,
     value = if (is.null(value)) NULL else sft_format_iban(value)
   )
+}
+
+#' Deprecated IBAN input names
+#'
+#' `IBANInput()` and `updateIBANInput()` were renamed to [ibanInput()] and
+#' [updateIbanInput()], matching the `"ibanInput"` input type and the naming
+#' of Shiny's own inputs. The old names still work and warn once per session.
+#'
+#' @inheritParams ibanInput
+#' @inheritParams updateIbanInput
+#' @return See [ibanInput()] and [updateIbanInput()].
+#' @keywords internal
+#' @name iban-deprecated
+NULL
+
+#' @rdname iban-deprecated
+#' @export
+IBANInput <- function(inputId, label, value = "", DE = TRUE) {
+  sft_deprecate_warn("`IBANInput()`", "`ibanInput()`")
+  ibanInput(inputId = inputId, label = label, value = value, DE = DE)
+}
+
+#' @rdname iban-deprecated
+#' @export
+updateIBANInput <- function(session, inputId, label = NULL, value = NULL) {
+  sft_deprecate_warn("`updateIBANInput()`", "`updateIbanInput()`")
+  updateIbanInput(session = session, inputId = inputId, label = label, value = value)
 }

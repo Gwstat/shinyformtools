@@ -9,19 +9,18 @@ form_ui(
   title = NULL,
   show_user = FALSE,
   show_audit = FALSE,
-  show_include_deleted = FALSE,
   show_add = TRUE,
   show_edit = TRUE,
   show_deleted_records = FALSE,
   show_delete = TRUE,
   show_refresh_table = TRUE,
-  show_versions = FALSE,
   show_column_settings = FALSE,
   show_column_selection = FALSE,
   form_layout = c("modal", "inline"),
   table_style = NULL,
   labels = list(),
-  button_options = list()
+  button_options = list(),
+  ...
 )
 }
 \arguments{
@@ -36,9 +35,6 @@ in most apps the acting user comes from authentication, not a text box.}
 default. Every mutation is still recorded either way; this only controls
 whether the log is displayed. Requires the \code{can_view_audit} permission.}
 
-\item{show_include_deleted}{Logical. Whether to show the legacy include-deleted
-checkbox.}
-
 \item{show_add}{Logical. Whether to show the add button.}
 
 \item{show_edit}{Logical. Whether to show the edit button.}
@@ -52,8 +48,6 @@ whether the restore dialog is reachable.}
 
 \item{show_refresh_table}{Logical. Whether to show a button that clears table filters, ordering, paging and row selection.}
 
-\item{show_versions}{Deprecated compatibility flag. Standalone version buttons are no longer rendered by the default UI; versions are shown in the case modal when permitted.}
-
 \item{show_column_settings}{Logical. Whether to show the admin
 column-settings button. Off by default.}
 
@@ -62,8 +56,8 @@ column-selection button. Off by default.}
 
 \item{form_layout}{Where the add/edit forms render. \code{"modal"} (default) opens
 them in a dialog; \code{"inline"} renders them in a panel above the records table,
-with add and edit mutually exclusive. Must match the \code{form_layout} passed to
-\code{\link[=form_server]{form_server()}}.}
+with add and edit mutually exclusive. \code{\link[=form_server]{form_server()}} picks the layout up
+from the UI, so it only has to be set here.}
 
 \item{table_style}{Visual preset for the module's tables (records, audit,
 deleted records, versions). One of \code{"classic"} (the unmodified 'DT' look),
@@ -82,6 +76,11 @@ and classes. Supported entries are \code{placement} (\code{"top"}, \code{"bottom
 \code{"both"}, \code{"none"}), \code{align} (\code{"left"}, \code{"center"},
 \code{"right"}, \code{"between"}), \code{class}, \code{container_class},
 \code{container_style} and \code{button_classes}.}
+
+\item{...}{Deprecated arguments, accepted with a warning for one release:
+\code{show_include_deleted} (the legacy include-deleted checkbox; use
+\code{show_deleted_records} instead) and \code{show_versions} (no effect; versions
+are shown inside the edit dialog when permitted).}
 }
 \value{
 Shiny UI.

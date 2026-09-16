@@ -479,7 +479,7 @@ update_record <- function(form,
         form = form,
         record = merged_record,
         conn = conn,
-        current_id = old_record$sft_id[1],
+        record_id = old_record$sft_id[1],
         require_all_mandatory = TRUE
       )
     } else {
@@ -503,7 +503,7 @@ update_record <- function(form,
         form = form,
         record = merged_record,
         conn = conn,
-        current_id = old_record$sft_id[1],
+        record_id = old_record$sft_id[1],
         require_all_mandatory = FALSE
       )
     }

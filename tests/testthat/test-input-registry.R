@@ -148,3 +148,16 @@ test_that("legacy scalar-encoded single values still decode", {
   # Plain (non-JSON) stored values are untouched.
   expect_identical(sft_ui_value(field, "plain"), "plain")
 })
+
+test_that("an unparseable stored time never becomes the current time", {
+  field <- form_field(id = "at", label = "At", input_type = "timeInput")
+
+  parsed <- sft_ui_value(field, "08:30:00")
+  expect_s3_class(parsed, "POSIXct")
+  expect_identical(format(parsed, "%H:%M:%S"), "08:30:00")
+
+  # NULL leaves the input as it is; Sys.time() would silently be saved as the
+  # record's value on the next submit.
+  expect_null(sft_ui_value(field, "not a time"))
+  expect_null(sft_ui_value(field, NA_character_))
+})

@@ -601,7 +601,7 @@ init_db <- function(form,
 
   init_system_tables(conn)
 
-  plan <- plan_migration(conn, form)
+  plan <- plan_migration(form, conn)
 
   if (isTRUE(apply)) {
     apply_migration(
@@ -705,10 +705,24 @@ sft_schema_is_current <- function(conn, form) {
 # unconditional init_db() calls in the CRUD hot path: a cheap probe on every
 # call, a full migration only on first contact or genuine drift. Still self-heals
 # a cold database when a CRUD function is used standalone (probe fails -> init).
+# `form(schema_policy = "manual")` turns the self-healing off: drift (or a cold
+# database) is reported instead of migrated, and the caller runs init_db()
+# deliberately. Only this gate consults the policy; init_db() / apply_migration()
+# are the manual step and stay callable under either policy.
 sft_ensure_schema <- function(conn, form, user = NULL) {
   if (sft_schema_is_current(conn, form)) {
     return(invisible(FALSE))
   }
+
+  if (identical(form$schema_policy, "manual")) {
+    stop(
+      "The database schema for form '", form$form_id, "' is not current and ",
+      "schema_policy = \"manual\" disables automatic migration. ",
+      "Run init_db() (or plan_migration() + apply_migration()) first.",
+      call. = FALSE
+    )
+  }
+
   init_db(form, conn = conn, apply = TRUE, user = user)
   invisible(TRUE)
 }

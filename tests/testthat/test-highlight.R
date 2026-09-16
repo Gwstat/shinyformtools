@@ -220,8 +220,7 @@ test_that("form_server renders a reactive highlight stylesheet", {
     args = list(
       id = "contacts",
       form = contacts,
-      highlight_fields = highlight,
-      show_changed = TRUE
+      highlight = list(fields = highlight, show_changed = TRUE)
     ),
     {
       session$flushReact()

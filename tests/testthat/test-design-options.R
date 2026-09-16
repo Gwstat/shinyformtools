@@ -72,7 +72,6 @@ testthat::test_that("external form buttons use the module namespace", {
     id = "external",
     show_edit = FALSE,
     show_delete = FALSE,
-    show_versions = FALSE,
     show_deleted_records = FALSE,
     show_column_settings = FALSE,
     show_column_selection = FALSE,
@@ -125,7 +124,6 @@ testthat::test_that("column controls use a single visible button", {
     show_add = FALSE,
     show_edit = FALSE,
     show_delete = FALSE,
-    show_versions = FALSE,
     show_deleted_records = FALSE,
     show_column_settings = TRUE,
     show_column_selection = TRUE
@@ -136,17 +134,20 @@ testthat::test_that("column controls use a single visible button", {
   testthat::expect_false(grepl('id="columns-open_column_settings"', html, fixed = TRUE))
 })
 
-testthat::test_that("standalone versions button is not rendered by default button row", {
-  buttons <- form_buttons(
-    id = "versions",
-    show_add = FALSE,
-    show_edit = FALSE,
-    show_delete = FALSE,
-    show_refresh_table = FALSE,
-    show_versions = TRUE,
-    show_deleted_records = FALSE,
-    show_column_settings = FALSE,
-    show_column_selection = FALSE
+testthat::test_that("the deprecated show_versions flag warns and renders no versions button", {
+  sft_reset_deprecation_warnings()
+  withr::defer(sft_reset_deprecation_warnings())
+
+  testthat::expect_warning(
+    buttons <- form_buttons(
+      id = "versions",
+      show_add = FALSE,
+      show_edit = FALSE,
+      show_delete = FALSE,
+      show_refresh_table = FALSE,
+      show_versions = TRUE
+    ),
+    "show_versions"
   )
 
   html <- paste(as.character(buttons), collapse = "")

@@ -18,8 +18,8 @@
 #
 # display_transform() receives the fetched records and returns a data frame with
 # the extra columns added (it must keep sft_id so row selections still map back
-# to the underlying record). The derived columns are referenced in table_columns
-# and named with display_column_labels.
+# to the underlying record). The derived columns are referenced in
+# columns = list(visible = ...) and named with columns = list(labels = ...).
 #
 # Run with: shinyformtools::run_example("app_calculated_columns")
 
@@ -140,14 +140,16 @@ server <- function(input, output, session) {
     id = "people",
     form = people_form,
     user = "demo",
-    table_columns = c("sft_id", "full_name", "birthday", "age", "city"),
-    display_column_labels = c(sft_id = "Person ID", full_name = "Full name", age = "Age"),
+    columns = list(
+      visible = c("sft_id", "full_name", "birthday", "age", "city"),
+      labels = c(sft_id = "Person ID", full_name = "Full name", age = "Age"),
+      persist = FALSE
+    ),
     display_transform = function(data) {
       data$full_name <- full_name_of(data$first_name, data$last_name)
       data$age <- age_in_years(data$birthday)
       data
-    },
-    persist_column_settings = FALSE
+    }
   )
 
   form_server(
@@ -156,9 +158,12 @@ server <- function(input, output, session) {
     user = "demo",
     # Re-derive the displayed contact name/city whenever a person changes.
     refresh_triggers = list(people$changed),
-    table_columns = c("sft_id", "location_name", "contact_name", "contact_city"),
-    display_column_labels = c(
-      sft_id = "Location ID", contact_name = "Contact", contact_city = "Contact city"
+    columns = list(
+      visible = c("sft_id", "location_name", "contact_name", "contact_city"),
+      labels = c(
+        sft_id = "Location ID", contact_name = "Contact", contact_city = "Contact city"
+      ),
+      persist = FALSE
     ),
     display_transform = function(data, context) {
       ppl <- people$records()
@@ -187,8 +192,7 @@ server <- function(input, output, session) {
           options = list(placeholder = "Pick a person")
         )
       )
-    ),
-    persist_column_settings = FALSE
+    )
   )
 }
 #> END

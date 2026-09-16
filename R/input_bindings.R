@@ -459,7 +459,7 @@ sft_update_value_input <- function(session,
     dateRangeInput = do.call(shiny::updateDateRangeInput, args),
     checkboxInput = do.call(shiny::updateCheckboxInput, args),
     timeInput = do.call(shinyTime::updateTimeInput, args),
-    ibanInput = do.call(updateIBANInput, args),
+    ibanInput = do.call(updateIbanInput, args),
     {
       reg <- sft_registered_input(input_type)
 

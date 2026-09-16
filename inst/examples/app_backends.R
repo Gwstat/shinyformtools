@@ -146,8 +146,7 @@ server <- function(input, output, session) {
     id = "sqlite",
     form = sqlite_form,
     user = "demo",
-    table_columns = shown_columns,
-    persist_column_settings = FALSE
+    columns = list(visible = shown_columns, persist = FALSE)
   )
 
   if (have_duckdb) {
@@ -155,8 +154,7 @@ server <- function(input, output, session) {
       id = "duckdb",
       form = duckdb_form,
       user = "demo",
-      table_columns = shown_columns,
-      persist_column_settings = FALSE
+      columns = list(visible = shown_columns, persist = FALSE)
     )
   }
 }

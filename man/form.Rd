@@ -60,8 +60,14 @@ assigned by a follow-up \code{UPDATE} after the insert, so it adds nothing that
 the phone, not a stronger identifier. With it disabled, \code{sft_id} is the id
 shown in the records table and in dialog titles.}
 
-\item{schema_policy}{Schema handling policy. Currently \code{"safe"} or
-\code{"manual"}.}
+\item{schema_policy}{How schema drift is handled when the form touches the
+database. \code{"safe"} (default): every CRUD call and \code{form_server()} first
+probe the schema and, when it is missing or out of date, apply the
+additive migration automatically (unsafe actions such as type changes
+still stop). \code{"manual"}: nothing is migrated behind a CRUD call; instead
+the call fails with a message asking for \code{\link[=init_db]{init_db()}}, so a deployment can
+control exactly when its schema changes. \code{\link[=init_db]{init_db()}}, \code{\link[=plan_migration]{plan_migration()}}
+and \code{\link[=apply_migration]{apply_migration()}} work under either policy.}
 
 \item{on_edit_missing_required}{How to treat new mandatory fields when old
 records are edited. One of \code{"warn"}, \code{"require"} or \code{"ignore"}.}

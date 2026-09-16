@@ -18,7 +18,7 @@ testthat::test_that("permissions list matches the form_server arguments", {
   auth <- list(user = "editor", can_add = "TRUE")
   perms <- shinymanager_permissions(auth)
 
-  server_args <- names(formals(form_server))
+  server_args <- names(sft_permission_defaults())
   testthat::expect_true(all(names(perms) %in% server_args))
   testthat::expect_setequal(
     setdiff(names(perms), "user"),
@@ -107,7 +107,7 @@ testthat::test_that("form_server initializes with the view/reset gates off", {
   # here we assert the module wires up cleanly with them denied.
   app <- function(input, output, session) {
     form_server("f", form = f, conn = conn,
-                can_view_table = FALSE, can_reset_table = FALSE)
+                permissions = list(can_view_table = FALSE, can_reset_table = FALSE))
   }
   shiny::testServer(app, {
     testthat_silent <- testthat::expect_silent(session$flushReact())
@@ -132,9 +132,9 @@ testthat::test_that("sft_form_server accepts reactive can_* and hide_forbidden",
 
   app <- function(id) {
     shiny::moduleServer(id, function(input, output, session) {
-      do.call(
-        form_server,
-        c(list(id = "f", form = form, conn = conn, hide_forbidden = TRUE), perms)
+      form_server(
+        id = "f", form = form, conn = conn,
+        permissions = c(perms, list(hide_forbidden = TRUE))
       )
     })
   }

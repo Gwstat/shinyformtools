@@ -82,9 +82,10 @@ server <- function(input, output, session) {
     id = "tasks",
     form = tasks_form,
     user = "demo",
-    show_audit = TRUE,
-    table_columns = c("sft_id", "title", "status", "owner", "due"),
-    persist_column_settings = FALSE
+    columns = list(
+      visible = c("sft_id", "title", "status", "owner", "due"),
+      persist = FALSE
+    )
   )
 
   output$form_area <- renderUI({

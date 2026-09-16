@@ -11,7 +11,7 @@
 #   - Clicking it opens the report form (a modal here).
 #   - Submitted reports land in the table below (shown as an "admin" view so you
 #     can watch your report arrive; a real app would hide it from end users with
-#     form_server(can_view_table = FALSE)).
+#     form_server(permissions = list(can_view_table = FALSE))).
 #
 # Run with: shinyformtools::run_example("app_bug_report")
 
@@ -100,8 +100,10 @@ server <- function(input, output, session) {
     id = "bugs",
     form = bugs_form,
     user = "demo",
-    table_columns = c("sft_easy_id", "summary", "severity", "area", "sft_updated_at"),
-    persist_column_settings = FALSE
+    columns = list(
+      visible = c("sft_easy_id", "summary", "severity", "area", "sft_updated_at"),
+      persist = FALSE
+    )
   )
 }
 #> END

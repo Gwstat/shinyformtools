@@ -402,11 +402,12 @@ sft_parse_logical <- function(x) {
 #' credentials data frame) for use as the `users` choices of a
 #' [permissions_form()].
 #'
-#' @param db Path to the encrypted credential SQLite database, or a data frame
-#'   of credentials (the latter is handy for tests).
+#' @param credentials Path to the encrypted credential SQLite database, or a
+#'   data frame of credentials (the latter is handy for tests).
 #' @param passphrase Passphrase for the encrypted database (ignored for a data
 #'   frame).
 #' @param user_field Name of the user column.
+#' @param db Deprecated name of `credentials`; accepted with a warning.
 #'
 #' @return A sorted character vector of unique user names.
 #' @seealso [permissions_form()], [shinymanager_permissions()]
@@ -420,9 +421,16 @@ sft_parse_logical <- function(x) {
 #' shinymanager_users("credentials.sqlite", passphrase = "secret")
 #' }
 #' @export
-shinymanager_users <- function(db, passphrase = NULL, user_field = "user") {
-  if (is.data.frame(db)) {
-    return(sort(unique(as.character(db[[user_field]]))))
+shinymanager_users <- function(credentials, passphrase = NULL, user_field = "user", db = NULL) {
+  if (!is.null(db)) {
+    sft_deprecate_warn("`shinymanager_users(db = )`", "`shinymanager_users(credentials = )`")
+    if (missing(credentials)) {
+      credentials <- db
+    }
+  }
+
+  if (is.data.frame(credentials)) {
+    return(sort(unique(as.character(credentials[[user_field]]))))
   }
 
   if (!requireNamespace("shinymanager", quietly = TRUE)) {
@@ -432,7 +440,7 @@ shinymanager_users <- function(db, passphrase = NULL, user_field = "user") {
     stop("Package 'RSQLite' is required to read a credential database.", call. = FALSE)
   }
 
-  conn <- DBI::dbConnect(RSQLite::SQLite(), db)
+  conn <- DBI::dbConnect(RSQLite::SQLite(), credentials)
   on.exit(DBI::dbDisconnect(conn), add = TRUE)
   creds <- shinymanager::read_db_decrypt(conn, name = "credentials", passphrase = passphrase)
   sort(unique(as.character(creds[[user_field]])))

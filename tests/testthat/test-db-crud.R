@@ -155,7 +155,7 @@ testthat::test_that("a table still carrying the retired columns keeps working", 
   DBI::dbExecute(conn, "ALTER TABLE legacy_columns ADD COLUMN sft_schema_hash TEXT")
 
   # The planner retires them rather than dropping them.
-  plan <- plan_migration(conn, form)
+  plan <- plan_migration(form, conn)
   retired <- plan$actions$db_column[plan$actions$action == "retire_column"]
   testthat::expect_true(all(c("sft_form_id", "sft_schema_hash") %in% retired))
   testthat::expect_true(all(plan$actions$safe))

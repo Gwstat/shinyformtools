@@ -23,7 +23,7 @@ it produced:
 2. what exactly the package creates in the database,
 3. how to read that data again *without* the app.
 
-The 17 runnable examples shipped with the package cover the individual features;
+The 18 runnable examples shipped with the package cover the individual features;
 `list_examples()` names them and `run_example()` starts one. This vignette is the
 narrative that ties them together.
 
@@ -87,7 +87,7 @@ shinyApp(ui, server)
 That is the whole application. The add and edit dialogs, the records table,
 soft-delete, restore and the audit log all come from the `form()` call above.
 
-Only the CRUD core is displayed by default; extras are opt-in on both functions,
+Only the CRUD core is displayed by default; extras are opt-in on `form_ui()`,
 for example `show_audit = TRUE` for the audit table or
 `show_deleted_records = TRUE` for the restore dialog. Auditing and soft-delete
 always happen regardless -- these flags control what is *shown*, never what is
@@ -119,7 +119,7 @@ compares what the database currently has against what the form expects.
 ```{r inspect-before}
 conn <- db_connect(db)
 
-inspection <- inspect_schema(conn, contacts)
+inspection <- inspect_schema(contacts, conn)
 inspection$table_exists
 inspection$missing_columns
 ```
@@ -128,7 +128,7 @@ inspection$missing_columns
 plan is a single, safe action:
 
 ```{r plan}
-plan <- plan_migration(conn, contacts)
+plan <- plan_migration(contacts, conn)
 plan$actions[, c("action", "db_column", "safe")]
 ```
 

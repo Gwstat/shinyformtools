@@ -10,23 +10,26 @@ form_buttons(
   show_edit = TRUE,
   show_delete = TRUE,
   show_refresh_table = TRUE,
-  show_versions = FALSE,
   show_deleted_records = FALSE,
   show_column_settings = FALSE,
   show_column_selection = FALSE,
   labels = list(),
-  button_options = list()
+  button_options = list(),
+  ...
 )
 }
 \arguments{
 \item{id}{Module id matching \code{\link[=form_ui]{form_ui()}} and \code{\link[=form_server]{form_server()}}.}
 
-\item{show_add, show_edit, show_delete, show_refresh_table, show_versions, show_deleted_records, show_column_settings, show_column_selection}{Logical flags controlling individual buttons. \code{show_deleted_records}, \code{show_column_settings} and \code{show_column_selection} default to \code{FALSE}, matching \code{\link[=form_ui]{form_ui()}}. \code{show_versions} is kept for compatibility but the standalone versions button is no longer rendered by the default button row.}
+\item{show_add, show_edit, show_delete, show_refresh_table, show_deleted_records, show_column_settings, show_column_selection}{Logical flags controlling individual buttons. \code{show_deleted_records}, \code{show_column_settings} and \code{show_column_selection} default to \code{FALSE}, matching \code{\link[=form_ui]{form_ui()}}.}
 
 \item{labels}{Optional named list overriding UI labels and button texts.}
 
 \item{button_options}{Optional named list controlling action-button alignment
 and classes. The same structure as in \code{\link[=form_ui]{form_ui()}} is supported.}
+
+\item{...}{Deprecated: \code{show_versions} (no effect; versions are shown inside
+the edit dialog when permitted).}
 }
 \value{
 Shiny UI.

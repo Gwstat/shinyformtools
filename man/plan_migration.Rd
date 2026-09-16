@@ -4,12 +4,12 @@
 \alias{plan_migration}
 \title{Plan a database schema migration}
 \usage{
-plan_migration(conn, form)
+plan_migration(form, conn)
 }
 \arguments{
-\item{conn}{A DBI connection.}
-
 \item{form}{Object created with \code{\link[=form]{form()}}.}
+
+\item{conn}{A DBI connection.}
 }
 \value{
 A migration plan object.
@@ -26,7 +26,7 @@ contacts <- form(
 conn <- db_connect(db)
 
 # On a fresh database the plan contains a single create_table action.
-plan <- plan_migration(conn, contacts)
+plan <- plan_migration(contacts, conn)
 plan$actions$action
 
 db_disconnect(conn)
