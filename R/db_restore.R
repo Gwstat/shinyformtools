@@ -396,7 +396,7 @@ restore_record <- function(form,
     if (isTRUE(reactivate)) {
       unique_errors <- sft_validate_unique_fields(
         form = form,
-        record = restore_values,
+        record = sft_decode_record_values(form, restore_values),
         conn = conn,
         current_id = resolved_record_id
       )

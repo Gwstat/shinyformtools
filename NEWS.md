@@ -42,6 +42,11 @@
   the edit conflict view; the input now keeps its state.
 * `form(schema_policy = "manual")` had no effect. It now stops CRUD calls on a
   missing or outdated schema with a hint to run `init_db()`.
+* On update and restore, validation ran on the stored representation of a
+  record: a unique multi-value field (checkbox group, multi-select) never hit
+  the friendly "already taken" message but the raw index error, and a
+  validation rule saw a JSON string where it sees a vector on insert. Stored
+  rows are now decoded back to input values before validation.
 
 # shinyformtools 0.1.0
 

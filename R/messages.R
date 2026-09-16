@@ -21,9 +21,12 @@ sft_interpolate_text <- function(text, values = list()) {
   out <- as.character(text)
 
   for (name in names(values)) {
+    # A multi-value field (checkbox group, multi-select) interpolates as one
+    # comma-separated string; gsub() would otherwise use only the first
+    # element and warn.
     out <- gsub(
       pattern = paste0("{", name, "}"),
-      replacement = as.character(values[[name]]),
+      replacement = paste(as.character(values[[name]]), collapse = ", "),
       x = out,
       fixed = TRUE
     )

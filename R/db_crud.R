@@ -86,6 +86,28 @@ sft_record_field_values <- function(form,
   values
 }
 
+# Decode a stored row back to input-shaped values for validation, so update
+# and restore validate the same shapes insert does. Without this the record
+# went through sft_field_db_value() twice: a multi-value field became JSON of
+# JSON, the friendly unique pre-check never matched, and a rule that read
+# `values$tags` saw a JSON string on update but a vector on insert. NA stays
+# NA (sft_ui_value() would turn it into NULL and drop the element, which the
+# mandatory check would then read as "missing" instead of "empty").
+sft_decode_record_values <- function(form, record) {
+  for (field in sft_active_input_fields(form)) {
+    column <- field$db_column
+
+    if (!column %in% names(record)) {
+      next
+    }
+
+    decoded <- sft_ui_value(field, record[[column]])
+    record[[column]] <- if (is.null(decoded)) NA else decoded
+  }
+
+  record
+}
+
 sft_get_record <- function(conn,
                            form,
                            record_id = NULL,
@@ -473,6 +495,9 @@ update_record <- function(form,
     for (column_name in names(field_values)) {
       merged_record[[column_name]] <- field_values[[column_name]]
     }
+
+    # Validation runs on input-shaped values (see sft_decode_record_values).
+    merged_record <- sft_decode_record_values(form, merged_record)
 
     if (identical(form$on_edit_missing_required, "require")) {
       validate_record(

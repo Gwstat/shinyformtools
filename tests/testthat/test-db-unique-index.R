@@ -212,3 +212,85 @@ testthat::test_that("the migration planner manages unique indexes as actions", {
   testthat::expect_true("drop_index" %in% logged$action)
   testthat::expect_true("uq_members__email" %in% logged$db_column)
 })
+
+# The friendly unique pre-check used to encode a stored row a second time on
+# update and restore: a multi-value field became JSON of JSON, never matched the
+# stored value, and the raw index error surfaced instead of the message. Rules
+# saw the same double shape (a JSON string on update, a vector on insert).
+sft_test_unique_multi_form <- function(db_path) {
+  form(
+    form_id = "unique_multi",
+    table_name = "unique_multi",
+    db = db_sqlite(db_path),
+    fields = list(
+      form_field(id = "name", label = "Name"),
+      form_field(
+        id = "tags", label = "Tags", input_type = "checkboxGroupInput",
+        args = list(choices = c("a", "b", "c")), unique = TRUE
+      )
+    ),
+    validation_rules = list(
+      validation_rule(
+        id = "max_two_tags",
+        validate = function(values) length(values$tags %||% character()) <= 2L,
+        message = "At most two tags."
+      )
+    )
+  )
+}
+
+testthat::test_that("a unique multi-value field gets the friendly message on update", {
+  db_path <- tempfile(fileext = ".sqlite")
+  conn <- local_test_conn(db_path)
+  f <- sft_test_unique_multi_form(db_path)
+  init_db(f, conn = conn)
+
+  insert_record(f, list(name = "A", tags = c("a", "b")), conn = conn)
+  b <- insert_record(f, list(name = "B", tags = "c"), conn = conn)
+
+  testthat::expect_error(
+    update_record(f, record_id = b$sft_id[1], values = list(tags = c("a", "b")), conn = conn),
+    "already taken"
+  )
+
+  # The stored representation is what a duplicate is compared against, so a
+  # different order is a different value and saves.
+  updated <- update_record(f, record_id = b$sft_id[1], values = list(tags = c("b", "a")), conn = conn)
+  testthat::expect_identical(sft_parse_json_vector(updated$tags), c("b", "a"))
+})
+
+testthat::test_that("a validation rule sees a vector on update, as on insert", {
+  db_path <- tempfile(fileext = ".sqlite")
+  conn <- local_test_conn(db_path)
+  f <- sft_test_unique_multi_form(db_path)
+  init_db(f, conn = conn)
+
+  rec <- insert_record(f, list(name = "A", tags = c("a", "b")), conn = conn)
+
+  # A JSON string of length 1 would pass `length(...) <= 2`; the decoded vector
+  # of three does not.
+  testthat::expect_error(
+    update_record(f, record_id = rec$sft_id[1], values = list(tags = c("a", "b", "c")), conn = conn),
+    "At most two tags"
+  )
+
+  # An update that leaves the tags alone still validates them as a vector.
+  ok <- update_record(f, record_id = rec$sft_id[1], values = list(name = "A2"), conn = conn)
+  testthat::expect_identical(ok$name, "A2")
+})
+
+testthat::test_that("restoring a record whose multi-value unique value is now taken is refused politely", {
+  db_path <- tempfile(fileext = ".sqlite")
+  conn <- local_test_conn(db_path)
+  f <- sft_test_unique_multi_form(db_path)
+  init_db(f, conn = conn)
+
+  a <- insert_record(f, list(name = "A", tags = c("a", "b")), conn = conn)
+  soft_delete_record(f, record_id = a$sft_id[1], conn = conn)
+  insert_record(f, list(name = "C", tags = c("a", "b")), conn = conn)
+
+  testthat::expect_error(
+    restore_record(f, record_id = a$sft_id[1], conn = conn),
+    "Cannot restore: a unique field's value is already held"
+  )
+})
