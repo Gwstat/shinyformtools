@@ -52,7 +52,8 @@ sft_inline_form_panel <- function(ns,
 # for the current user so per-user `editable` functions apply inline too.
 sft_register_inline_form <- function(input, output, session, state) {
   form <- state$form
-  labels <- state$labels
+  # Live binding, not a copy: the labels follow a language that changes.
+  makeActiveBinding("labels", function() state$labels, environment())
   modal_header <- state$modal_header
   editable_fields <- state$permissions$editable_fields
   datetime_format <- state$table$datetime_format

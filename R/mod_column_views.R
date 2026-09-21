@@ -469,7 +469,8 @@ sft_register_column_settings <- function(input, output, session, state) {
   form <- state$form
   live_conn <- state$conn
   user <- state$user
-  labels <- state$labels
+  # Live binding, not a copy: the labels follow a language that changes.
+  makeActiveBinding("labels", function() state$labels, environment())
   modal_sizes <- state$modal_sizes
   table_columns <- state$columns$visible
   table_views <- state$columns$views

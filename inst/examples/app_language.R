@@ -8,6 +8,8 @@
 #   - Both tables show the same records. Add or edit on either side.
 #   - Leave "Name" empty and save: the refusal comes in that form's language.
 #   - Look at the audit tables: headers and action names follow the form too.
+#   - The third form switches language while the app runs: `language` may be a
+#     reactive. Its buttons are redrawn because form_ui() sits in a renderUI().
 #
 # Run with: shinyformtools::run_example("app_language")
 
@@ -95,6 +97,21 @@ server <- function(input, output, session) {
     columns = list(visible = c("sft_id", "name", "email", "diet"), persist = FALSE),
     refresh_triggers = function() german_side$changed()
   )
+
+  # A language that changes while the app runs: pass a reactive. Tables,
+  # dialogs and messages follow it at once. The buttons form_ui() draws are
+  # static HTML, so form_ui() is rendered from the same reactive.
+  live_language <- reactive(if (identical(input$live_language, "de")) de else en)
+
+  form_server(
+    id = "guests_live", form = guests_form, user = "demo", language = live_language,
+    columns = list(visible = c("sft_id", "name", "email", "diet"), persist = FALSE),
+    refresh_triggers = list(function() german_side$changed(), function() english_side$changed())
+  )
+
+  output$live_form <- renderUI({
+    form_ui("guests_live", title = "Live", language = live_language(), show_audit = TRUE)
+  })
 }
 #> END
 
@@ -107,7 +124,13 @@ ui <- fluidPage(
   fluidRow(
     column(6, form_ui("guests_de", title = "Deutsch", language = de, show_audit = TRUE)),
     column(6, form_ui("guests_en", title = "English", language = en, show_audit = TRUE))
-  )
+  ),
+  hr(),
+  radioButtons(
+    "live_language", "Language of the third form",
+    choices = c("Deutsch" = "de", "English" = "en"), selected = "de", inline = TRUE
+  ),
+  uiOutput("live_form")
 )
 #> END
 

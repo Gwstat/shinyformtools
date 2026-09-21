@@ -36,6 +36,8 @@ sft_language_part <- function(part) {
 # exit, so nested scopes and early returns inside `expr` are safe. A NULL
 # language leaves whatever is active in place.
 sft_with_language <- function(language, expr) {
+  language <- sft_resolve_language(language)
+
   if (is.null(language)) {
     return(expr)
   }
@@ -47,12 +49,33 @@ sft_with_language <- function(language, expr) {
   expr
 }
 
-sft_check_language <- function(language) {
+# `language` may be the object itself or a function / reactive returning one,
+# which is what lets an app switch the language while it runs. Called inside a
+# render, a reactive takes a dependency here, so the output follows a switch.
+sft_resolve_language <- function(language) {
+  if (is.function(language)) {
+    language <- language()
+  }
+
   if (is.null(language) || inherits(language, "sft_language")) {
+    return(language)
+  }
+
+  stop(
+    "language must be NULL, an object created with language() / german() / ",
+    "english(), or a function returning one.",
+    call. = FALSE
+  )
+}
+
+# Argument check at call time. A function is accepted unevaluated: a reactive
+# cannot be read outside a reactive context, so it is checked when first used.
+sft_check_language <- function(language) {
+  if (is.function(language)) {
     return(invisible(language))
   }
 
-  stop("language must be NULL or an object created with language() / german() / english().", call. = FALSE)
+  invisible(sft_resolve_language(language))
 }
 
 #' Bundle the user-facing text of a form into one language
@@ -76,6 +99,14 @@ sft_check_language <- function(language) {
 #'   defaults do.
 #' @param dt_language Named list passed to 'DataTables' as its `language`
 #'   option.
+#'
+#' @section Switching the language while the app runs:
+#' `form_server(language = )` also accepts a function or reactive that returns
+#' a language, for example `reactive(if (input$lang == "de") german() else
+#' english())`. Tables, dialogs, notifications and validation messages then
+#' follow it at once. The buttons and titles drawn by [form_ui()] are static
+#' HTML: call `form_ui()` inside a `renderUI()` that reads the same reactive so
+#' that they are redrawn too. A dialog that is already open keeps its language.
 #'
 #' @return An object of class `sft_language`. `german()` returns the bundled
 #'   German pack as one such object. `english()` returns the English defaults

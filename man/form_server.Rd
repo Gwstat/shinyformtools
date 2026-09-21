@@ -138,7 +138,8 @@ validation messages, table labels and the 'DataTables' chrome of this form
 in one argument. It applies to this form only, so two sessions of one app
 can speak different languages (unlike \code{\link[=use_german]{use_german()}}, which switches the
 whole R process). Pass the same object to \code{\link[=form_ui]{form_ui()}}. Entries of \code{labels}
-still win over it.}
+still win over it. May also be a function or reactive returning a language,
+to switch while the app runs - see \code{\link[=language]{language()}}.}
 
 \item{modal_sizes}{Optional named list with modal settings for \code{add}, \code{edit},
 \code{delete}, \code{versions} and \code{column_settings}. Each entry can be \code{"s"},

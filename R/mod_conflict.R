@@ -179,7 +179,8 @@ sft_conflict_set_input <- function(session, field, value) {
 # module's input/output/session, like the other sft_register_* helpers.
 sft_register_edit_conflict <- function(input, output, session, state) {
   form <- state$form
-  labels <- state$labels
+  # Live binding, not a copy: the labels follow a language that changes.
+  makeActiveBinding("labels", function() state$labels, environment())
   language <- state$language
   live_conn <- state$conn
   edit_conflict <- state$edit_conflict

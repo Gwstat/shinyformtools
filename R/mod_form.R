@@ -89,7 +89,8 @@ form_ui <- function(id,
                         ...) {
   ns <- shiny::NS(id)
   form_layout <- match.arg(form_layout)
-  sft_check_language(language)
+  # A function (reactive) is fine here: form_ui() then sits inside a renderUI().
+  language <- sft_resolve_language(language)
 
   legacy <- sft_map_deprecated_args(
     dots = list(...),
@@ -297,7 +298,8 @@ form_ui <- function(id,
 #'   in one argument. It applies to this form only, so two sessions of one app
 #'   can speak different languages (unlike [use_german()], which switches the
 #'   whole R process). Pass the same object to [form_ui()]. Entries of `labels`
-#'   still win over it.
+#'   still win over it. May also be a function or reactive returning a language,
+#'   to switch while the app runs - see [language()].
 #' @param modal_sizes Optional named list with modal settings for `add`, `edit`,
 #'   `delete`, `versions` and `column_settings`. Each entry can be `"s"`,
 #'   `"m"`, `"l"`, a CSS width such as `"90vw"`, or a list with `size`,
@@ -404,7 +406,10 @@ form_server <- function(id,
   }
 
   sft_check_language(language)
-  labels <- sft_with_language(language, sft_ui_labels(labels))
+  # `labels` stays the caller's raw override list: the module resolves it
+  # against the language at the point of use, because the language may be a
+  # reactive that changes while the app runs. Validate it now, though.
+  sft_ui_labels(labels)
   modal_sizes <- sft_modal_sizes(modal_sizes)
   sft_check_form_region(modal_header, "modal_header")
   sft_check_table_format(settings$table$format)

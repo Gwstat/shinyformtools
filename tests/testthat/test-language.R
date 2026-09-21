@@ -19,7 +19,7 @@ test_that("language() validates its vocabularies and names unknown keys", {
   expect_error(language(labels = list("Speichern")), "must be named")
   expect_error(language(labels = list(sav = "OK")), "Unknown labels key: sav")
   expect_error(language(messages = list(uniqe = "x")), "Unknown messages key")
-  expect_error(form_ui("x", language = list(labels = list())), "language must be NULL or")
+  expect_error(form_ui("x", language = list(labels = list())), "language must be NULL")
 })
 
 test_that("language_keys lists every key of the three keyed vocabularies", {
@@ -181,4 +181,67 @@ test_that("the records and audit tables render their headers in the form's langu
   expect_match(headers(german()), "Zeitstempel", fixed = TRUE)
   expect_match(headers(NULL), "Timestamp", fixed = TRUE)
   expect_false(grepl("Zeitstempel", headers(NULL), fixed = TRUE))
+})
+
+test_that("a reactive language switches a running session", {
+  skip_if_not_installed("DT")
+
+  shown <- character()
+  testthat::local_mocked_bindings(
+    showNotification = function(ui, ..., type = "default") {
+      shown <<- c(shown, as.character(ui))
+      invisible(NULL)
+    },
+    .package = "shiny"
+  )
+
+  db_path <- tempfile(fileext = ".sqlite")
+  f <- sft_test_language_form(db_path)
+  conn <- local_test_conn(db_path)
+  init_db(f, conn = conn)
+  insert_record(f, list(name = "Ada"), conn = conn, user = "alice")
+
+  current <- shiny::reactiveVal(german())
+
+  shiny::testServer(
+    form_server,
+    args = list(id = "lang", form = f, conn = conn, language = current, labels = list(cancel = "Weg")),
+    {
+      session$flushReact()
+
+      expect_identical(state$labels$save, "Speichern")
+      # An explicit label still wins over the language, in either language.
+      expect_identical(state$labels$cancel, "Weg")
+      expect_match(paste(as.character(output$audit), collapse = ""), "Zeitstempel", fixed = TRUE)
+
+      session$setInputs(add_name = "")
+      session$setInputs(submit_add = 1)
+      expect_true(any(grepl("Pflichtfelder fehlen", shown, fixed = TRUE)))
+
+      # Switch while the session runs.
+      current(english())
+      session$flushReact()
+
+      expect_identical(state$labels$save, "Save")
+      expect_identical(state$labels$cancel, "Weg")
+      audit <- paste(as.character(output$audit), collapse = "")
+      expect_match(audit, "Timestamp", fixed = TRUE)
+      expect_false(grepl("Zeitstempel", audit, fixed = TRUE))
+
+      shown <<- character()
+      session$setInputs(submit_add = 2)
+      expect_true(any(grepl("Mandatory fields missing", shown, fixed = TRUE)))
+      expect_false(any(grepl("Pflichtfelder", shown, fixed = TRUE)))
+    }
+  )
+
+  expect_null(sft_active_language())
+})
+
+test_that("a plain function works as a language too, and a bad one is named", {
+  html <- as.character(form_ui("lang", language = function() german()))
+  expect_match(html, "Eintrag hinzuf", fixed = TRUE)
+
+  expect_identical(sft_with_language(function() german(), sft_ui_labels()$save), "Speichern")
+  expect_error(sft_with_language(function() "de", sft_ui_labels()), "language must be NULL")
 })

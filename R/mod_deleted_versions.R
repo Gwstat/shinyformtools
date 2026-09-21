@@ -11,7 +11,8 @@ sft_register_deleted_versions <- function(input, output, session, state) {
   form <- state$form
   live_conn <- state$conn
   user <- state$user
-  labels <- state$labels
+  # Live binding, not a copy: the labels follow a language that changes.
+  makeActiveBinding("labels", function() state$labels, environment())
   language <- state$language
   modal_sizes <- state$modal_sizes
   datetime_format <- state$table$datetime_format

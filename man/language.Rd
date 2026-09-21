@@ -47,6 +47,15 @@ global option (if any) and then to the English default. \code{\link[=language_ke
 lists every key with its default text. A \code{labels} or \code{messages} argument
 given to a function directly still wins over the language.
 }
+\section{Switching the language while the app runs}{
+
+\code{form_server(language = )} also accepts a function or reactive that returns
+a language, for example \code{reactive(if (input$lang == "de") german() else english())}. Tables, dialogs, notifications and validation messages then
+follow it at once. The buttons and titles drawn by \code{\link[=form_ui]{form_ui()}} are static
+HTML: call \code{form_ui()} inside a \code{renderUI()} that reads the same reactive so
+that they are redrawn too. A dialog that is already open keeps its language.
+}
+
 \examples{
 # Start from German and rename one button.
 de <- german()

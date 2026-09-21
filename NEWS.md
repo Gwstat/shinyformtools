@@ -37,6 +37,8 @@
   forms or users in different languages, which the process-wide `use_german()`
   cannot. `german()` and `english()` are ready-made; `language_keys()` lists
   every key with its English default. Example: `app_language`.
+* `form_server(language = )` also accepts a function or reactive returning a
+  language, so a user can switch language while the app runs.
 * Text that was hard-coded English now follows the language: the fallback names
   of unnamed tabs and wizard slides, the changelog box (title, empty text,
   "+N more") and two uniqueness-rule messages.

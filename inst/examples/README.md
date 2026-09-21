@@ -145,7 +145,9 @@ Start with **app_crud_basic**; the rest each focus on one capability.
   `use_german()`, a language object is scoped to its form, so buttons, dialogs,
   validation messages, audit headers and the DataTables chrome differ per form
   inside one R process - or per user, if you pick the object from the login.
-  `language_keys()` lists every key for a translation of your own.
+  `language_keys()` lists every key for a translation of your own. A third form
+  switches language while the app runs: its `language` is a reactive, and its
+  `form_ui()` is drawn in a `renderUI()` that reads the same reactive.
 
 - **app_german** — a fully German UI from one global switch. `use_german()`
   flips every default user-facing string to German (buttons, dialogs,

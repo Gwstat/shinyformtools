@@ -7,7 +7,8 @@
 
 sft_register_crud <- function(input, output, session, state) {
   form <- state$form
-  labels <- state$labels
+  # Live binding, not a copy: the labels follow a language that changes.
+  makeActiveBinding("labels", function() state$labels, environment())
   modal_sizes <- state$modal_sizes
   modal_header <- state$modal_header
   input_bindings <- state$input_bindings

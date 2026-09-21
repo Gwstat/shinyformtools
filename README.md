@@ -219,7 +219,9 @@ server <- function(input, output, session) {
 ```
 
 A language belongs to the form it is passed to, so one app can serve forms (or
-users) in different languages. `use_german()` remains as the switch for a whole R
+users) in different languages. `form_server(language = )` also takes a reactive,
+which switches tables, dialogs and messages while the app runs; draw `form_ui()`
+inside a `renderUI()` that reads the same reactive to redraw the buttons too. `use_german()` remains as the switch for a whole R
 process, `labels = list(...)` still overrides single entries, and
 `language_keys()` lists every key with its English default - the reference for a
 translation of your own.

@@ -165,13 +165,26 @@ sft_module_state <- function(input,
 
   state$form <- form
   state$user <- user
-  state$labels <- labels
-  # The form's language() or NULL. `labels` above are already resolved with
-  # it; everything computed LATER (table headers, validation messages, the
-  # DataTables chrome, fallback tab names) reads the active language, so every
-  # observer body and render runs inside sft_with_language(). run_mutation()
-  # and guard() below do that for observers.
+  # The form's language(): NULL, the object, or a function / reactive returning
+  # one (a language that can change while the app runs). Text computed late -
+  # table headers, validation messages, the DataTables chrome, fallback tab
+  # names - reads the ACTIVE language, so every observer body and render runs
+  # inside sft_with_language(); run_mutation() and guard() below do that for
+  # observers.
   state$language <- language
+
+  # `state$labels` is computed on access for the same reason: the caller's
+  # `labels` overrides layered over whatever the language is right now. Read
+  # inside a render it takes a dependency on a reactive language; read where no
+  # reactive context exists (module start-up) it falls back to isolate().
+  resolve_labels <- function() sft_with_language(language, sft_ui_labels(labels))
+  makeActiveBinding(
+    "labels",
+    function() {
+      tryCatch(resolve_labels(), error = function(err) shiny::isolate(resolve_labels()))
+    },
+    state
+  )
   state$modal_sizes <- modal_sizes
   state$permissions <- settings$permissions
   state$table <- settings$table
@@ -249,7 +262,7 @@ sft_module_state <- function(input,
   }
 
   state$notify <- function(label, type = "warning") {
-    shiny::showNotification(sft_ui_label(labels, label), type = type)
+    shiny::showNotification(sft_ui_label(state$labels, label), type = type)
   }
 
   # Run `fun` and turn an error into a notification instead of letting it
@@ -272,7 +285,7 @@ sft_module_state <- function(input,
 
   if (!is.null(state$connect_error)) {
     shiny::showNotification(
-      sft_ui_label(labels, "db_unavailable", values = list(reason = state$connect_error)),
+      sft_ui_label(state$labels, "db_unavailable", values = list(reason = state$connect_error)),
       type = "error",
       duration = NULL
     )
@@ -379,7 +392,7 @@ sft_module_state <- function(input,
         state$inline_active(NULL)
         state$invalid_fields(character())
         shiny::showNotification(
-          sft_ui_label(labels, success_label, values = success_values),
+          sft_ui_label(state$labels, success_label, values = success_values),
           type = "message"
         )
 
