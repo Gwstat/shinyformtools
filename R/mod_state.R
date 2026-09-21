@@ -152,6 +152,7 @@ sft_module_state <- function(input,
                              user,
                              settings,
                              labels,
+                             language = NULL,
                              modal_sizes,
                              display_transform,
                              modal_header,
@@ -165,6 +166,12 @@ sft_module_state <- function(input,
   state$form <- form
   state$user <- user
   state$labels <- labels
+  # The form's language() or NULL. `labels` above are already resolved with
+  # it; everything computed LATER (table headers, validation messages, the
+  # DataTables chrome, fallback tab names) reads the active language, so every
+  # observer body and render runs inside sft_with_language(). run_mutation()
+  # and guard() below do that for observers.
+  state$language <- language
   state$modal_sizes <- modal_sizes
   state$permissions <- settings$permissions
   state$table <- settings$table
@@ -253,7 +260,7 @@ sft_module_state <- function(input,
   state$guard <- function(fun) {
     tryCatch(
       {
-        fun()
+        sft_with_language(language, fun())
         invisible(TRUE)
       },
       error = function(err) {
@@ -357,7 +364,7 @@ sft_module_state <- function(input,
         # notification and carry on, since a warning must not block the save.
         # Without this handler they only reach the R console, never the user.
         withCallingHandlers(
-          action(),
+          sft_with_language(language, action()),
           warning = function(w) {
             shiny::showNotification(
               conditionMessage(w),

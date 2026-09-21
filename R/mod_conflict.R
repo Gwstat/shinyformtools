@@ -180,10 +180,11 @@ sft_conflict_set_input <- function(session, field, value) {
 sft_register_edit_conflict <- function(input, output, session, state) {
   form <- state$form
   labels <- state$labels
+  language <- state$language
   live_conn <- state$conn
   edit_conflict <- state$edit_conflict
   edit_conflict_baseline <- state$edit_conflict_baseline
-  output$sft_edit_conflict_ui <- shiny::renderUI({
+  output$sft_edit_conflict_ui <- shiny::renderUI(sft_with_language(language, {
     conflict <- edit_conflict()
 
     if (is.null(conflict)) {
@@ -281,7 +282,7 @@ sft_register_edit_conflict <- function(input, output, session, state) {
         )
       )
     )
-  })
+  }))
 
   shiny::observeEvent(input$sft_conflict_accept, {
     conflict <- edit_conflict()

@@ -408,7 +408,7 @@ sft_register_modal_header <- function(input, output, session, state) {
   }
 
   render_header <- function(prefix, record) {
-    sft_render_modal_header(
+    sft_with_language(state$language, sft_render_modal_header(
       modal_header = modal_header,
       form = form,
       ns = session$ns,
@@ -424,7 +424,7 @@ sft_register_modal_header <- function(input, output, session, state) {
       input = input,
       output = output,
       session = session
-    )
+    ))
   }
 
   output$add_modal_header <- shiny::renderUI({

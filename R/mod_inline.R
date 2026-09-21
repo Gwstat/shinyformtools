@@ -56,8 +56,9 @@ sft_register_inline_form <- function(input, output, session, state) {
   modal_header <- state$modal_header
   editable_fields <- state$permissions$editable_fields
   datetime_format <- state$table$datetime_format
+  language <- state$language
 
-  output$sft_inline_form <- shiny::renderUI({
+  output$sft_inline_form <- shiny::renderUI(sft_with_language(language, {
     mode <- state$inline_active()
 
     if (is.null(mode)) {
@@ -116,7 +117,7 @@ sft_register_inline_form <- function(input, output, session, state) {
       can_submit = can_edit_now,
       cancel_label = if (isTRUE(can_edit_now)) "cancel" else "close"
     )
-  })
+  }))
 
   shiny::observeEvent(input$sft_inline_cancel, {
     state$inline_active(NULL)

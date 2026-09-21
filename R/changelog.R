@@ -75,9 +75,10 @@ sft_compact_changed_fields <- function(x, max_fields = 4L) {
 
   paste0(
     paste(fields[seq_len(max_fields)], collapse = ", "),
-    ", +",
-    length(fields) - max_fields,
-    " more"
+    sft_interpolate_text(
+      sft_table_labels()$changelog_more,
+      values = list(n = length(fields) - max_fields)
+    )
   )
 }
 
@@ -160,9 +161,11 @@ audit_history <- function(context = NULL,
 #' @param record Optional one-row record containing `sft_id` or `sft_uuid`.
 #' @param record_id Optional `sft_id`.
 #' @param record_uuid Optional `sft_uuid`.
-#' @param title Box title.
+#' @param title Box title. Defaults to the `changelog_title` table label, so it
+#'   follows the active [language()].
 #' @param limit Maximum number of entries to show.
-#' @param empty_text Text shown when no history is available.
+#' @param empty_text Text shown when no history is available. Defaults to the
+#'   `changelog_empty` table label.
 #' @param datetime_format Timestamp display format.
 #' @param show_version Logical. Whether to show the version number in the compact history.
 #' @param show_fields Logical. Whether to show compact changed-field names.
@@ -189,9 +192,9 @@ changelog_box <- function(context,
                               record = NULL,
                               record_id = NULL,
                               record_uuid = NULL,
-                              title = "Changelog",
+                              title = sft_table_labels()$changelog_title,
                               limit = 5L,
-                              empty_text = "No changes yet.",
+                              empty_text = sft_table_labels()$changelog_empty,
                               datetime_format = sft_default_datetime_format(),
                               show_version = FALSE,
                               show_fields = FALSE) {

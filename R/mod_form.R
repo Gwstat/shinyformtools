@@ -41,6 +41,9 @@
 #'   Purely cosmetic CSS, scoped to this module's tables; host-app tables are
 #'   unaffected.
 #' @param labels Optional named list overriding UI labels and button texts.
+#' @param language Optional [language()] object, e.g. [german()]: every text of
+#'   this form in one argument, for this form only. Pass the same object to
+#'   [form_server()]. Entries of `labels` still win over it.
 #' @param button_options Optional named list controlling action-button placement
 #'   and classes. Supported entries are `placement` (`"top"`, `"bottom"`,
 #'   `"both"`, `"none"`), `align` (`"left"`, `"center"`,
@@ -82,9 +85,11 @@ form_ui <- function(id,
                         table_style = NULL,
                         labels = list(),
                         button_options = list(),
+                        language = NULL,
                         ...) {
   ns <- shiny::NS(id)
   form_layout <- match.arg(form_layout)
+  sft_check_language(language)
 
   legacy <- sft_map_deprecated_args(
     dots = list(...),
@@ -96,7 +101,7 @@ form_ui <- function(id,
   )
   show_include_deleted <- isTRUE(legacy$args$show_include_deleted)
   table_style <- sft_resolve_table_style(table_style)
-  labels <- sft_ui_labels(labels)
+  labels <- sft_with_language(language, sft_ui_labels(labels))
   button_options <- sft_normalize_button_options(button_options)
 
   button_row <- function() {
@@ -287,6 +292,12 @@ form_ui <- function(id,
 #' @param labels Optional named list overriding UI labels, modal texts and
 #'   notification messages. Set individual entries to `NULL` to hide the
 #'   corresponding button or modal title.
+#' @param language Optional [language()] object, e.g. [german()]: UI labels,
+#'   validation messages, table labels and the 'DataTables' chrome of this form
+#'   in one argument. It applies to this form only, so two sessions of one app
+#'   can speak different languages (unlike [use_german()], which switches the
+#'   whole R process). Pass the same object to [form_ui()]. Entries of `labels`
+#'   still win over it.
 #' @param modal_sizes Optional named list with modal settings for `add`, `edit`,
 #'   `delete`, `versions` and `column_settings`. Each entry can be `"s"`,
 #'   `"m"`, `"l"`, a CSS width such as `"90vw"`, or a list with `size`,
@@ -362,6 +373,7 @@ form_server <- function(id,
                             columns = list(),
                             highlight = list(),
                             labels = list(),
+                            language = NULL,
                             modal_sizes = list(),
                             display_transform = NULL,
                             modal_header = NULL,
@@ -391,7 +403,8 @@ form_server <- function(id,
     user <- settings$permissions$user
   }
 
-  labels <- sft_ui_labels(labels)
+  sft_check_language(language)
+  labels <- sft_with_language(language, sft_ui_labels(labels))
   modal_sizes <- sft_modal_sizes(modal_sizes)
   sft_check_form_region(modal_header, "modal_header")
   sft_check_table_format(settings$table$format)
@@ -406,6 +419,7 @@ form_server <- function(id,
       user = user,
       settings = settings,
       labels = labels,
+      language = language,
       modal_sizes = modal_sizes,
       display_transform = display_transform,
       modal_header = modal_header,

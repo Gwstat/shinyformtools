@@ -29,6 +29,20 @@
 * `form_server()` returns `connection()`, a function yielding the module's
   current connection, next to the start-up `conn`.
 
+## Languages
+
+* New `language()` object: UI labels, validation messages, table labels and the
+  'DataTables' chrome of a form in one argument, `form_ui(language = )` /
+  `form_server(language = )`. It is scoped to that form, so one app can serve
+  forms or users in different languages, which the process-wide `use_german()`
+  cannot. `german()` and `english()` are ready-made; `language_keys()` lists
+  every key with its English default. Example: `app_language`.
+* Text that was hard-coded English now follows the language: the fallback names
+  of unnamed tabs and wizard slides, the changelog box (title, empty text,
+  "+N more") and two uniqueness-rule messages.
+* Three label keys that nothing read any more are gone from the defaults:
+  `apply_columns`, `apply_column_selection`, `reset_columns`.
+
 ## Validation
 
 * A rejected save now marks its fields: the add/edit form glows the fields the

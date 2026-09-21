@@ -6,6 +6,7 @@
 # the active row), and registers the audit table render.
 sft_register_records_table <- function(input, output, session, state) {
   form <- state$form
+  language <- state$language
   live_conn <- state$conn
   show_system_columns <- state$columns$show_system
   table_options <- state$table$options
@@ -39,7 +40,7 @@ sft_register_records_table <- function(input, output, session, state) {
     }
   }, ignoreNULL = FALSE, ignoreInit = TRUE)
 
-  output$records <- DT::renderDT({
+  output$records <- DT::renderDT(sft_with_language(language, {
     table_structure_tick()
 
     if (!sft_module_permission(can_view_table, default = TRUE)) {
@@ -67,7 +68,7 @@ sft_register_records_table <- function(input, output, session, state) {
       table_format = table_format,
       context = display_context()
     )
-  })
+  }))
 
   records_proxy <- DT::dataTableProxy("records", session = session)
 
@@ -112,7 +113,7 @@ sft_register_records_table <- function(input, output, session, state) {
 
   # The audit output is always registered: Shiny computes it only when
   # form_ui(show_audit = TRUE) placed the container, so no server flag is needed.
-  output$audit <- DT::renderDT({
+  output$audit <- DT::renderDT(sft_with_language(language, {
     if (!sft_module_permission(can_view_audit, default = TRUE)) {
       return(NULL)
     }
@@ -137,7 +138,7 @@ sft_register_records_table <- function(input, output, session, state) {
       options = audit_options,
       datetime_format = datetime_format
     )
-  })
+  }))
 
   invisible(list())
 }

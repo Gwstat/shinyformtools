@@ -201,6 +201,29 @@ source, message and fields, and the error `validate_record()` raises is of class
 `changelog_box()` can be used in `modal_header` hooks to show a compact audit
 history for the edited record.
 
+## Languages
+
+All text the package shows is English by default and comes from four
+vocabularies: UI labels, validation messages, table labels and the DataTables
+chrome. A `language()` object bundles overrides for all four, and `german()` is a
+ready-made one:
+
+```r
+de <- german()
+de$labels$open_add <- "Neuer Kontakt"   # rename one button
+
+ui <- fluidPage(form_ui("contacts", language = de))
+server <- function(input, output, session) {
+  form_server("contacts", contacts_form, language = de)
+}
+```
+
+A language belongs to the form it is passed to, so one app can serve forms (or
+users) in different languages. `use_german()` remains as the switch for a whole R
+process, `labels = list(...)` still overrides single entries, and
+`language_keys()` lists every key with its English default - the reference for a
+translation of your own.
+
 ## Permissions
 
 `form_server(permissions = list(...))` takes a `can_*` entry for each action
@@ -227,7 +250,7 @@ interpolated into SQL, and SQL-injection regressions are covered by tests in
 
 ## Example apps
 
-Eighteen self-contained demo apps ship with the package; each shows a
+Self-contained demo apps ship with the package; each shows a
 **"How it is built"** walkthrough beside the running form. List and run them:
 
 ```r
@@ -278,6 +301,9 @@ run_example("app_crud_basic")
   `rights_permissions()`) on top of a `shinymanager` login. Needs `shinymanager`.
 - **app_german** — a fully German UI from one `use_german()` switch (English stays
   the default), overridable per form.
+- **app_language** — two forms in one app, one German and one English, each
+  given its own `language()` object; buttons, dialogs, validation messages and
+  audit headers follow the form, not the process.
 - **app_shape_map** — records with a fixed, non-editable geometry:
   `shape_field()` + `attach_shapes()` drawn on a leaflet map via `decode_shape()`.
   Needs `sf` and `leaflet`.

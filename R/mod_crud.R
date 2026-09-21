@@ -21,25 +21,28 @@ sft_register_crud <- function(input, output, session, state) {
   })
 
   shiny::observeEvent(input$open_add, {
-    if (!state$permission("can_add")) {
-      notify_warning("add_not_allowed")
+    # Guarded: runs in the form's language and survives a failing connection.
+    state$guard(function() {
+      if (!state$permission("can_add")) {
+        notify_warning("add_not_allowed")
 
-      return()
-    }
+        return()
+      }
 
-    state$invalid_fields(character())
+      state$invalid_fields(character())
 
-    if (identical(state$layout(), "inline")) {
-      state$inline_active("add")
-    } else {
-      sft_show_add_modal(
-        form = sft_resolve_editable(form, state$current_user()),
-        session = session,
-        labels = labels,
-        modal_sizes = modal_sizes,
-        modal_header = modal_header
-      )
-    }
+      if (identical(state$layout(), "inline")) {
+        state$inline_active("add")
+      } else {
+        sft_show_add_modal(
+          form = sft_resolve_editable(form, state$current_user()),
+          session = session,
+          labels = labels,
+          modal_sizes = modal_sizes,
+          modal_header = modal_header
+        )
+      }
+    })
   })
 
   shiny::observeEvent(input$submit_add, {

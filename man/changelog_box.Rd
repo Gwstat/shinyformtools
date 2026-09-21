@@ -9,9 +9,9 @@ changelog_box(
   record = NULL,
   record_id = NULL,
   record_uuid = NULL,
-  title = "Changelog",
+  title = sft_table_labels()$changelog_title,
   limit = 5L,
-  empty_text = "No changes yet.",
+  empty_text = sft_table_labels()$changelog_empty,
   datetime_format = sft_default_datetime_format(),
   show_version = FALSE,
   show_fields = FALSE
@@ -26,11 +26,13 @@ changelog_box(
 
 \item{record_uuid}{Optional \code{sft_uuid}.}
 
-\item{title}{Box title.}
+\item{title}{Box title. Defaults to the \code{changelog_title} table label, so it
+follows the active \code{\link[=language]{language()}}.}
 
 \item{limit}{Maximum number of entries to show.}
 
-\item{empty_text}{Text shown when no history is available.}
+\item{empty_text}{Text shown when no history is available. Defaults to the
+\code{changelog_empty} table label.}
 
 \item{datetime_format}{Timestamp display format.}
 

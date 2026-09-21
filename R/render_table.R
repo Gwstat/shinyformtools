@@ -342,6 +342,12 @@ sft_dt_options <- function(options = list()) {
   # from the DataTables `language` option, set globally by use_german(). A
   # per-table `language` in `options` still wins via modifyList below.
   dt_language <- getOption("shinyformtools.dt_language", NULL)
+  # An active language() REPLACES the global option, even with an empty list:
+  # english() must be able to switch a German process back to DataTables' own
+  # English chrome.
+  if (!is.null(sft_active_language())) {
+    dt_language <- sft_language_part("dt_language")
+  }
   if (is.list(dt_language) && length(dt_language) > 0L) {
     base$language <- dt_language
   }

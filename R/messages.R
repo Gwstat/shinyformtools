@@ -5,7 +5,9 @@ sft_default_messages <- function() {
     unique = "The value for '{label}' is already taken.",
     conditional_required = "Conditional mandatory fields missing: {fields}.",
     validation_rule_failed = "Validation rule '{rule}' failed.",
-    no_active_fields_for_update = "No active form fields were provided to update."
+    no_active_fields_for_update = "No active form fields were provided to update.",
+    unique_needs_connection = "A database connection is required for uniqueness validation.",
+    unique_check_failed = "Uniqueness could not be checked: unexpected database result."
   )
 }
 
@@ -50,14 +52,15 @@ sft_form_messages <- function(form = NULL, messages = list()) {
     list()
   }
 
-  # English default <- global option (use_german) <- form() messages <- call arg.
-  utils::modifyList(
-    utils::modifyList(
-      utils::modifyList(defaults, option_messages),
-      form_messages
-    ),
-    messages
-  )
+  # English default <- global option (use_german) <- active language()
+  # <- form() messages <- call arg.
+  layered <- defaults
+
+  for (layer in list(option_messages, sft_language_part("messages"), form_messages, messages)) {
+    layered <- utils::modifyList(layered, layer)
+  }
+
+  layered
 }
 
 sft_message <- function(form, key, values = list(), messages = list()) {

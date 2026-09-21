@@ -14,6 +14,7 @@ form_server(
   columns = list(),
   highlight = list(),
   labels = list(),
+  language = NULL,
   modal_sizes = list(),
   display_transform = NULL,
   modal_header = NULL,
@@ -131,6 +132,13 @@ the next successful save or until a form is opened again.}
 \item{labels}{Optional named list overriding UI labels, modal texts and
 notification messages. Set individual entries to \code{NULL} to hide the
 corresponding button or modal title.}
+
+\item{language}{Optional \code{\link[=language]{language()}} object, e.g. \code{\link[=german]{german()}}: UI labels,
+validation messages, table labels and the 'DataTables' chrome of this form
+in one argument. It applies to this form only, so two sessions of one app
+can speak different languages (unlike \code{\link[=use_german]{use_german()}}, which switches the
+whole R process). Pass the same object to \code{\link[=form_ui]{form_ui()}}. Entries of \code{labels}
+still win over it.}
 
 \item{modal_sizes}{Optional named list with modal settings for \code{add}, \code{edit},
 \code{delete}, \code{versions} and \code{column_settings}. Each entry can be \code{"s"},

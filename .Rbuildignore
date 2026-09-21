@@ -27,3 +27,4 @@
 ^doc$
 ^Meta$
 ^tools$
+^tests/testthat/_problems$

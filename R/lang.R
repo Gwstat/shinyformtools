@@ -47,7 +47,13 @@ sft_default_table_labels <- function() {
     audit_reason = "Reason",
     # changelog_box() snippets.
     changelog_version = "Version",
-    changelog_fields = "Fields"
+    changelog_fields = "Fields",
+    changelog_title = "Changelog",
+    changelog_empty = "No changes yet.",
+    changelog_more = ", +{n} more",
+    # Fallback names of unnamed tabs / wizard slides.
+    tab_default = "Tab {n}",
+    slide_default = "Slide {n}"
   )
 }
 
@@ -58,9 +64,10 @@ sft_table_labels <- function() {
     option_labels <- list()
   }
 
+  # English default <- global option (use_german) <- active language().
   utils::modifyList(
-    sft_default_table_labels(),
-    option_labels,
+    utils::modifyList(sft_default_table_labels(), option_labels, keep.null = TRUE),
+    sft_language_part("table_labels"),
     keep.null = TRUE
   )
 }
@@ -197,7 +204,9 @@ german_messages <- function() {
     unique = "Der Wert f\u00fcr '{label}' ist bereits vergeben.",
     conditional_required = "Bedingte Pflichtfelder fehlen: {fields}.",
     validation_rule_failed = "Validierungsregel '{rule}' fehlgeschlagen.",
-    no_active_fields_for_update = "Es wurden keine aktiven Formularfelder zum Aktualisieren \u00fcbergeben."
+    no_active_fields_for_update = "Es wurden keine aktiven Formularfelder zum Aktualisieren \u00fcbergeben.",
+    unique_needs_connection = "F\u00fcr die Eindeutigkeitspr\u00fcfung wird eine Datenbankverbindung ben\u00f6tigt.",
+    unique_check_failed = "Die Eindeutigkeit konnte nicht gepr\u00fcft werden: unerwartetes Datenbankergebnis."
   )
 }
 
@@ -244,7 +253,12 @@ german_table_labels <- function() {
     audit_changed_fields = "Ge\u00e4nderte Felder",
     audit_reason = "Grund",
     changelog_version = "Version",
-    changelog_fields = "Felder"
+    changelog_fields = "Felder",
+    changelog_title = "\u00c4nderungsverlauf",
+    changelog_empty = "Noch keine \u00c4nderungen.",
+    changelog_more = ", +{n} weitere",
+    tab_default = "Reiter {n}",
+    slide_default = "Seite {n}"
   )
 }
 

@@ -139,6 +139,14 @@ Start with **app_crud_basic**; the rest each focus on one capability.
   grants — tick one in a rule, log in as that user, and watch the matching
   control follow. Requires the optional `shinymanager` package.
 
+- **app_language** — one app, two languages. The same records appear in two
+  forms side by side: one gets `language = german()` (with one button renamed by
+  assigning into the object), the other a small `language()` of its own. Unlike
+  `use_german()`, a language object is scoped to its form, so buttons, dialogs,
+  validation messages, audit headers and the DataTables chrome differ per form
+  inside one R process - or per user, if you pick the object from the login.
+  `language_keys()` lists every key for a translation of your own.
+
 - **app_german** — a fully German UI from one global switch. `use_german()`
   flips every default user-facing string to German (buttons, dialogs,
   notifications, records-table headers, the Yes/No deleted flag, and the audit

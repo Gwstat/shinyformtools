@@ -51,10 +51,7 @@ sft_default_ui_labels <- function() {
     confirm_restore = "Restore selected version",
     restore_deleted = "Restore latest version",
     record_restored = "Record restored.",
-    apply_columns = NULL,
-    apply_column_selection = NULL,
     save_column_view = "Save",
-    reset_columns = NULL,
     no_selection = "Please select exactly one record.",
     no_valid_selection = "No valid selection remaining.",
     no_valid_record_selection = "No valid record selection.",
@@ -111,16 +108,15 @@ sft_ui_labels <- function(labels = list()) {
     option_labels <- list()
   }
 
-  # English default <- global option (use_german) <- explicit per-form labels.
-  utils::modifyList(
-    utils::modifyList(
-      sft_default_ui_labels(),
-      option_labels,
-      keep.null = TRUE
-    ),
-    labels,
-    keep.null = TRUE
-  )
+  # English default <- global option (use_german) <- active language()
+  # <- explicit per-form labels.
+  layered <- sft_default_ui_labels()
+
+  for (layer in list(option_labels, sft_language_part("labels"), labels)) {
+    layered <- utils::modifyList(layered, layer, keep.null = TRUE)
+  }
+
+  layered
 }
 
 sft_ui_label <- function(labels, key, values = list()) {

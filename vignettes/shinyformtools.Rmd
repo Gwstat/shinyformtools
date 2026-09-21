@@ -23,7 +23,7 @@ it produced:
 2. what exactly the package creates in the database,
 3. how to read that data again *without* the app.
 
-The 18 runnable examples shipped with the package cover the individual features;
+The runnable examples shipped with the package cover the individual features;
 `list_examples()` names them and `run_example()` starts one. This vignette is the
 narrative that ties them together.
 

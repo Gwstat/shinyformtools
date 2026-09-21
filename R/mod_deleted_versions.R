@@ -12,6 +12,7 @@ sft_register_deleted_versions <- function(input, output, session, state) {
   live_conn <- state$conn
   user <- state$user
   labels <- state$labels
+  language <- state$language
   modal_sizes <- state$modal_sizes
   datetime_format <- state$table$datetime_format
   display_transform <- state$display_transform
@@ -89,7 +90,7 @@ sft_register_deleted_versions <- function(input, output, session, state) {
     )
   })
 
-  output$deleted_records <- DT::renderDT({
+  output$deleted_records <- DT::renderDT(sft_with_language(language, {
     data <- display_deleted_records()
 
     if (nrow(data) == 0L) {
@@ -114,9 +115,9 @@ sft_register_deleted_versions <- function(input, output, session, state) {
       datetime_format = datetime_format,
       display_column_labels = display_column_labels
     )
-  })
+  }))
 
-  output$restore_versions <- DT::renderDT({
+  output$restore_versions <- DT::renderDT(sft_with_language(language, {
     versions <- restore_versions()
 
     if (nrow(versions) == 0L) {
@@ -138,21 +139,23 @@ sft_register_deleted_versions <- function(input, output, session, state) {
       options = version_options,
       datetime_format = datetime_format
     )
-  })
+  }))
 
   shiny::observeEvent(input$open_deleted_records, {
-    if (!sft_module_permission(can_view_deleted_records, default = TRUE)) {
-      state$notify("deleted_records_not_allowed")
+    state$guard(function() {
+      if (!sft_module_permission(can_view_deleted_records, default = TRUE)) {
+        state$notify("deleted_records_not_allowed")
 
-      return()
-    }
+        return()
+      }
 
-    sft_show_deleted_records_modal(
-      session = session,
-      labels = labels,
-      modal_sizes = modal_sizes,
-      can_restore = sft_module_permission(can_restore, default = TRUE)
-    )
+      sft_show_deleted_records_modal(
+        session = session,
+        labels = labels,
+        modal_sizes = modal_sizes,
+        can_restore = sft_module_permission(can_restore, default = TRUE)
+      )
+    })
   })
 
   # One-click restore of a deleted record: reactivates it from its latest

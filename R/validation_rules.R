@@ -652,7 +652,7 @@ must_be_unique <- function(id,
 
   validate <- function(values, record, form, conn = NULL, current_id = NULL, context = NULL) {
     if (is.null(conn)) {
-      return("A database connection is required for uniqueness validation.")
+      return(sft_message(form = form, key = "unique_needs_connection"))
     }
 
     form_fields <- lapply(fields, function(field_id) sft_field_for_id(form, field_id))
@@ -706,7 +706,7 @@ must_be_unique <- function(id,
     }
 
     if (!is.data.frame(result) || nrow(result) == 0L || !"n" %in% names(result)) {
-      return("Uniqueness could not be checked: unexpected database result.")
+      return(sft_message(form = form, key = "unique_check_failed"))
     }
 
     result$n[1] == 0L

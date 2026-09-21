@@ -20,6 +20,7 @@ form_ui(
   table_style = NULL,
   labels = list(),
   button_options = list(),
+  language = NULL,
   ...
 )
 }
@@ -76,6 +77,10 @@ and classes. Supported entries are \code{placement} (\code{"top"}, \code{"bottom
 \code{"both"}, \code{"none"}), \code{align} (\code{"left"}, \code{"center"},
 \code{"right"}, \code{"between"}), \code{class}, \code{container_class},
 \code{container_style} and \code{button_classes}.}
+
+\item{language}{Optional \code{\link[=language]{language()}} object, e.g. \code{\link[=german]{german()}}: every text of
+this form in one argument, for this form only. Pass the same object to
+\code{\link[=form_server]{form_server()}}. Entries of \code{labels} still win over it.}
 
 \item{...}{Deprecated arguments, accepted with a warning for one release:
 \code{show_include_deleted} (the legacy include-deleted checkbox; use
