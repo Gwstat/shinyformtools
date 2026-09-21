@@ -463,14 +463,16 @@ update_record <- function(form,
     )
 
     if (length(empty_supplied_mandatory) > 0L) {
-      stop(
-        sft_message(
+      stop(sft_validation_error(list(sft_issue(
+        fields = empty_supplied_mandatory,
+        severity = "error",
+        message = sft_message(
           form = form,
           key = "mandatory_empty",
           values = list(fields = paste(empty_supplied_mandatory, collapse = ", "))
         ),
-        call. = FALSE
-      )
+        source = "mandatory"
+      ))))
     }
 
     field_values <- sft_record_field_values(

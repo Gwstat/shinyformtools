@@ -237,6 +237,9 @@ sft_module_state <- function(input,
   state$edit_conflict <- shiny::reactiveVal(NULL)
   state$edit_conflict_baseline <- shiny::reactiveVal(NULL)
   state$selected_record_id <- shiny::reactiveVal(NULL)
+  # Field ids the last rejected save complained about; the highlight registrar
+  # glows them. Cleared by the next successful save and whenever a form opens.
+  state$invalid_fields <- shiny::reactiveVal(character())
   state$table_structure_tick <- shiny::reactiveVal(0L)
   # Inline (non-modal) add/edit panel state: NULL | "add" | "edit". Single
   # value, so add and edit are mutually exclusive by construction.
@@ -315,6 +318,7 @@ sft_module_state <- function(input,
 
         shiny::removeModal()
         state$inline_active(NULL)
+        state$invalid_fields(character())
         shiny::showNotification(
           sft_ui_label(labels, success_label, values = success_values),
           type = "message"
@@ -335,6 +339,16 @@ sft_module_state <- function(input,
             current_record = cond$current_record,
             columns = cond$columns
           )
+        )
+      },
+      sft_validation_error = function(cond) {
+        # The record was rejected: keep the dialog open, say why, and mark the
+        # fields the failed checks name.
+        state$invalid_fields(cond$fields %||% character())
+        shiny::showNotification(
+          conditionMessage(cond),
+          type = "error",
+          duration = 8
         )
       },
       error = function(err) {

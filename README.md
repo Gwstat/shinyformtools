@@ -161,6 +161,13 @@ checks <- form(
 )
 ```
 
+When a save is rejected, the dialog stays open with the user's input, the
+message names the problem, and the fields the failed checks concern glow
+(`highlight = list(invalid = FALSE)` turns that off). Outside the app,
+`validation_issues()` returns the same findings as a data frame of severity,
+source, message and fields, and the error `validate_record()` raises is of class
+`sft_validation_error` with those issues attached.
+
 `changelog_box()` can be used in `modal_header` hooks to show a compact audit
 history for the edited record.
 

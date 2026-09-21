@@ -167,16 +167,20 @@ sft_missing_mandatory_fields <- function(form, record) {
   vapply(fields[missing], function(field) field$id, character(1))
 }
 
-sft_validate_unique_fields <- function(form,
-                                       record,
-                                       conn,
-                                       current_id = NULL) {
-  fields <- sft_active_input_fields(form)
-  errors <- character()
+# Unique fields whose value a live record already holds, as issues. Compares
+# against the stored representation, not the raw value: insert/update store via
+# sft_field_db_value (IBAN normalized, time formatted, multi-values JSON), so a
+# raw comparison never matched for those types and the friendly pre-check
+# silently fell through to the DB constraint error.
+sft_unique_field_issues <- function(form,
+                                    record,
+                                    conn,
+                                    current_id = NULL) {
+  issues <- list()
 
   unique_fields <- Filter(
     function(field) isTRUE(field$unique),
-    fields
+    sft_active_input_fields(form)
   )
 
   for (field in unique_fields) {
@@ -194,10 +198,6 @@ sft_validate_unique_fields <- function(form,
       " = ? AND sft_is_deleted = 0"
     )
 
-    # Compare against the stored representation, not the raw value: insert/update
-    # store via sft_field_db_value (IBAN normalized, time formatted, multi-values
-    # JSON), so a raw comparison never matched for those types and the friendly
-    # pre-check silently fell through to the DB constraint error.
     params <- list(sft_field_db_value(field, value))
 
     if (!is.null(current_id)) {
@@ -208,9 +208,10 @@ sft_validate_unique_fields <- function(form,
     n <- DBI::dbGetQuery(conn, sql, params = params)$n[1]
 
     if (n > 0L) {
-      errors <- c(
-        errors,
-        sft_message(
+      issues <- c(issues, list(sft_issue(
+        fields = field$id,
+        severity = "error",
+        message = sft_message(
           form = form,
           key = "unique",
           values = list(
@@ -218,12 +219,30 @@ sft_validate_unique_fields <- function(form,
             label = field$label,
             value = value
           )
-        )
-      )
+        ),
+        source = "unique"
+      )))
     }
   }
 
-  errors
+  issues
+}
+
+# The messages of sft_unique_field_issues(), for callers that only report them
+# (the restore pre-check).
+sft_validate_unique_fields <- function(form,
+                                       record,
+                                       conn,
+                                       current_id = NULL) {
+  sft_issue_messages(
+    sft_unique_field_issues(
+      form = form,
+      record = record,
+      conn = conn,
+      current_id = current_id
+    ),
+    "error"
+  )
 }
 
 #' Validate a record against a form schema
@@ -237,7 +256,12 @@ sft_validate_unique_fields <- function(form,
 #'   treated as validation errors.
 #' @param current_id Deprecated name of `record_id`; accepted with a warning.
 #'
-#' @return Invisibly returns `TRUE`.
+#' @return Invisibly returns `TRUE`. A record with errors raises a condition of
+#'   class `sft_validation_error`: its message lists every error, one per line,
+#'   and its `issues` element is the data frame [validation_issues()] returns
+#'   (restricted to errors), so a caller can tell which fields failed. Rules of
+#'   severity `"warning"` raise a warning and do not stop.
+#' @seealso [validation_issues()] for the non-throwing variant.
 #' @examples
 #' f <- form(
 #'   form_id = "contacts",
@@ -272,66 +296,24 @@ validate_record <- function(form,
   }
   current_id <- record_id
 
-  if (is.data.frame(record)) {
-    if (nrow(record) != 1L) {
-      stop("record data frames must have exactly one row.", call. = FALSE)
-    }
+  record <- sft_check_validation_input(form, record)
 
-    record <- sft_row_to_list(record)
-  }
-
-  if (!is.list(record)) {
-    stop("record must be a named list or a one-row data frame.", call. = FALSE)
-  }
-
-  if (is.null(names(record)) || any(!nzchar(names(record)))) {
-    stop("record must be named.", call. = FALSE)
-  }
-
-  errors <- character()
-
-  if (isTRUE(require_all_mandatory)) {
-    missing <- sft_missing_mandatory_fields(form, record)
-
-    if (length(missing) > 0L) {
-      errors <- c(
-        errors,
-        sft_message(
-          form = form,
-          key = "mandatory_missing",
-          values = list(fields = paste(missing, collapse = ", "))
-        )
-      )
-    }
-  }
-
-  if (!is.null(conn)) {
-    errors <- c(
-      errors,
-      sft_validate_unique_fields(
-        form = form,
-        record = record,
-        conn = conn,
-        current_id = current_id
-      )
-    )
-  }
-
-  rule_result <- sft_validate_rules(
+  issues <- sft_validation_issues(
     form = form,
     record = record,
     conn = conn,
-    current_id = current_id
+    current_id = current_id,
+    require_all_mandatory = require_all_mandatory
   )
 
-  if (length(rule_result$warnings) > 0L) {
-    warning(paste(rule_result$warnings, collapse = "\n"), call. = FALSE)
+  warnings <- sft_issue_messages(issues, "warning")
+
+  if (length(warnings) > 0L) {
+    warning(paste(warnings, collapse = "\n"), call. = FALSE)
   }
 
-  errors <- c(errors, rule_result$errors)
-
-  if (length(errors) > 0L) {
-    stop(paste(errors, collapse = "\n"), call. = FALSE)
+  if (length(sft_issue_messages(issues, "error")) > 0L) {
+    stop(sft_validation_error(issues))
   }
 
   invisible(TRUE)

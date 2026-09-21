@@ -302,10 +302,13 @@ sft_apply_validation_rule <- function(rule,
   }
 
   if (!isTRUE(active)) {
-    return(list(errors = character(), warnings = character()))
+    return(list(errors = character(), warnings = character(), fields = character()))
   }
 
   messages <- character()
+  # Fields the failure concerns: the rule's own, narrowed to the ones actually
+  # missing for a conditional-required rule.
+  issue_fields <- rule$fields %||% character()
 
   if (!is.null(rule$validate)) {
     result <- sft_call_validation_fun(
@@ -343,6 +346,7 @@ sft_apply_validation_rule <- function(rule,
     )]
 
     if (length(missing) > 0L) {
+      issue_fields <- missing
       messages <- sft_validation_rule_message(
         rule = rule,
         form = form,
@@ -354,25 +358,26 @@ sft_apply_validation_rule <- function(rule,
   }
 
   if (length(messages) == 0L) {
-    return(list(errors = character(), warnings = character()))
+    return(list(errors = character(), warnings = character(), fields = character()))
   }
 
   if (identical(rule$severity, "warning")) {
-    return(list(errors = character(), warnings = messages))
+    return(list(errors = character(), warnings = messages, fields = issue_fields))
   }
 
-  list(errors = messages, warnings = character())
+  list(errors = messages, warnings = character(), fields = issue_fields)
 }
 
-sft_validate_rules <- function(form,
-                               record,
-                               conn = NULL,
-                               current_id = NULL,
-                               context = NULL) {
+# Run every validation rule of a form; one issue per message a rule produced.
+sft_rule_issues <- function(form,
+                            record,
+                            conn = NULL,
+                            current_id = NULL,
+                            context = NULL) {
   rules <- form$validation_rules %||% list()
 
   if (length(rules) == 0L) {
-    return(list(errors = character(), warnings = character()))
+    return(list())
   }
 
   if (is.data.frame(record)) {
@@ -380,9 +385,7 @@ sft_validate_rules <- function(form,
   }
 
   values <- sft_record_values_by_field_id(form, record)
-
-  errors <- character()
-  warnings <- character()
+  issues <- list()
 
   for (rule in rules) {
     result <- sft_apply_validation_rule(
@@ -395,11 +398,39 @@ sft_validate_rules <- function(form,
       context = context
     )
 
-    errors <- c(errors, result$errors)
-    warnings <- c(warnings, result$warnings)
+    for (severity in c("error", "warning")) {
+      for (message in result[[paste0(severity, "s")]]) {
+        issues <- c(issues, list(sft_issue(
+          fields = result$fields,
+          severity = severity,
+          message = message,
+          source = paste0("rule:", rule$id)
+        )))
+      }
+    }
   }
 
-  list(errors = errors, warnings = warnings)
+  issues
+}
+
+# The rule messages split by severity, for callers that only report them.
+sft_validate_rules <- function(form,
+                               record,
+                               conn = NULL,
+                               current_id = NULL,
+                               context = NULL) {
+  issues <- sft_rule_issues(
+    form = form,
+    record = record,
+    conn = conn,
+    current_id = current_id,
+    context = context
+  )
+
+  list(
+    errors = sft_issue_messages(issues, "error"),
+    warnings = sft_issue_messages(issues, "warning")
+  )
 }
 
 #' Forbid a condition

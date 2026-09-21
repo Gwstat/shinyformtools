@@ -29,7 +29,11 @@ treated as validation errors.}
 \item{current_id}{Deprecated name of \code{record_id}; accepted with a warning.}
 }
 \value{
-Invisibly returns \code{TRUE}.
+Invisibly returns \code{TRUE}. A record with errors raises a condition of
+class \code{sft_validation_error}: its message lists every error, one per line,
+and its \code{issues} element is the data frame \code{\link[=validation_issues]{validation_issues()}} returns
+(restricted to errors), so a caller can tell which fields failed. Rules of
+severity \code{"warning"} raise a warning and do not stop.
 }
 \description{
 Validate a record against a form schema
@@ -49,4 +53,7 @@ validate_record(f, list(name = "Ada", email = "ada@example.com"))
 
 # A missing mandatory field raises an error.
 try(validate_record(f, list(email = "ada@example.com")))
+}
+\seealso{
+\code{\link[=validation_issues]{validation_issues()}} for the non-throwing variant.
 }

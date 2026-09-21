@@ -27,6 +27,8 @@ sft_register_crud <- function(input, output, session, state) {
       return()
     }
 
+    state$invalid_fields(character())
+
     if (identical(state$layout(), "inline")) {
       state$inline_active("add")
     } else {
@@ -122,6 +124,7 @@ sft_register_crud <- function(input, output, session, state) {
     }
 
     state$current_edit_row(row)
+    state$invalid_fields(character())
     state$edit_conflict(NULL)
     state$edit_conflict_baseline(row)
     state$restore_record_id(row$sft_id[1])

@@ -116,6 +116,10 @@ highlighted or changed field.}
 whose value differs from the value at creation.}
 \item{\code{changed_color}}{Glow colour for \code{show_changed} (default
 \code{"#2b8cff"}).}
+\item{\code{invalid}}{Logical (default \code{TRUE}). After a save was rejected,
+glow the fields the failed checks name (missing mandatory fields,
+taken unique values, the \code{fields} of a failed rule) in \code{color}, until
+the next successful save or until a form is opened again.}
 }}
 
 \item{labels}{Optional named list overriding UI labels, modal texts and

@@ -273,6 +273,10 @@ form_ui <- function(id,
 #'       whose value differs from the value at creation.}
 #'     \item{`changed_color`}{Glow colour for `show_changed` (default
 #'       `"#2b8cff"`).}
+#'     \item{`invalid`}{Logical (default `TRUE`). After a save was rejected,
+#'       glow the fields the failed checks name (missing mandatory fields,
+#'       taken unique values, the `fields` of a failed rule) in `color`, until
+#'       the next successful save or until a form is opened again.}
 #'   }
 #' @param labels Optional named list overriding UI labels, modal texts and
 #'   notification messages. Set individual entries to `NULL` to hide the

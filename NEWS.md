@@ -29,6 +29,19 @@
 * `form_server()` returns `connection()`, a function yielding the module's
   current connection, next to the start-up `conn`.
 
+## Validation
+
+* A rejected save now marks its fields: the add/edit form glows the fields the
+  failed checks name (missing mandatory fields, taken unique values, the
+  `fields` of a failed rule) until the next successful save.
+  `form_server(highlight = list(invalid = FALSE))` turns it off.
+* New `validation_issues()`: the non-throwing counterpart of
+  `validate_record()`, returning one row per issue with `severity`, `source`,
+  `message` and `fields`.
+* The error `validate_record()` (and therefore `insert_record()` /
+  `update_record()`) raises is of class `sft_validation_error` and carries
+  `issues` and `fields`. Its message is unchanged.
+
 ## Input types
 
 * `register_input()` gained `db_type`: the default column type of fields using

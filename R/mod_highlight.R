@@ -281,6 +281,7 @@ sft_register_highlight <- function(input, output, session, state) {
   highlight_color <- state$highlight$color
   show_changed <- state$highlight$show_changed
   changed_color <- state$highlight$changed_color
+  show_invalid <- state$highlight$invalid
   ns <- session$ns
 
   output$sft_highlight_style <- shiny::renderUI({
@@ -288,6 +289,12 @@ sft_register_highlight <- function(input, output, session, state) {
       character()
     } else {
       sft_resolve_highlight_fields(highlight_fields)
+    }
+
+    # Fields the last rejected save named join the caller's highlight set, in
+    # the same colour: both say "look here".
+    if (isTRUE(show_invalid)) {
+      highlight_ids <- unique(c(highlight_ids, state$invalid_fields()))
     }
 
     changed_ids <- if (isTRUE(show_changed)) {

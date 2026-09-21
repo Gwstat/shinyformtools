@@ -55,7 +55,8 @@ sft_highlight_defaults <- function() {
     tab = TRUE,
     color = "#dc3545",
     show_changed = TRUE,
-    changed_color = "#2b8cff"
+    changed_color = "#2b8cff",
+    invalid = TRUE
   )
 }
 

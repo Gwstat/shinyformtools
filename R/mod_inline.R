@@ -121,6 +121,7 @@ sft_register_inline_form <- function(input, output, session, state) {
   shiny::observeEvent(input$sft_inline_cancel, {
     state$inline_active(NULL)
     state$edit_conflict(NULL)
+    state$invalid_fields(character())
   })
 
   invisible(list())
