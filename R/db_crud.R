@@ -271,21 +271,7 @@ insert_record <- function(form,
 
     values <- c(system_values, field_values)
 
-    columns_sql <- sft_sql_quoted_columns(conn, names(values))
-
-    placeholders <- paste(rep("?", length(values)), collapse = ", ")
-
-    sql <- paste0(
-      "INSERT INTO ",
-      sft_quote_identifier(conn, form$table_name),
-      " (",
-      columns_sql,
-      ") VALUES (",
-      placeholders,
-      ")"
-    )
-
-    DBI::dbExecute(conn, sql, params = unname(values))
+    sft_sql_insert(conn, form$table_name, names(values), values)
 
     new_id <- explicit_sft_id %||% sft_last_insert_id(conn)
 
@@ -547,28 +533,9 @@ update_record <- function(form,
       )
     )
 
-    set_sql <- paste(
-      vapply(
-        names(update_values),
-        function(column_name) {
-          paste0(sft_quote_identifier(conn, column_name), " = ?")
-        },
-        character(1)
-      ),
-      collapse = ", "
-    )
-
-    sql <- paste0(
-      "UPDATE ",
-      sft_quote_identifier(conn, form$table_name),
-      " SET ",
-      set_sql,
-      " WHERE sft_id = ?"
-    )
-
     DBI::dbExecute(
       conn,
-      sql,
+      sft_sql_update_by_id(conn, form$table_name, names(update_values)),
       params = c(
         unname(update_values),
         list(old_record$sft_id[1])

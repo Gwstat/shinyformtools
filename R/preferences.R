@@ -97,23 +97,7 @@ sft_set_user_preference <- function(conn,
       now
     )
 
-    prepared <- sft_prepend_explicit_id(
-      conn, "sft_user_preferences", "preference_id", columns, values
-    )
-    columns <- prepared$columns
-    values <- prepared$values
-
-    DBI::dbExecute(
-      conn,
-      paste0(
-        "INSERT INTO sft_user_preferences (",
-        sft_sql_quoted_columns(conn, columns),
-        ") VALUES (",
-        paste(rep("?", length(values)), collapse = ", "),
-        ")"
-      ),
-      params = values
-    )
+    sft_sql_insert(conn, "sft_user_preferences", columns, values, id_column = "preference_id")
 
     invisible(TRUE)
   })

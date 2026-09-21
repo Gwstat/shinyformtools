@@ -144,6 +144,60 @@ sft_sql_quoted_columns <- function(conn, columns) {
   )
 }
 
+# "col = ?" fragments for a SET list (sep ", ") or a WHERE clause (" AND ").
+# Column names are quoted; values are always bound by the caller.
+sft_sql_assignments <- function(conn, columns, sep = ", ") {
+  paste(
+    vapply(
+      columns,
+      function(column) paste0(sft_quote_identifier(conn, column), " = ?"),
+      character(1)
+    ),
+    collapse = sep
+  )
+}
+
+# UPDATE <table> SET <columns = ?> WHERE sft_id = ?. The caller binds the
+# column values followed by the record id.
+sft_sql_update_by_id <- function(conn, table_name, columns) {
+  paste0(
+    "UPDATE ",
+    sft_quote_identifier(conn, table_name),
+    " SET ",
+    sft_sql_assignments(conn, columns),
+    " WHERE sft_id = ?"
+  )
+}
+
+# Run one INSERT with every value bound. `id_column` names an integer key the
+# backend cannot generate itself (DuckDB): it is then allocated and prepended.
+# Pass `values` as a named list and leave `columns` out to take the column
+# names from it - for a wide row that keeps each value next to its column
+# instead of relying on the position of 21 placeholders.
+sft_sql_insert <- function(conn, table_name, columns = names(values), values, id_column = NULL) {
+  force(columns)
+
+  if (!is.null(id_column)) {
+    prepared <- sft_prepend_explicit_id(conn, table_name, id_column, columns, values)
+    columns <- prepared$columns
+    values <- prepared$values
+  }
+
+  DBI::dbExecute(
+    conn,
+    paste0(
+      "INSERT INTO ",
+      sft_quote_identifier(conn, table_name),
+      " (",
+      sft_sql_quoted_columns(conn, columns),
+      ") VALUES (",
+      paste(rep("?", length(values)), collapse = ", "),
+      ")"
+    ),
+    params = unname(values)
+  )
+}
+
 sft_sql_literal <- function(conn, x) {
   if (is.null(x)) {
     return("NULL")

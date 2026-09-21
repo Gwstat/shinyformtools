@@ -190,8 +190,7 @@ attach_shapes <- function(form,
     )
   }
 
-  conn <- sft_resolve_connection(form, conn)
-  sft_ensure_schema(conn, form, user = user)
+  conn <- sft_prepare_mutation(form, conn, user = user)
 
   encoded <- sft_serialize_geometry(sf::st_geometry(shapes), field)
   key_table <- sf::st_drop_geometry(shapes)
@@ -199,14 +198,7 @@ attach_shapes <- function(form,
   geom_column <- field$db_column
   table_name <- form$table_name
 
-  where_sql <- paste(
-    vapply(
-      record_cols,
-      function(col) paste0(sft_quote_identifier(conn, col), " = ?"),
-      character(1)
-    ),
-    collapse = " AND "
-  )
+  where_sql <- sft_sql_assignments(conn, record_cols, sep = " AND ")
 
   select_sql <- paste0(
     "SELECT * FROM ", sft_quote_identifier(conn, table_name),
@@ -257,23 +249,14 @@ attach_shapes <- function(form,
           )
         )
 
-        new_record <- sft_get_record(
+        sft_finalize_mutation(
           conn = conn,
           form = form,
           record_id = record_id,
-          include_deleted = TRUE
-        )
-
-        write_audit_log(
-          conn = conn,
-          form = form,
           action = "attach_shape",
-          record_id = record_id,
-          record_uuid = old_record$sft_uuid[1],
           old_data = old_record,
-          new_data = new_record,
           changed_fields = geom_column,
-          changed_by = user
+          user = user
         )
 
         attached <- attached + 1L

@@ -540,34 +540,21 @@ plan_migration <- function(form, conn) {
     )
   }
 
-  expected_indexes <- sft_expected_indexes(form, conn)
-  expected_index_names <- vapply(
-    expected_indexes,
-    function(index) index$name,
-    character(1)
-  )
-  existing_indexes <- sft_list_index_names(conn, form$table_name)
-  index_prefix <- paste0("uq_", form$table_name, "__")
+  index_diff <- sft_index_diff(conn, form)
 
-  for (index in expected_indexes) {
-    if (!(index$name %in% existing_indexes)) {
-      actions <- sft_add_migration_action(
-        actions = actions,
-        action = "create_index",
-        field_id = NA_character_,
-        db_column = index$name,
-        db_type = NA_character_,
-        safe = TRUE,
-        details = list(index_name = index$name, columns = index$columns)
-      )
-    }
+  for (index in index_diff$missing) {
+    actions <- sft_add_migration_action(
+      actions = actions,
+      action = "create_index",
+      field_id = NA_character_,
+      db_column = index$name,
+      db_type = NA_character_,
+      safe = TRUE,
+      details = list(index_name = index$name, columns = index$columns)
+    )
   }
 
-  obsolete_indexes <- existing_indexes[
-    startsWith(existing_indexes, index_prefix) &
-      !(existing_indexes %in% expected_index_names)
-  ]
-  for (name in obsolete_indexes) {
+  for (name in index_diff$obsolete) {
     actions <- sft_add_migration_action(
       actions = actions,
       action = "drop_index",
@@ -659,23 +646,7 @@ sft_log_schema_migration <- function(conn, form, action_row, user = NULL) {
     sft_db_param(user)
   )
 
-  prepared <- sft_prepend_explicit_id(
-    conn, "sft_schema_migrations", "migration_id", columns, values
-  )
-  columns <- prepared$columns
-  values <- prepared$values
-
-  DBI::dbExecute(
-    conn,
-    paste0(
-      "INSERT INTO sft_schema_migrations (",
-      sft_sql_quoted_columns(conn, columns),
-      ") VALUES (",
-      paste(rep("?", length(values)), collapse = ", "),
-      ")"
-    ),
-    params = values
-  )
+  sft_sql_insert(conn, "sft_schema_migrations", columns, values, id_column = "migration_id")
 
   invisible(TRUE)
 }

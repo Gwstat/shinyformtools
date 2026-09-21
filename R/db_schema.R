@@ -396,39 +396,31 @@ sft_register_form_schema <- function(conn,
     args_json <- as.character(sft_as_json(field$args))
 
     if (nrow(existing_field) == 0L) {
-      DBI::dbExecute(
+      sft_sql_insert(
         conn,
-        "
-        INSERT INTO sft_fields (
-          form_id, field_id, db_column, label, input_type, db_type,
-          status, first_version, last_version, mandatory, unique_field,
-          editable, show_field, tab, slide, col, pos, args_json,
-          renamed_from, created_at, retired_at
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ",
-        params = list(
-          form$form_id,
-          field$id,
-          field$db_column,
-          field$label,
-          field$input_type,
-          field$db_type,
-          field$status,
-          form$version,
-          form$version,
-          as.integer(field$mandatory),
-          as.integer(field$unique),
-          sft_field_editable_storage(field),
-          as.integer(field$show),
-          field$tab,
-          field$slide,
-          field$col,
-          field$pos,
-          args_json,
-          sft_db_param(field$renamed_from),
-          now,
-          if (identical(field$status, "active")) NA_character_ else now
+        "sft_fields",
+        values = list(
+          form_id = form$form_id,
+          field_id = field$id,
+          db_column = field$db_column,
+          label = field$label,
+          input_type = field$input_type,
+          db_type = field$db_type,
+          status = field$status,
+          first_version = form$version,
+          last_version = form$version,
+          mandatory = as.integer(field$mandatory),
+          unique_field = as.integer(field$unique),
+          editable = sft_field_editable_storage(field),
+          show_field = as.integer(field$show),
+          tab = field$tab,
+          slide = field$slide,
+          col = field$col,
+          pos = field$pos,
+          args_json = args_json,
+          renamed_from = sft_db_param(field$renamed_from),
+          created_at = now,
+          retired_at = if (identical(field$status, "active")) NA_character_ else now
         )
       )
     } else {
@@ -523,39 +515,31 @@ sft_register_form_schema <- function(conn,
     )
 
     if (nrow(existing_orphan) == 0L) {
-      DBI::dbExecute(
+      sft_sql_insert(
         conn,
-        "
-        INSERT INTO sft_fields (
-          form_id, field_id, db_column, label, input_type, db_type,
-          status, first_version, last_version, mandatory, unique_field,
-          editable, show_field, tab, slide, col, pos, args_json,
-          renamed_from, created_at, retired_at
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ",
-        params = list(
-          form$form_id,
-          column_name,
-          column_name,
-          column_name,
-          NA_character_,
-          NA_character_,
-          "orphaned",
-          form$version,
-          form$version,
-          0L,
-          0L,
-          0L,
-          0L,
-          NA_integer_,
-          NA_integer_,
-          NA_integer_,
-          NA_integer_,
-          "{}",
-          NA_character_,
-          now,
-          now
+        "sft_fields",
+        values = list(
+          form_id = form$form_id,
+          field_id = column_name,
+          db_column = column_name,
+          label = column_name,
+          input_type = NA_character_,
+          db_type = NA_character_,
+          status = "orphaned",
+          first_version = form$version,
+          last_version = form$version,
+          mandatory = 0L,
+          unique_field = 0L,
+          editable = 0L,
+          show_field = 0L,
+          tab = NA_integer_,
+          slide = NA_integer_,
+          col = NA_integer_,
+          pos = NA_integer_,
+          args_json = "{}",
+          renamed_from = NA_character_,
+          created_at = now,
+          retired_at = now
         )
       )
     }
@@ -677,28 +661,9 @@ sft_schema_is_current <- function(conn, form) {
   # for example after a failed DDL statement on a backend where DDL is not fully
   # transactional. Verify that expected unique indexes exist and obsolete
   # sft-managed unique indexes are absent.
-  expected_indexes <- sft_expected_indexes(form, conn)
-  existing_indexes <- sft_list_index_names(conn, form$table_name)
-  expected_index_names <- vapply(
-    expected_indexes,
-    function(index) index$name,
-    character(1)
-  )
+  index_diff <- sft_index_diff(conn, form)
 
-  index_prefix <- paste0("uq_", form$table_name, "__")
-  obsolete_indexes <- existing_indexes[
-    startsWith(existing_indexes, index_prefix) &
-      !(existing_indexes %in% expected_index_names)
-  ]
-  if (length(obsolete_indexes) > 0L) {
-    return(FALSE)
-  }
-
-  if (!all(expected_index_names %in% existing_indexes)) {
-    return(FALSE)
-  }
-
-  TRUE
+  length(index_diff$missing) == 0L && length(index_diff$obsolete) == 0L
 }
 
 # Reconcile the schema only when it is not already current. Replaces the
@@ -749,6 +714,23 @@ sft_expected_indexes <- function(form, conn = NULL) {
       columns = c(field$db_column, "sft_unique_slot")
     )
   })
+}
+
+# How a table's sft-managed unique indexes differ from what the form expects:
+# `missing` are the expected index specs that do not exist, `obsolete` the
+# names of existing `uq_<table>__*` indexes the form no longer wants. The probe
+# only asks whether either is non-empty; the planner turns each entry into an
+# action - one definition, so the two can never disagree.
+sft_index_diff <- function(conn, form) {
+  expected <- sft_expected_indexes(form, conn)
+  existing <- sft_list_index_names(conn, form$table_name)
+  expected_names <- vapply(expected, function(index) index$name, character(1))
+  prefix <- paste0("uq_", form$table_name, "__")
+
+  list(
+    missing = Filter(function(index) !(index$name %in% existing), expected),
+    obsolete = existing[startsWith(existing, prefix) & !(existing %in% expected_names)]
+  )
 }
 
 # Idempotently create the unique indexes a form expects. Backfills sft_unique_slot

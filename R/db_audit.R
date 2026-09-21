@@ -158,23 +158,7 @@ write_audit_log <- function(conn,
     sft_db_param(reason)
   )
 
-  prepared <- sft_prepend_explicit_id(
-    conn, "sft_audit_log", "log_id", columns, values
-  )
-  columns <- prepared$columns
-  values <- prepared$values
-
-  DBI::dbExecute(
-    conn,
-    paste0(
-      "INSERT INTO sft_audit_log (",
-      sft_sql_quoted_columns(conn, columns),
-      ") VALUES (",
-      paste(rep("?", length(values)), collapse = ", "),
-      ")"
-    ),
-    params = values
-  )
+  sft_sql_insert(conn, "sft_audit_log", columns, values, id_column = "log_id")
 
   invisible(TRUE)
 }

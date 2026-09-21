@@ -336,11 +336,9 @@ restore_record <- function(form,
     stop("record_id or record_uuid must be supplied.", call. = FALSE)
   }
 
-  conn <- sft_resolve_connection(form, conn)
-
   # Probe-gated (see fetch_audit_log): reconcile only on genuine drift, not on
   # every restore.
-  sft_ensure_schema(conn, form, user = user)
+  conn <- sft_prepare_mutation(form, conn, user = user)
 
   sft_db_with_transaction(conn, {
     current_record <- sft_get_record(
@@ -413,24 +411,7 @@ restore_record <- function(form,
       }
     }
 
-    set_sql <- paste(
-      vapply(
-        names(restore_values),
-        function(column_name) {
-          paste0(sft_quote_identifier(conn, column_name), " = ?")
-        },
-        character(1)
-      ),
-      collapse = ", "
-    )
-
-    sql <- paste0(
-      "UPDATE ",
-      sft_quote_identifier(conn, form$table_name),
-      " SET ",
-      set_sql,
-      " WHERE sft_id = ?"
-    )
+    sql <- sft_sql_update_by_id(conn, form$table_name, names(restore_values))
 
     params <- unname(lapply(
       restore_values,
@@ -455,31 +436,20 @@ restore_record <- function(form,
       }
     )
 
-    restored_record <- sft_get_record(
+    sft_finalize_mutation(
       conn = conn,
       form = form,
       record_id = resolved_record_id,
-      include_deleted = TRUE
-    )
-
-    write_audit_log(
-      conn = conn,
-      form = form,
       action = "restore",
-      record_id = restored_record$sft_id[1],
-      record_uuid = restored_record$sft_uuid[1],
       old_data = current_record,
-      new_data = restored_record,
       changed_fields = names(restore_values),
-      changed_by = user,
+      user = user,
       reason = reason %||% paste0(
         "Restored from version ",
         audit_row$version_no[1],
         "."
       )
     )
-
-    restored_record
   })
 }
 
