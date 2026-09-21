@@ -1,3 +1,15 @@
+# shinyformtools 0.2.1
+
+* Fixed: a checkbox field written from a script with `1`, `1L`, `"1"` or
+  `"TRUE"` was stored as 0 ("no"). Only `TRUE` counted. Storing and reading now
+  share one notion of "true". Forms filled in through the app were never
+  affected, because a checkbox input delivers `TRUE` / `FALSE`.
+* `fetch_records(include_deleted = "only")` returns just the soft-deleted
+  records, filtered by the database. The deleted-records dialog uses it instead
+  of fetching the whole table.
+* Internal: three long database functions were split into named steps. No
+  change in behaviour, no schema change, nothing re-migrates.
+
 # shinyformtools 0.2.0
 
 ## Argument clean-up
