@@ -149,11 +149,13 @@ to switch while the app runs - see \code{\link[=language]{language()}}.}
 \item{display_transform}{Optional function used to derive the records table
 shown to the user from the raw database records. The function may use
 \verb{function(data)} or \verb{function(data, context)} and must return a data frame.
+See \link{hook_context} for what \code{context} holds.
 If raw records contain \code{sft_id}, the returned data must keep \code{sft_id} so
 row selections can be mapped back to the underlying record.}
 
 \item{modal_header}{Optional UI or function rendered at the top of add/edit
-dialogs. Functions may declare any of \code{values}, \code{record}, \code{context},
+dialogs. Functions may declare any of \code{values}, \code{record}, \code{context} (see
+\link{hook_context}),
 \code{prefix}, \code{input}, \code{output}, \code{session}, \code{ns} and \code{form}. This is intended
 for display-only, cross-table context such as contact details or linked
 record summaries.}

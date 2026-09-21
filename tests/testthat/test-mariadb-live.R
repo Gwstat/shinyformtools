@@ -16,8 +16,7 @@ testthat::test_that("the schema lands on a live server with the intended types",
   skip_if_no_mariadb()
 
   db <- local_test_mariadb()
-  conn <- db_connect(db)
-  withr::defer(db_disconnect(conn))
+  conn <- local_test_conn(db)
 
   contacts <- test_form_basic("contacts", db = db)
   init_db(contacts, conn = conn, user = "test")
@@ -57,8 +56,7 @@ testthat::test_that("a record's whole lifecycle survives a round trip", {
   skip_if_no_mariadb()
 
   db <- local_test_mariadb()
-  conn <- db_connect(db)
-  withr::defer(db_disconnect(conn))
+  conn <- local_test_conn(db)
 
   contacts <- test_form_basic("contacts", db = db)
   init_db(contacts, conn = conn, user = "test")
@@ -90,8 +88,7 @@ testthat::test_that("unique values are enforced and freed again by a soft delete
   skip_if_no_mariadb()
 
   db <- local_test_mariadb()
-  conn <- db_connect(db)
-  withr::defer(db_disconnect(conn))
+  conn <- local_test_conn(db)
 
   contacts <- test_form_basic("contacts", db = db)
   init_db(contacts, conn = conn, user = "test")
@@ -125,8 +122,7 @@ testthat::test_that("text outside latin1 round-trips unchanged", {
   skip_if_no_mariadb()
 
   db <- local_test_mariadb()
-  conn <- db_connect(db)
-  withr::defer(db_disconnect(conn))
+  conn <- local_test_conn(db)
 
   contacts <- test_form_basic("contacts", db = db)
   init_db(contacts, conn = conn, user = "test")
@@ -150,8 +146,7 @@ testthat::test_that("a database from an older package version is widened and kee
   skip_if_no_mariadb()
 
   db <- local_test_mariadb()
-  conn <- db_connect(db)
-  withr::defer(db_disconnect(conn))
+  conn <- local_test_conn(db)
 
   contacts <- test_form_basic("contacts", db = db)
   init_db(contacts, conn = conn, user = "test")
@@ -210,8 +205,7 @@ testthat::test_that("init_db widens the payload columns even without schema drif
   skip_if_no_mariadb()
 
   db <- local_test_mariadb()
-  conn <- db_connect(db)
-  withr::defer(db_disconnect(conn))
+  conn <- local_test_conn(db)
 
   contacts <- test_form_basic("contacts", db = db)
   init_db(contacts, conn = conn, user = "test")
@@ -238,8 +232,7 @@ testthat::test_that("dropping a unique field removes its index", {
   skip_if_no_mariadb()
 
   db <- local_test_mariadb()
-  conn <- db_connect(db)
-  withr::defer(db_disconnect(conn))
+  conn <- local_test_conn(db)
 
   contacts <- test_form_basic("contacts", db = db)
   init_db(contacts, conn = conn, user = "test")
@@ -273,8 +266,7 @@ testthat::test_that("a table name with an uppercase letter stays usable", {
   skip_if_no_mariadb()
 
   db <- local_test_mariadb()
-  conn <- db_connect(db)
-  withr::defer(db_disconnect(conn))
+  conn <- local_test_conn(db)
 
   # On a server with lower_case_table_names set (the Windows and macOS default)
   # this table is stored as `mystaff`, and a case-sensitive lookup would never
@@ -308,8 +300,7 @@ testthat::test_that("a must_be_unique rule enforces composite uniqueness", {
   skip_if_no_mariadb()
 
   db <- local_test_mariadb()
-  conn <- db_connect(db)
-  withr::defer(db_disconnect(conn))
+  conn <- local_test_conn(db)
 
   # This rule builds its own multi-column SQL, separate from the composite
   # unique INDEX behind `unique = TRUE`, so it needs its own live check.
@@ -353,8 +344,7 @@ testthat::test_that("a stale edit is rejected instead of overwriting", {
   skip_if_no_mariadb()
 
   db <- local_test_mariadb()
-  conn <- db_connect(db)
-  withr::defer(db_disconnect(conn))
+  conn <- local_test_conn(db)
 
   contacts <- test_form_basic("contacts", db = db)
   init_db(contacts, conn = conn, user = "test")
@@ -395,8 +385,7 @@ testthat::test_that("restore refuses to steal a unique value from a live record"
   skip_if_no_mariadb()
 
   db <- local_test_mariadb()
-  conn <- db_connect(db)
-  withr::defer(db_disconnect(conn))
+  conn <- local_test_conn(db)
 
   contacts <- test_form_basic("contacts", db = db)
   init_db(contacts, conn = conn, user = "test")
@@ -433,8 +422,7 @@ testthat::test_that("a connection the server dropped is healed", {
   skip_if_no_mariadb()
 
   db <- local_test_mariadb()
-  conn <- db_connect(db)
-  withr::defer(db_disconnect(conn))
+  conn <- local_test_conn(db)
 
   contacts <- test_form_basic("contacts", db = db)
   init_db(contacts, conn = conn, user = "test")
@@ -468,8 +456,7 @@ testthat::test_that("a shape field round-trips, including a geometry past 64KB",
   testthat::skip_if_not_installed("geojsonsf")
 
   db <- local_test_mariadb()
-  conn <- db_connect(db)
-  withr::defer(db_disconnect(conn))
+  conn <- local_test_conn(db)
 
   districts <- form(
     form_id = "districts", table_name = "districts", db = db,
@@ -526,8 +513,7 @@ testthat::test_that("markdown, custom inputs, the rights table and column views 
   testthat::skip_if_not_installed("shinyWidgets")
 
   db <- local_test_mariadb()
-  conn <- db_connect(db)
-  withr::defer(db_disconnect(conn))
+  conn <- local_test_conn(db)
 
   # --- markdown: the SOURCE is stored, rendering happens on the way out ------
   notes <- form(
@@ -632,8 +618,7 @@ testthat::test_that("concurrent writers on one record all commit, with no lost v
   config <- sft_test_mariadb_config()
   db <- local_test_mariadb()
 
-  conn <- db_connect(db)
-  withr::defer(db_disconnect(conn))
+  conn <- local_test_conn(db)
 
   contacts <- test_form_basic("contacts", db = db)
   init_db(contacts, conn = conn, user = "test")
@@ -666,8 +651,7 @@ testthat::test_that("concurrent writers on one record all commit, with no lost v
       )
     )
 
-    conn <- db_connect(db)
-    on.exit(db_disconnect(conn), add = TRUE)
+    conn <- local_test_conn(db)
 
     for (k in seq_len(updates)) {
       result <- tryCatch(
@@ -721,8 +705,7 @@ testthat::test_that("a real lock conflict is classified as retryable", {
   skip_if_no_mariadb()
 
   db <- local_test_mariadb()
-  conn <- db_connect(db)
-  withr::defer(db_disconnect(conn))
+  conn <- local_test_conn(db)
 
   contacts <- test_form_basic("contacts", db = db)
   init_db(contacts, conn = conn, user = "test")

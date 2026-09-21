@@ -17,8 +17,7 @@ testthat::test_that("sft_form keeps backwards-compatible SQLite db config", {
 
 testthat::test_that("sft_db_sqlite creates persistent SQLite connection", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_sqlite(db_path))
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_sqlite(db_path))
 
   testthat::expect_true(DBI::dbIsValid(conn))
   testthat::expect_equal(sft_db_backend(conn), "sqlite")
@@ -81,8 +80,7 @@ testthat::test_that("sft_db_duckdb creates an optional DuckDB connection", {
   testthat::skip_if_not_installed("duckdb")
 
   db_path <- tempfile(fileext = ".duckdb")
-  conn <- db_connect(db_duckdb(db_path))
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_duckdb(db_path))
 
   testthat::expect_true(DBI::dbIsValid(conn))
   testthat::expect_equal(sft_db_backend(conn), "duckdb")

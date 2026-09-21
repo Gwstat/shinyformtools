@@ -500,7 +500,7 @@ sft_field_from_metadata_row <- function(row) {
 #' @param footer Optional form footer.
 #' @param server Optional Shiny server hook.
 #'
-#' @return A form definition object of class `form`.
+#' @return A form definition of class `sft_form`, as returned by [form()].
 #' @examples
 #' # Describe the fields as a metadata data frame, then derive a form from it.
 #' inputs <- data.frame(
@@ -592,7 +592,7 @@ form_from_metadata <- function(inputs,
 #' @param settings_sheet Sheet containing questionnaire settings.
 #' @param ... Passed to [form_from_metadata()].
 #'
-#' @return A form definition object of class `form`.
+#' @return A form definition of class `sft_form`, as returned by [form()].
 #' @examples
 #' # Reads metadata sheets from an .xlsx workbook (requires the openxlsx package
 #' # and an existing file), then builds a form via form_from_metadata().

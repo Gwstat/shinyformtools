@@ -37,12 +37,7 @@ testthat::test_that("record_uuid is rejected for a form that stores no uuid", {
   db_path <- tempfile(fileext = ".sqlite")
   conn <- local_test_conn(db_path)
 
-  form <- form(
-    form_id = "no_uuid",
-    table_name = "no_uuid",
-    db_path = db_path,
-    fields = list(form_field(id = "name", label = "Name"))
-  )
+  form <- test_form_name("no_uuid", db_path = db_path)
 
   init_db(form, conn = conn, apply = TRUE)
   insert_record(form, list(name = "Ada"), conn = conn)

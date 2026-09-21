@@ -16,7 +16,7 @@ attach_shapes(form, shapes, key, conn = NULL, shape_field = NULL, user = NULL)
 \code{c(district_id = "WKR_NR")}. An unnamed string means the column has the
 same name in both.}
 
-\item{conn}{Optional DBI connection.}
+\item{conn}{Optional DBI connection; see \link{connections}.}
 
 \item{shape_field}{Optional shape field id, required only when the form has
 more than one shape field.}

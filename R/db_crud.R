@@ -19,6 +19,14 @@ sft_prepare_mutation <- function(form, conn, user = NULL, envir = parent.frame()
 # (including its soft-deleted state), write the audit-log entry, and return the
 # new record. Used as the last expression inside the transaction block, so its
 # return value becomes the operation's result.
+#
+# `changed_fields` names the columns the operation WROTE. With
+# `actual_changes_only` they are reduced to the ones whose stored value really
+# differs afterwards: the edit form submits every field on every save, so
+# without it each update claimed to have changed all of them, and the conflict
+# view credited the last saver with columns somebody else had changed. Old and
+# new row are both read from the database, so the comparison is exact - an
+# edit that only touches whitespace still counts.
 sft_finalize_mutation <- function(conn,
                                   form,
                                   record_id,
@@ -26,13 +34,21 @@ sft_finalize_mutation <- function(conn,
                                   old_data,
                                   changed_fields,
                                   user = NULL,
-                                  reason = NULL) {
+                                  reason = NULL,
+                                  actual_changes_only = FALSE) {
   new_record <- sft_get_record(
     conn = conn,
     form = form,
     record_id = record_id,
     include_deleted = TRUE
   )
+
+  if (isTRUE(actual_changes_only)) {
+    changed_fields <- intersect(
+      changed_fields,
+      sft_changed_fields(old_data, new_record)
+    )
+  }
 
   write_audit_log(
     conn = conn,
@@ -157,7 +173,7 @@ sft_get_record <- function(conn,
 #' Fetch form records
 #'
 #' @param form Object created with [form()].
-#' @param conn Optional DBI connection.
+#' @param conn Optional DBI connection; see [connections].
 #' @param include_deleted Logical. Whether soft-deleted records are included.
 #'   `"only"` returns just the soft-deleted records, filtered by the database.
 #'
@@ -203,7 +219,7 @@ fetch_records <- function(form,
 #'
 #' @param form Object created with [form()].
 #' @param record Named list or one-row data frame.
-#' @param conn Optional DBI connection.
+#' @param conn Optional DBI connection; see [connections].
 #' @param user Optional user identifier.
 #' @param reason Optional reason for audit log.
 #'
@@ -479,7 +495,7 @@ sft_validate_update <- function(form, conn, old_record, field_values) {
 #' @param record_id Optional `sft_id`.
 #' @param record_uuid Optional `sft_uuid`.
 #' @param values Named list of values to update.
-#' @param conn Optional DBI connection.
+#' @param conn Optional DBI connection; see [connections].
 #' @param user Optional user identifier.
 #' @param reason Optional reason for audit log.
 #' @param expected_record Optional one-row data frame (or named list): the
@@ -563,7 +579,8 @@ update_record <- function(form,
       old_data = old_record,
       changed_fields = names(field_values),
       user = user,
-      reason = reason
+      reason = reason,
+      actual_changes_only = TRUE
     )
   })
 }
@@ -573,7 +590,7 @@ update_record <- function(form,
 #' @param form Object created with [form()].
 #' @param record_id Optional `sft_id`.
 #' @param record_uuid Optional `sft_uuid`.
-#' @param conn Optional DBI connection.
+#' @param conn Optional DBI connection; see [connections].
 #' @param user Optional user identifier.
 #' @param reason Optional reason for audit log.
 #'

@@ -62,7 +62,7 @@ records are edited.}
 \item{server}{Optional Shiny server hook.}
 }
 \value{
-A form definition object of class \code{form}.
+A form definition of class \code{sft_form}, as returned by \code{\link[=form]{form()}}.
 }
 \description{
 Converts questionnaire metadata to a \code{shinyformtools} form schema. This is a

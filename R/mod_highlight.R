@@ -25,41 +25,6 @@ sft_highlight_css <- function(ns) {
   shiny::uiOutput(ns("sft_highlight_style"))
 }
 
-# Best-effort scalar/vector normalisation for change detection. Values arrive
-# from Shiny inputs (numeric, logical, Date, character, possibly multi-valued)
-# and from the stored record (often character), so a plain identical() would
-# report spurious changes. We collapse each side to a canonical string.
-sft_norm_value <- function(x) {
-  if (is.null(x)) {
-    return("")
-  }
-
-  x <- x[!is.na(x)]
-
-  if (length(x) == 0L) {
-    return("")
-  }
-
-  # A non-empty separator so multi-valued fields do not collapse ambiguously
-  # (c("a", "b") must not canonicalise to the same string as "ab"). The unit
-  # separator (U+001F) is used because it will not occur in real field values.
-  sep <- intToUtf8(31L)
-
-  if (is.logical(x)) {
-    return(paste(as.integer(x), collapse = sep))
-  }
-
-  if (is.numeric(x)) {
-    return(paste(format(x, scientific = FALSE, trim = TRUE), collapse = sep))
-  }
-
-  paste(trimws(as.character(x)), collapse = sep)
-}
-
-sft_values_differ <- function(current, original) {
-  !identical(sft_norm_value(current), sft_norm_value(original))
-}
-
 # Map a set of field ids to the namespaced container element ids the CSS targets.
 # add/edit forms wrap each field in "sft_field_container_<prefix><id>".
 sft_highlight_container_ids <- function(ns, field_ids, prefixes) {

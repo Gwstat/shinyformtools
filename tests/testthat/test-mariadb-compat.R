@@ -31,8 +31,7 @@ testthat::test_that("unique TEXT support is read from the server version", {
   testthat::expect_false(sft_mariadb_supports_unique_text(NULL))
 
   # Backends that are not MySQL-protocol never consult a version at all.
-  conn <- db_connect(db_sqlite(tempfile(fileext = ".sqlite")))
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_sqlite(tempfile(fileext = ".sqlite")))
   testthat::expect_true(sft_supports_unique_text_index(conn))
 })
 
@@ -81,8 +80,7 @@ testthat::test_that("a shape column is created wide enough for real geometry", {
 
   # Everywhere else TEXT is already unbounded, and the declared type is what the
   # backend-neutral signature must keep seeing.
-  conn <- db_connect(db_sqlite(tempfile(fileext = ".sqlite")))
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_sqlite(tempfile(fileext = ".sqlite")))
 
   testthat::expect_identical(sft_field_db_definition(shape, conn = conn), "TEXT")
   testthat::expect_identical(sft_field_db_definition(shape, conn = NULL), "TEXT")
@@ -118,8 +116,7 @@ testthat::test_that("CREATE TABLE pins utf8mb4 on MariaDB and nowhere else", {
     " DEFAULT CHARSET=utf8mb4"
   )
 
-  conn <- db_connect(db_sqlite(tempfile(fileext = ".sqlite")))
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_sqlite(tempfile(fileext = ".sqlite")))
 
   testthat::expect_identical(sft_create_table_suffix(conn), "")
 
@@ -153,8 +150,7 @@ testthat::test_that("a failed unique index does not misreport the cause", {
 testthat::test_that("widening long-text columns is a no-op off MariaDB", {
   # The payload columns are only capped on MariaDB; other backends must not be
   # touched, and the helper must tolerate a database with no system tables yet.
-  conn <- db_connect(db_sqlite(tempfile(fileext = ".sqlite")))
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_sqlite(tempfile(fileext = ".sqlite")))
 
   testthat::expect_false(sft_widen_long_text_columns(conn))
 
@@ -202,8 +198,7 @@ testthat::test_that("a conflict is recognised even when the server speaks German
 })
 
 testthat::test_that("table lookup is exact unless the server folds identifiers", {
-  conn <- db_connect(db_sqlite(tempfile(fileext = ".sqlite")))
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_sqlite(tempfile(fileext = ".sqlite")))
 
   DBI::dbExecute(conn, "CREATE TABLE MyStaff (a TEXT)")
 
@@ -224,8 +219,7 @@ testthat::test_that("dropping an index does not rely on IF EXISTS", {
   # MySQL rejects `DROP INDEX ... IF EXISTS` with a syntax error (1064, verified
   # live on 8.4.10), so the MariaDB branch must guard by lookup instead. On
   # SQLite the clause is valid and stays in use.
-  conn <- db_connect(db_sqlite(tempfile(fileext = ".sqlite")))
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_sqlite(tempfile(fileext = ".sqlite")))
 
   DBI::dbExecute(conn, "CREATE TABLE demo (a TEXT, b TEXT)")
   DBI::dbExecute(conn, "CREATE INDEX demo_idx ON demo (a)")

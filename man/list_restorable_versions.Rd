@@ -14,7 +14,7 @@ list_restorable_versions(
 \arguments{
 \item{form}{Object created with \code{\link[=form]{form()}}.}
 
-\item{conn}{Optional DBI connection.}
+\item{conn}{Optional DBI connection; see \link{connections}.}
 
 \item{record_id}{Optional \code{sft_id}.}
 

@@ -132,7 +132,7 @@ decode_shape <- function(values, field) {
 #'   `sf` columns that identify the same feature, e.g.
 #'   `c(district_id = "WKR_NR")`. An unnamed string means the column has the
 #'   same name in both.
-#' @param conn Optional DBI connection.
+#' @param conn Optional DBI connection; see [connections].
 #' @param shape_field Optional shape field id, required only when the form has
 #'   more than one shape field.
 #' @param user Optional user identifier for the audit log.

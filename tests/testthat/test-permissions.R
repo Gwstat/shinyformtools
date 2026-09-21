@@ -95,8 +95,7 @@ testthat::test_that("editable_fields locks other inputs without mutating the for
 
 testthat::test_that("form_server initializes with the view/reset gates off", {
   db_path <- tempfile(fileext = ".sqlite")
-  f <- form(form_id = "vt", table_name = "vt", db_path = db_path,
-            fields = list(form_field(id = "name", label = "Name")))
+  f <- test_form_name("vt", db_path = db_path)
   conn <- db_connect(db_path)
   init_db(f, conn = conn)
   insert_record(f, list(name = "x"), conn = conn)
@@ -116,12 +115,7 @@ testthat::test_that("form_server initializes with the view/reset gates off", {
 
 testthat::test_that("sft_form_server accepts reactive can_* and hide_forbidden", {
   db_path <- tempfile(fileext = ".sqlite")
-  form <- form(
-    form_id = "perm_form",
-    table_name = "perm_form",
-    db_path = db_path,
-    fields = list(form_field(id = "name", label = "Name"))
-  )
+  form <- test_form_name("perm_form", db_path = db_path)
   conn <- db_connect(db_path)
   init_db(form, conn = conn)
   insert_record(form, list(name = "x"), conn = conn)

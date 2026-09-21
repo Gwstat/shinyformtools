@@ -301,7 +301,7 @@ sft_add_migration_action <- function(actions,
 #' version to come from.
 #'
 #' @param form Object created with [form()].
-#' @param conn Optional DBI connection.
+#' @param conn Optional DBI connection; see [connections].
 #'
 #' @return A data frame with one row per applied schema action, oldest first.
 #' @examples

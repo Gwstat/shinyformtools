@@ -9,7 +9,7 @@ fetch_audit_log(form, conn = NULL, record_id = NULL, record_uuid = NULL)
 \arguments{
 \item{form}{Object created with \code{\link[=form]{form()}}.}
 
-\item{conn}{Optional DBI connection.}
+\item{conn}{Optional DBI connection; see \link{connections}.}
 
 \item{record_id}{Optional \code{sft_id}.}
 

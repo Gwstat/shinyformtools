@@ -38,8 +38,7 @@ test_that("sft_conflicting_columns compares stored input values type-tolerantly"
 test_that("update_record with expected_record rejects a stale edit and writes nothing", {
   db_path <- tempfile(fileext = ".sqlite")
   contacts <- sft_test_conflict_form(db_path)
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   init_db(contacts, conn = conn, user = "alice")
   added <- insert_record(
@@ -110,8 +109,7 @@ test_that("update_record with expected_record rejects a stale edit and writes no
 test_that("a save that changed no values does not count as a conflict", {
   db_path <- tempfile(fileext = ".sqlite")
   contacts <- sft_test_conflict_form(db_path)
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   init_db(contacts, conn = conn, user = "alice")
   added <- insert_record(
@@ -150,8 +148,7 @@ test_that("a save that changed no values does not count as a conflict", {
 test_that("sft_conflict_changes_meta attributes columns to the last writer", {
   db_path <- tempfile(fileext = ".sqlite")
   contacts <- sft_test_conflict_form(db_path)
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   init_db(contacts, conn = conn, user = "alice")
   added <- insert_record(
@@ -195,13 +192,41 @@ test_that("sft_conflict_changes_meta attributes columns to the last writer", {
   expect_length(fallback$by_column, 0L)
 })
 
+test_that("writers that submit every field are credited only with what they changed", {
+  # The edit form sends ALL fields on every save. The audit log used to list
+  # all of them as changed, so the last saver was credited with every column.
+  db_path <- tempfile(fileext = ".sqlite")
+  contacts <- sft_test_conflict_form(db_path)
+  conn <- local_test_conn(db_path)
+
+  added <- insert_record(contacts, list(name = "Ada", age = 30), conn = conn, user = "alice")
+  record_id <- added$sft_id[1]
+
+  Sys.sleep(0.05)
+  update_record(contacts, list(name = "Bob-Name", age = 30), record_id = record_id,
+                conn = conn, user = "bob")
+  Sys.sleep(0.05)
+  update_record(contacts, list(name = "Bob-Name", age = 44), record_id = record_id,
+                conn = conn, user = "carol")
+
+  meta <- sft_conflict_changes_meta(
+    conn = conn,
+    form = contacts,
+    record_id = record_id,
+    since = added$sft_updated_at[1],
+    fallback_user = NULL
+  )
+
+  expect_identical(unname(meta$by_column["name"]), "bob")
+  expect_identical(unname(meta$by_column["age"]), "carol")
+})
+
 test_that("the edit dialog switches to the conflict view and resolves via keep", {
   skip_if_not_installed("DT")
 
   db_path <- tempfile(fileext = ".sqlite")
   contacts <- sft_test_conflict_form(db_path)
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   init_db(contacts, conn = conn, user = "alice")
   added <- insert_record(
@@ -270,8 +295,7 @@ test_that("conflict_check = FALSE restores last-write-wins", {
 
   db_path <- tempfile(fileext = ".sqlite")
   contacts <- sft_test_conflict_form(db_path)
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   init_db(contacts, conn = conn, user = "alice")
   added <- insert_record(

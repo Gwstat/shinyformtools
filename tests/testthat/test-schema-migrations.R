@@ -14,8 +14,7 @@ migrations_form <- function(db, version, fields) {
 
 testthat::test_that("fetch_schema_migrations returns the history oldest first", {
   db <- db_sqlite(tempfile(fileext = ".sqlite"))
-  conn <- db_connect(db)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db)
 
   v1 <- migrations_form(db, 1L, list(
     form_field("name", "Name"),
@@ -40,8 +39,7 @@ testthat::test_that("fetch_schema_migrations returns the history oldest first", 
 
 testthat::test_that("from_version records where each change came from", {
   db <- db_sqlite(tempfile(fileext = ".sqlite"))
-  conn <- db_connect(db)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db)
 
   v1 <- migrations_form(db, 1L, list(form_field("name", "Name")))
   init_db(v1, conn = conn, apply = TRUE, user = "alice")
@@ -79,8 +77,7 @@ testthat::test_that("retiring a field keeps its column, and the history says why
   # The point of the table: a retired column stays in the database (dropping it
   # would throw data away), so without this log it is an unexplained column.
   db <- db_sqlite(tempfile(fileext = ".sqlite"))
-  conn <- db_connect(db)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db)
 
   v1 <- migrations_form(db, 1L, list(
     form_field("name", "Name"),
@@ -107,8 +104,7 @@ testthat::test_that("retiring a field keeps its column, and the history says why
 
 testthat::test_that("fetch_schema_migrations reports only the form's own history", {
   db <- db_sqlite(tempfile(fileext = ".sqlite"))
-  conn <- db_connect(db)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db)
 
   a <- form(form_id = "hist_a", table_name = "hist_a", db = db,
             fields = list(form_field("name", "Name")))

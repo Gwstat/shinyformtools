@@ -1,3 +1,18 @@
+# shinyformtools 0.2.2
+
+* Fixed: the audit log listed EVERY submitted field of an update as changed.
+  The edit form submits all fields on every save, so each update claimed to
+  have changed all of them, the changelog showed them all, and the conflict
+  view ("last changed by") credited the last saver with columns somebody else
+  had changed. Updates and restores now log only the fields whose stored value
+  really differs. Entries written before this fix keep their long lists.
+* `changed_fields_json` is always a JSON array. A single changed field used to
+  be written as a bare JSON string. Both shapes are still read.
+* New help pages: `?connections` (who opens and closes a connection, with and
+  without `conn`, in scripts and in the module) and `?hook_context` (what the
+  `context` argument of `display_transform`, `modal_header`, `table$format` and
+  input-binding handlers holds).
+
 # shinyformtools 0.2.1
 
 * Fixed: a checkbox field written from a script with `1`, `1L`, `"1"` or

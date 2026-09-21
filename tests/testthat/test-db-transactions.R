@@ -2,14 +2,7 @@ testthat::test_that("insert rolls back when audit logging fails", {
   db_path <- tempfile(fileext = ".sqlite")
   conn <- local_test_conn(db_path)
 
-  form <- form(
-    form_id = "transaction_insert",
-    table_name = "transaction_insert",
-    db_path = db_path,
-    fields = list(
-      form_field(id = "name", label = "Name", mandatory = TRUE)
-    )
-  )
+  form <- test_form_name("transaction_insert", db_path = db_path, mandatory = TRUE)
 
   init_db(form, conn = conn, apply = TRUE)
 
@@ -48,14 +41,7 @@ testthat::test_that("update rolls back when audit logging fails", {
   db_path <- tempfile(fileext = ".sqlite")
   conn <- local_test_conn(db_path)
 
-  form <- form(
-    form_id = "transaction_update",
-    table_name = "transaction_update",
-    db_path = db_path,
-    fields = list(
-      form_field(id = "name", label = "Name", mandatory = TRUE)
-    )
-  )
+  form <- test_form_name("transaction_update", db_path = db_path, mandatory = TRUE)
 
   inserted <- insert_record(
     form = form,
@@ -104,14 +90,7 @@ testthat::test_that("soft delete rolls back when audit logging fails", {
   db_path <- tempfile(fileext = ".sqlite")
   conn <- local_test_conn(db_path)
 
-  form <- form(
-    form_id = "transaction_delete",
-    table_name = "transaction_delete",
-    db_path = db_path,
-    fields = list(
-      form_field(id = "name", label = "Name", mandatory = TRUE)
-    )
-  )
+  form <- test_form_name("transaction_delete", db_path = db_path, mandatory = TRUE)
 
   inserted <- insert_record(
     form = form,
@@ -153,14 +132,7 @@ testthat::test_that("restore rolls back when audit logging fails", {
   db_path <- tempfile(fileext = ".sqlite")
   conn <- local_test_conn(db_path)
 
-  form <- form(
-    form_id = "transaction_restore",
-    table_name = "transaction_restore",
-    db_path = db_path,
-    fields = list(
-      form_field(id = "name", label = "Name", mandatory = TRUE)
-    )
-  )
+  form <- test_form_name("transaction_restore", db_path = db_path, mandatory = TRUE)
 
   inserted <- insert_record(
     form = form,
@@ -209,14 +181,7 @@ testthat::test_that("preference replacement rolls back when preference insert fa
   db_path <- tempfile(fileext = ".sqlite")
   conn <- local_test_conn(db_path)
 
-  form <- form(
-    form_id = "transaction_preferences",
-    table_name = "transaction_preferences",
-    db_path = db_path,
-    fields = list(
-      form_field(id = "name", label = "Name")
-    )
-  )
+  form <- test_form_name("transaction_preferences", db_path = db_path)
 
   init_db(form, conn = conn, apply = TRUE)
 

@@ -20,7 +20,7 @@ soft_delete_record(
 
 \item{record_uuid}{Optional \code{sft_uuid}.}
 
-\item{conn}{Optional DBI connection.}
+\item{conn}{Optional DBI connection; see \link{connections}.}
 
 \item{user}{Optional user identifier.}
 

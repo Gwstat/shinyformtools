@@ -9,7 +9,7 @@ fetch_schema_migrations(form, conn = NULL)
 \arguments{
 \item{form}{Object created with \code{\link[=form]{form()}}.}
 
-\item{conn}{Optional DBI connection.}
+\item{conn}{Optional DBI connection; see \link{connections}.}
 }
 \value{
 A data frame with one row per applied schema action, oldest first.

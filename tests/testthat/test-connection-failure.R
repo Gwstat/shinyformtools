@@ -5,12 +5,7 @@
 # the refusal can be switched on and off; everything else is the real module.
 
 sft_test_ceiling_form <- function(db_path) {
-  form(
-    form_id = "ceiling",
-    table_name = "ceiling",
-    db = db_sqlite(db_path),
-    fields = list(form_field(id = "name", label = "Name", mandatory = TRUE))
-  )
+  test_form_name("ceiling", db = db_sqlite(db_path), mandatory = TRUE)
 }
 
 sft_local_flaky_connect <- function(env = parent.frame()) {

@@ -2,8 +2,7 @@ testthat::test_that("DuckDB backend supports CRUD, audit and preferences", {
   testthat::skip_if_not_installed("duckdb")
 
   db_path <- tempfile(fileext = ".duckdb")
-  conn <- db_connect(db_duckdb(db_path))
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_duckdb(db_path))
 
   form <- form(
     form_id = "duckdb_simple",

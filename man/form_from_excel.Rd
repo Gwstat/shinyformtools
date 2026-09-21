@@ -24,7 +24,7 @@ form_from_excel(
 \item{...}{Passed to \code{\link[=form_from_metadata]{form_from_metadata()}}.}
 }
 \value{
-A form definition object of class \code{form}.
+A form definition of class \code{sft_form}, as returned by \code{\link[=form]{form()}}.
 }
 \description{
 Reads legacy-style metadata sheets and converts them to a declarative

@@ -13,8 +13,7 @@
 
 testthat::test_that("malicious field values are stored verbatim and never executed", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- form(
     form_id = "vault",
@@ -62,8 +61,7 @@ testthat::test_that("malicious field values are stored verbatim and never execut
 
 testthat::test_that("the parameterized unique check handles values with quotes", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- form(
     form_id = "people",
@@ -109,11 +107,10 @@ testthat::test_that("unsafe identifiers are rejected at definition time", {
 
   # Table name and form id are validated the same way when the form is built.
   testthat::expect_error(
-    form(
-      form_id = "ok",
+    test_form_name(
+      "ok",
       table_name = "users; DROP TABLE x",
-      db_path = tempfile(fileext = ".sqlite"),
-      fields = list(form_field(id = "name", label = "Name"))
+      db_path = tempfile(fileext = ".sqlite")
     ),
     "letters, numbers"
   )

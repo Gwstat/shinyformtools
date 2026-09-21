@@ -11,7 +11,7 @@ insert_record(form, record, conn = NULL, user = NULL, reason = NULL)
 
 \item{record}{Named list or one-row data frame.}
 
-\item{conn}{Optional DBI connection.}
+\item{conn}{Optional DBI connection; see \link{connections}.}
 
 \item{user}{Optional user identifier.}
 

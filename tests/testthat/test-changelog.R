@@ -2,14 +2,7 @@ testthat::test_that("sft_audit_history and changelog_box read record history", {
   db_path <- tempfile(fileext = ".sqlite")
   conn <- local_test_conn(db_path)
 
-  form <- form(
-    form_id = "changelog_test",
-    table_name = "changelog_test",
-    db_path = db_path,
-    fields = list(
-      form_field(id = "name", label = "Name")
-    )
-  )
+  form <- test_form_name("changelog_test", db_path = db_path)
 
   inserted <- insert_record(
     form = form,

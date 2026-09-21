@@ -307,10 +307,12 @@ form_ui <- function(id,
 #' @param display_transform Optional function used to derive the records table
 #'   shown to the user from the raw database records. The function may use
 #'   `function(data)` or `function(data, context)` and must return a data frame.
+#'   See [hook_context] for what `context` holds.
 #'   If raw records contain `sft_id`, the returned data must keep `sft_id` so
 #'   row selections can be mapped back to the underlying record.
 #' @param modal_header Optional UI or function rendered at the top of add/edit
-#'   dialogs. Functions may declare any of `values`, `record`, `context`,
+#'   dialogs. Functions may declare any of `values`, `record`, `context` (see
+#'   [hook_context]),
 #'   `prefix`, `input`, `output`, `session`, `ns` and `form`. This is intended
 #'   for display-only, cross-table context such as contact details or linked
 #'   record summaries.

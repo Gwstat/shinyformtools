@@ -2,18 +2,7 @@ testthat::test_that("sft_list_versions returns audit versions for a record", {
   db_path <- tempfile(fileext = ".sqlite")
   conn <- local_test_conn(db_path)
 
-  form <- form(
-    form_id = "simple",
-    table_name = "simple",
-    db_path = db_path,
-    fields = list(
-      form_field(
-        id = "name",
-        label = "Name",
-        mandatory = TRUE
-      )
-    )
-  )
+  form <- test_form_name("simple", db_path = db_path, mandatory = TRUE)
 
   inserted <- insert_record(
     form = form,
@@ -45,18 +34,7 @@ testthat::test_that("sft_restore_record restores a deleted record to latest non-
   db_path <- tempfile(fileext = ".sqlite")
   conn <- local_test_conn(db_path)
 
-  form <- form(
-    form_id = "simple",
-    table_name = "simple",
-    db_path = db_path,
-    fields = list(
-      form_field(
-        id = "name",
-        label = "Name",
-        mandatory = TRUE
-      )
-    )
-  )
+  form <- test_form_name("simple", db_path = db_path, mandatory = TRUE)
 
   inserted <- insert_record(
     form = form,
@@ -284,18 +262,7 @@ testthat::test_that("sft_restore_record can restore a specific version", {
   db_path <- tempfile(fileext = ".sqlite")
   conn <- local_test_conn(db_path)
 
-  form <- form(
-    form_id = "simple",
-    table_name = "simple",
-    db_path = db_path,
-    fields = list(
-      form_field(
-        id = "name",
-        label = "Name",
-        mandatory = TRUE
-      )
-    )
-  )
+  form <- test_form_name("simple", db_path = db_path, mandatory = TRUE)
 
   inserted <- insert_record(
     form = form,
@@ -344,18 +311,7 @@ testthat::test_that("sft_list_restorable_versions excludes delete actions", {
   db_path <- tempfile(fileext = ".sqlite")
   conn <- local_test_conn(db_path)
 
-  form <- form(
-    form_id = "simple",
-    table_name = "simple",
-    db_path = db_path,
-    fields = list(
-      form_field(
-        id = "name",
-        label = "Name",
-        mandatory = TRUE
-      )
-    )
-  )
+  form <- test_form_name("simple", db_path = db_path, mandatory = TRUE)
 
   inserted <- insert_record(
     form = form,
@@ -406,14 +362,7 @@ testthat::test_that("audit log enforces a unique version per record", {
   db_path <- tempfile(fileext = ".sqlite")
   conn <- local_test_conn(db_path)
 
-  form <- form(
-    form_id = "audit_unique",
-    table_name = "audit_unique",
-    db_path = db_path,
-    fields = list(
-      form_field(id = "name", label = "Name")
-    )
-  )
+  form <- test_form_name("audit_unique", db_path = db_path)
 
   init_db(form, conn = conn)
 
@@ -500,12 +449,7 @@ testthat::test_that("reading the audit log does not re-reconcile the schema", {
   db_path <- tempfile(fileext = ".sqlite")
   conn <- local_test_conn(db_path)
 
-  form <- form(
-    form_id = "audit_probe",
-    table_name = "audit_probe",
-    db_path = db_path,
-    fields = list(form_field(id = "name", label = "Name", mandatory = TRUE))
-  )
+  form <- test_form_name("audit_probe", db_path = db_path, mandatory = TRUE)
 
   inserted <- insert_record(form, list(name = "Ada"), conn = conn)
 

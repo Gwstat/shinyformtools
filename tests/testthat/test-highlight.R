@@ -169,8 +169,7 @@ test_that("sft_changed_since_creation_ids flags only fields edited since add", {
     )
   )
 
-  conn <- db_connect(db_sqlite(db_path))
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_sqlite(db_path))
   init_db(people, conn = conn, user = "t")
 
   rec <- insert_record(

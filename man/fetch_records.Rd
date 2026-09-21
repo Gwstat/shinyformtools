@@ -9,7 +9,7 @@ fetch_records(form, conn = NULL, include_deleted = FALSE)
 \arguments{
 \item{form}{Object created with \code{\link[=form]{form()}}.}
 
-\item{conn}{Optional DBI connection.}
+\item{conn}{Optional DBI connection; see \link{connections}.}
 
 \item{include_deleted}{Logical. Whether soft-deleted records are included.
 \code{"only"} returns just the soft-deleted records, filtered by the database.}

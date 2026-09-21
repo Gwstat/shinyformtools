@@ -24,7 +24,7 @@ restore_record(
 
 \item{version_no}{Optional audit version number to restore.}
 
-\item{conn}{Optional DBI connection.}
+\item{conn}{Optional DBI connection; see \link{connections}.}
 
 \item{user}{Optional user identifier.}
 

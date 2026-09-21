@@ -4,8 +4,7 @@
 
 testthat::test_that("db_connect gives sqlite connections a busy timeout", {
   path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_sqlite(path))
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_sqlite(path))
 
   timeout <- DBI::dbGetQuery(conn, "PRAGMA busy_timeout")
 
@@ -27,8 +26,7 @@ testthat::test_that("a busy timeout makes a blocked write wait instead of failin
   DBI::dbExecute(blocker, "BEGIN IMMEDIATE")
 
   attempt <- function(timeout_ms) {
-    conn <- db_connect(db_sqlite(path))
-    on.exit(db_disconnect(conn), add = TRUE)
+    conn <- local_test_conn(db_sqlite(path))
     DBI::dbExecute(conn, paste("PRAGMA busy_timeout =", timeout_ms))
 
     started <- proc.time()[["elapsed"]]

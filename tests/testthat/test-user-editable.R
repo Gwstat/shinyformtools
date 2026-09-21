@@ -69,8 +69,7 @@ testthat::test_that("sft_user_locked_input_fields lists only function-locked fie
 
 testthat::test_that("a form with a function editable initialises and stores editable = 1", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- form(
     form_id = "store_test",
@@ -93,8 +92,7 @@ testthat::test_that("a form with a function editable initialises and stores edit
 
 testthat::test_that("update_record with a resolved form drops fields the user may not edit", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- form(
     form_id = "enforce_test",

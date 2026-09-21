@@ -3,12 +3,7 @@
 # languages, which the process-global use_german() could never do.
 
 sft_test_language_form <- function(db_path = tempfile(fileext = ".sqlite")) {
-  form(
-    form_id = "lang",
-    table_name = "lang",
-    db = db_sqlite(db_path),
-    fields = list(form_field(id = "name", label = "Name", mandatory = TRUE))
-  )
+  test_form_name("lang", db = db_sqlite(db_path), mandatory = TRUE)
 }
 
 test_that("language() validates its vocabularies and names unknown keys", {

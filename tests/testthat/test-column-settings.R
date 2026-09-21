@@ -61,14 +61,7 @@ testthat::test_that("the Standard view cannot be overwritten via save", {
   db_path <- tempfile(fileext = ".sqlite")
   conn <- local_test_conn(db_path)
 
-  form <- form(
-    form_id = "cs_standard",
-    table_name = "cs_standard",
-    db_path = db_path,
-    fields = list(
-      form_field(id = "name", label = "Name")
-    )
-  )
+  form <- test_form_name("cs_standard", db_path = db_path)
 
   init_db(form, conn = conn)
   insert_record(form, list(name = "Ada"), conn = conn)
@@ -97,10 +90,7 @@ testthat::test_that("a corrupted preference row does not break preference loadin
   db_path <- tempfile(fileext = ".sqlite")
   conn <- local_test_conn(db_path)
 
-  form <- form(
-    form_id = "pref_corrupt", table_name = "pref_corrupt", db_path = db_path,
-    fields = list(form_field(id = "name", label = "Name"))
-  )
+  form <- test_form_name("pref_corrupt", db_path = db_path)
   init_db(form, conn = conn)
 
   sft_set_user_preference(conn, form, user = "u", key = "columns", value = c("name"))

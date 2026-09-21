@@ -27,17 +27,10 @@ testthat::test_that("sft_insert_record inserts a record and writes audit log", {
 testthat::test_that("sft_insert_record validates mandatory fields", {
   conn <- local_test_conn()
 
-  form <- form(
-    form_id = "simple",
-    table_name = "simple",
+  form <- test_form_name(
+    "simple",
     db = db_sqlite(tempfile(fileext = ".sqlite")),
-    fields = list(
-      form_field(
-        id = "name",
-        label = "Name",
-        mandatory = TRUE
-      )
-    )
+    mandatory = TRUE
   )
 
   testthat::expect_error(
@@ -116,13 +109,10 @@ testthat::test_that("records carry no per-row schema hash or form id", {
   # stored the entire schema JSON on every row. A new table must not have them.
   conn <- local_test_conn()
 
-  form <- form(
-    form_id = "no_dead_columns",
-    table_name = "no_dead_columns",
+  form <- test_form_name(
+    "no_dead_columns",
     db = db_sqlite(tempfile(fileext = ".sqlite")),
-    fields = list(
-      form_field(id = "name", label = "Name", mandatory = TRUE)
-    )
+    mandatory = TRUE
   )
 
   inserted <- insert_record(form, list(name = "Ada"), conn = conn)
@@ -139,13 +129,10 @@ testthat::test_that("a table still carrying the retired columns keeps working", 
   # them - so CRUD must simply carry on and leave them alone.
   conn <- local_test_conn()
 
-  form <- form(
-    form_id = "legacy_columns",
-    table_name = "legacy_columns",
+  form <- test_form_name(
+    "legacy_columns",
     db = db_sqlite(tempfile(fileext = ".sqlite")),
-    fields = list(
-      form_field(id = "name", label = "Name", mandatory = TRUE)
-    )
+    mandatory = TRUE
   )
 
   init_db(form, conn = conn, apply = TRUE)
@@ -187,17 +174,10 @@ testthat::test_that("a table still carrying the retired columns keeps working", 
 testthat::test_that("sft_soft_delete_record hides records by default", {
   conn <- local_test_conn()
 
-  form <- form(
-    form_id = "simple",
-    table_name = "simple",
+  form <- test_form_name(
+    "simple",
     db = db_sqlite(tempfile(fileext = ".sqlite")),
-    fields = list(
-      form_field(
-        id = "name",
-        label = "Name",
-        mandatory = TRUE
-      )
-    )
+    mandatory = TRUE
   )
 
   inserted <- insert_record(
@@ -323,4 +303,48 @@ testthat::test_that("fetch_records(include_deleted = \"only\") lets the database
   testthat::expect_identical(fetch_records(f, conn = conn)$name, "Ada")
   testthat::expect_identical(fetch_records(f, conn = conn, include_deleted = "only")$name, "Bob")
   testthat::expect_setequal(fetch_records(f, conn = conn, include_deleted = TRUE)$name, c("Ada", "Bob"))
+})
+
+test_that("the audit log names only the fields an update really changed", {
+  people <- test_form_basic("changed_only")
+  conn <- local_test_conn()
+
+  added <- insert_record(people, list(name = "Ada", email = "ada@example.org"), conn = conn)
+  record_id <- added$sft_id[1]
+
+  changed <- function(version) {
+    audit <- fetch_audit_log(people, conn = conn, record_id = record_id)
+    audit$changed_fields_json[audit$version_no == version]
+  }
+
+  # Both fields submitted, one different: one field logged, as a JSON array.
+  update_record(people, list(name = "Ada L.", email = "ada@example.org"),
+                record_id = record_id, conn = conn)
+  expect_identical(changed(2L), '["name"]')
+
+  # Nothing different: the version is still written, with no changed field.
+  update_record(people, list(name = "Ada L.", email = "ada@example.org"),
+                record_id = record_id, conn = conn)
+  expect_identical(changed(3L), "[]")
+
+  # The comparison is exact: an edit that only adds a space is a change.
+  update_record(people, list(name = "Ada  L."), record_id = record_id, conn = conn)
+  expect_identical(changed(4L), '["name"]')
+})
+
+test_that("a restore names only the fields it really changed", {
+  people <- test_form_basic("changed_restore")
+  conn <- local_test_conn()
+
+  added <- insert_record(people, list(name = "Ada", email = "ada@example.org"), conn = conn)
+  record_id <- added$sft_id[1]
+  update_record(people, list(name = "Changed"), record_id = record_id, conn = conn)
+
+  restore_record(people, record_id = record_id, version_no = 1L, conn = conn)
+
+  audit <- fetch_audit_log(people, conn = conn, record_id = record_id)
+  restored <- sft_parse_json_vector(audit$changed_fields_json[audit$action == "restore"])
+
+  expect_true("name" %in% restored)
+  expect_false("email" %in% restored)
 })

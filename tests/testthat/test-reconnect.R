@@ -4,21 +4,13 @@
 # sft_live_connection reopens from form$db.
 
 sft_test_reconnect_form <- function(db_path) {
-  form(
-    form_id = "reconnect",
-    table_name = "reconnect",
-    db = db_sqlite(db_path),
-    fields = list(
-      form_field(id = "name", label = "Name")
-    )
-  )
+  test_form_name("reconnect", db = db_sqlite(db_path))
 }
 
 test_that("sft_live_connection returns the same connection while it is alive", {
   db_path <- tempfile(fileext = ".sqlite")
   contacts <- sft_test_reconnect_form(db_path)
-  conn <- db_connect(contacts$db)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(contacts$db)
 
   # A live connection is returned unchanged (same external pointer).
   same <- sft_live_connection(conn, contacts$db)

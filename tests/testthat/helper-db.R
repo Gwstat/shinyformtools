@@ -32,6 +32,33 @@ test_form_basic <- function(form_id = "simple",
   )
 }
 
+# The smallest useful form: one text field called "name". Most module, schema
+# and transaction tests need a form to exist and care about nothing in it.
+# Arguments that are NULL are left to form()'s own defaults.
+test_form_name <- function(form_id = "people",
+                           table_name = form_id,
+                           db = NULL,
+                           db_path = NULL,
+                           form_name = NULL,
+                           mandatory = FALSE) {
+  args <- list(
+    form_id = form_id,
+    table_name = table_name,
+    db = db,
+    db_path = db_path,
+    form_name = form_name,
+    fields = list(
+      if (isTRUE(mandatory)) {
+        form_field(id = "name", label = "Name", mandatory = TRUE)
+      } else {
+        form_field(id = "name", label = "Name")
+      }
+    )
+  )
+
+  do.call(form, args[!vapply(args, is.null, logical(1))])
+}
+
 # Connection details for the live MariaDB tests, or NULL when none are
 # configured. Opt-in on purpose: the suite has to stay green on a machine with
 # no server, and CRAN has none.

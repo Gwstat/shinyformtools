@@ -3,12 +3,7 @@
 # spelling still works for one release and warns once per session.
 
 sft_test_deprecation_form <- function() {
-  form(
-    form_id = "deprecation",
-    table_name = "deprecation",
-    db = db_sqlite(tempfile(fileext = ".sqlite")),
-    fields = list(form_field(id = "name", label = "Name"))
-  )
+  test_form_name("deprecation", db = db_sqlite(tempfile(fileext = ".sqlite")))
 }
 
 test_that("a deprecation warning fires once per session per argument", {

@@ -9,7 +9,7 @@ init_db(form, conn = NULL, apply = TRUE, user = NULL)
 \arguments{
 \item{form}{Object created with \code{\link[=form]{form()}}.}
 
-\item{conn}{Optional existing DBI connection.}
+\item{conn}{Optional existing DBI connection; see \link{connections}.}
 
 \item{apply}{Logical. Whether to apply the migration plan.}
 

@@ -154,7 +154,9 @@ write_audit_log <- function(conn,
     sft_db_param(changed_by),
     if (is.null(old_data)) NA_character_ else as.character(sft_as_json_snapshot(old_data)),
     if (is.null(new_data)) NA_character_ else as.character(sft_as_json_snapshot(new_data)),
-    as.character(sft_as_json(changed_fields)),
+    # Always an array: a single changed field used to be written as a bare
+    # JSON string, so the column held two shapes.
+    as.character(sft_as_json_array(as.character(changed_fields))),
     sft_db_param(reason)
   )
 

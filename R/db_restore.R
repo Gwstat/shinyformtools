@@ -209,7 +209,7 @@ sft_check_restore_unique <- function(form, conn, restore_values, record_id) {
 #' Fetch audit log entries
 #'
 #' @param form Object created with [form()].
-#' @param conn Optional DBI connection.
+#' @param conn Optional DBI connection; see [connections].
 #' @param record_id Optional `sft_id`.
 #' @param record_uuid Optional `sft_uuid`.
 #'
@@ -270,7 +270,7 @@ fetch_audit_log <- function(form,
 #' List available record versions
 #'
 #' @param form Object created with [form()].
-#' @param conn Optional DBI connection.
+#' @param conn Optional DBI connection; see [connections].
 #' @param record_id Optional `sft_id`.
 #' @param record_uuid Optional `sft_uuid`.
 #'
@@ -340,7 +340,7 @@ list_versions <- function(form,
 #' @param record_id Optional `sft_id`.
 #' @param record_uuid Optional `sft_uuid`.
 #' @param version_no Optional audit version number to restore.
-#' @param conn Optional DBI connection.
+#' @param conn Optional DBI connection; see [connections].
 #' @param user Optional user identifier.
 #' @param reason Optional reason for audit log.
 #' @param reactivate Logical. If `TRUE` (default), the restored record is marked
@@ -467,7 +467,8 @@ restore_record <- function(form,
         "Restored from version ",
         audit_row$version_no[1],
         "."
-      )
+      ),
+      actual_changes_only = TRUE
     )
   })
 }
@@ -478,7 +479,7 @@ restore_record <- function(form,
 #' Returns audit versions that contain a restorable non-delete snapshot.
 #'
 #' @param form Object created with [form()].
-#' @param conn Optional DBI connection.
+#' @param conn Optional DBI connection; see [connections].
 #' @param record_id Optional `sft_id`.
 #' @param record_uuid Optional `sft_uuid`.
 #'

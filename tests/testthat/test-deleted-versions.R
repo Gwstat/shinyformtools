@@ -6,14 +6,7 @@ testthat::test_that("deleted-records and restore flow run end to end in the modu
   db_path <- tempfile(fileext = ".sqlite")
   conn <- local_test_conn(db_path)
 
-  form <- form(
-    form_id = "dv_flow",
-    table_name = "dv_flow",
-    db_path = db_path,
-    fields = list(
-      form_field(id = "name", label = "Name")
-    )
-  )
+  form <- test_form_name("dv_flow", db_path = db_path)
 
   init_db(form, conn = conn)
 
@@ -47,14 +40,7 @@ testthat::test_that("opening versions for a live record sets up the restore list
   db_path <- tempfile(fileext = ".sqlite")
   conn <- local_test_conn(db_path)
 
-  form <- form(
-    form_id = "dv_versions",
-    table_name = "dv_versions",
-    db_path = db_path,
-    fields = list(
-      form_field(id = "name", label = "Name")
-    )
-  )
+  form <- test_form_name("dv_versions", db_path = db_path)
 
   init_db(form, conn = conn)
   rec <- insert_record(form, list(name = "a"), conn = conn)
@@ -79,14 +65,7 @@ testthat::test_that("deleted records and versions are not served without permiss
   db_path <- tempfile(fileext = ".sqlite")
   conn <- local_test_conn(db_path)
 
-  form <- form(
-    form_id = "dv_gate",
-    table_name = "dv_gate",
-    db_path = db_path,
-    fields = list(
-      form_field(id = "name", label = "Name")
-    )
-  )
+  form <- test_form_name("dv_gate", db_path = db_path)
 
   init_db(form, conn = conn)
 

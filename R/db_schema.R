@@ -489,7 +489,7 @@ sft_register_orphaned_columns <- function(conn, form, orphaned_columns, now) {
 #' form's main data table.
 #'
 #' @param form Object created with [form()].
-#' @param conn Optional existing DBI connection.
+#' @param conn Optional existing DBI connection; see [connections].
 #' @param apply Logical. Whether to apply the migration plan.
 #' @param user Optional user name for schema migration logs.
 #'

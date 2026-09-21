@@ -24,8 +24,7 @@ testthat::test_that("form_ui/form_server reject an unknown form_layout", {
 
 testthat::test_that("inline add opens, cancels, and submits into the table", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- sft_inline_test_form(db_path)
   init_db(form, conn = conn)
@@ -61,8 +60,7 @@ testthat::test_that("inline add opens, cancels, and submits into the table", {
 
 testthat::test_that("inline edit opens for a selected record and saves", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- sft_inline_test_form(db_path)
   init_db(form, conn = conn)
@@ -92,8 +90,7 @@ testthat::test_that("inline edit opens for a selected record and saves", {
 
 testthat::test_that("modal layout never populates the inline panel", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- sft_inline_test_form(db_path)
   init_db(form, conn = conn)
@@ -111,8 +108,7 @@ testthat::test_that("modal layout never populates the inline panel", {
 
 testthat::test_that("inline add respects can_add = FALSE", {
   db_path <- tempfile(fileext = ".sqlite")
-  conn <- db_connect(db_path)
-  on.exit(db_disconnect(conn), add = TRUE)
+  conn <- local_test_conn(db_path)
 
   form <- sft_inline_test_form(db_path)
   init_db(form, conn = conn)

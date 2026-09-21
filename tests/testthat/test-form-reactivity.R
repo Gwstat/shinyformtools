@@ -4,12 +4,7 @@
 
 make_reactivity_form <- function(id) {
   db_path <- tempfile(fileext = ".sqlite")
-  form <- form(
-    form_id = id,
-    table_name = id,
-    db_path = db_path,
-    fields = list(form_field(id = "name", label = "Name"))
-  )
+  form <- test_form_name(id, db_path = db_path)
   conn <- db_connect(db_path)
   init_db(form, conn = conn)
   insert_record(form, list(name = "x"), conn = conn)
