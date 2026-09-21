@@ -298,7 +298,12 @@ sft_register_highlight <- function(input, output, session, state) {
     }
 
     changed_ids <- if (isTRUE(show_changed)) {
-      conn <- if (is.function(live_conn)) live_conn() else NULL
+      # No connection right now means no "changed" glow, not a broken style.
+      conn <- if (is.function(live_conn)) {
+        tryCatch(live_conn(), error = function(err) NULL)
+      } else {
+        NULL
+      }
       sft_changed_since_creation_ids(conn, form, current_edit_row())
     } else {
       character()

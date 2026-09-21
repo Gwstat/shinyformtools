@@ -103,49 +103,52 @@ sft_register_crud <- function(input, output, session, state) {
   })
 
   shiny::observeEvent(input$open_edit, {
-    if (!state$permission("can_view_record")) {
-      notify_warning("view_not_allowed")
+    # Guarded: reading the selection can hit a failing connection.
+    state$guard(function() {
+      if (!state$permission("can_view_record")) {
+        notify_warning("view_not_allowed")
 
-      return()
-    }
+        return()
+      }
 
-    row <- state$selected_record()
+      row <- state$selected_record()
 
-    if (is.null(row)) {
-      notify_warning("no_selection")
+      if (is.null(row)) {
+        notify_warning("no_selection")
 
-      return()
-    }
+        return()
+      }
 
-    if (sft_row_is_deleted(row)) {
-      notify_warning("deleted_cannot_edit")
+      if (sft_row_is_deleted(row)) {
+        notify_warning("deleted_cannot_edit")
 
-      return()
-    }
+        return()
+      }
 
-    state$current_edit_row(row)
-    state$invalid_fields(character())
-    state$edit_conflict(NULL)
-    state$edit_conflict_baseline(row)
-    state$restore_record_id(row$sft_id[1])
+      state$current_edit_row(row)
+      state$invalid_fields(character())
+      state$edit_conflict(NULL)
+      state$edit_conflict_baseline(row)
+      state$restore_record_id(row$sft_id[1])
 
-    if (identical(state$layout(), "inline")) {
-      state$inline_active("edit")
-    } else {
-      sft_show_edit_modal(
-        form = sft_resolve_editable(form, state$current_user()),
-        session = session,
-        row = row,
-        labels = labels,
-        modal_sizes = modal_sizes,
-        modal_header = modal_header,
-        datetime_format = datetime_format,
-        can_edit = state$permission("can_edit"),
-        can_view_versions = state$permission("can_view_versions"),
-        can_restore = state$permission("can_restore"),
-        editable_fields = sft_module_editable_fields(editable_fields)
-      )
-    }
+      if (identical(state$layout(), "inline")) {
+        state$inline_active("edit")
+      } else {
+        sft_show_edit_modal(
+          form = sft_resolve_editable(form, state$current_user()),
+          session = session,
+          row = row,
+          labels = labels,
+          modal_sizes = modal_sizes,
+          modal_header = modal_header,
+          datetime_format = datetime_format,
+          can_edit = state$permission("can_edit"),
+          can_view_versions = state$permission("can_view_versions"),
+          can_restore = state$permission("can_restore"),
+          editable_fields = sft_module_editable_fields(editable_fields)
+        )
+      }
+    })
   })
 
   shiny::observeEvent(input$submit_edit, {
@@ -206,62 +209,68 @@ sft_register_crud <- function(input, output, session, state) {
   })
 
   shiny::observeEvent(input$delete, {
-    if (!state$permission("can_delete")) {
-      notify_warning("delete_not_allowed")
+    # Guarded: reading the selection can hit a failing connection.
+    state$guard(function() {
+      if (!state$permission("can_delete")) {
+        notify_warning("delete_not_allowed")
 
-      return()
-    }
+        return()
+      }
 
-    row <- state$selected_record()
+      row <- state$selected_record()
 
-    if (is.null(row)) {
-      notify_warning("no_selection")
+      if (is.null(row)) {
+        notify_warning("no_selection")
 
-      return()
-    }
+        return()
+      }
 
-    if (sft_row_is_deleted(row)) {
-      notify_warning("already_deleted")
+      if (sft_row_is_deleted(row)) {
+        notify_warning("already_deleted")
 
-      return()
-    }
+        return()
+      }
 
-    sft_show_delete_modal(
-      session = session,
-      row = row,
-      labels = labels,
-      modal_sizes = modal_sizes
-    )
+      sft_show_delete_modal(
+        session = session,
+        row = row,
+        labels = labels,
+        modal_sizes = modal_sizes
+      )
+    })
   })
 
   shiny::observeEvent(input$confirm_delete, {
-    if (!state$permission("can_delete")) {
-      shiny::removeModal()
-      notify_warning("delete_not_allowed")
+    # Guarded: reading the selection can hit a failing connection.
+    state$guard(function() {
+      if (!state$permission("can_delete")) {
+        shiny::removeModal()
+        notify_warning("delete_not_allowed")
 
-      return()
-    }
+        return()
+      }
 
-    row <- state$selected_record()
+      row <- state$selected_record()
 
-    if (is.null(row)) {
-      shiny::removeModal()
-      notify_warning("no_valid_selection")
+      if (is.null(row)) {
+        shiny::removeModal()
+        notify_warning("no_valid_selection")
 
-      return()
-    }
+        return()
+      }
 
-    run_mutation(
-      function() {
-        soft_delete_record(
-          form = form,
-          record_id = row$sft_id[1],
-          conn = state$conn(),
-          user = state$current_user()
-        )
-      },
-      "record_deleted"
-    )
+      run_mutation(
+        function() {
+          soft_delete_record(
+            form = form,
+            record_id = row$sft_id[1],
+            conn = state$conn(),
+            user = state$current_user()
+          )
+        },
+        "record_deleted"
+      )
+    })
   })
 
   shiny::observeEvent(input$refresh_table, {

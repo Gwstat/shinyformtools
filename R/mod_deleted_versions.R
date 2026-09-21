@@ -159,117 +159,126 @@ sft_register_deleted_versions <- function(input, output, session, state) {
   # (pre-deletion) version. Restoring a specific older version is done from the
   # versions accordion in the view-case dialog, not here.
   shiny::observeEvent(input$restore_deleted, {
-    if (!sft_module_permission(can_restore, default = TRUE)) {
-      state$notify("restore_not_allowed")
+    # Guarded: reading the selection can hit a failing connection.
+    state$guard(function() {
+      if (!sft_module_permission(can_restore, default = TRUE)) {
+        state$notify("restore_not_allowed")
 
-      return()
-    }
+        return()
+      }
 
-    row <- selected_deleted_record()
+      row <- selected_deleted_record()
 
-    if (is.null(row)) {
-      state$notify("no_selection")
+      if (is.null(row)) {
+        state$notify("no_selection")
 
-      return()
-    }
+        return()
+      }
 
-    # Same wrapper as add / edit / delete: heals a dropped connection first,
-    # shows validation warnings, keeps the dialog open on error.
-    state$run_mutation(
-      function() {
-        restore_record(
-          form = form,
-          record_id = row$sft_id[1],
-          conn = live_conn(),
-          user = sft_module_current_user(input, user),
-          reason = "Restored latest version via deleted-records dialog."
-        )
-      },
-      "record_restored"
-    )
+      # Same wrapper as add / edit / delete: heals a dropped connection first,
+      # shows validation warnings, keeps the dialog open on error.
+      state$run_mutation(
+        function() {
+          restore_record(
+            form = form,
+            record_id = row$sft_id[1],
+            conn = live_conn(),
+            user = sft_module_current_user(input, user),
+            reason = "Restored latest version via deleted-records dialog."
+          )
+        },
+        "record_restored"
+      )
+    })
   })
 
   shiny::observeEvent(input$open_versions, {
-    if (!sft_module_permission(can_view_versions, default = TRUE)) {
-      state$notify("versions_not_allowed")
+    # Guarded: reading the selection can hit a failing connection.
+    state$guard(function() {
+      if (!sft_module_permission(can_view_versions, default = TRUE)) {
+        state$notify("versions_not_allowed")
 
-      return()
-    }
+        return()
+      }
 
-    row <- selected_record()
+      row <- selected_record()
 
-    if (is.null(row)) {
-      state$notify("no_selection")
+      if (is.null(row)) {
+        state$notify("no_selection")
 
-      return()
-    }
+        return()
+      }
 
-    restore_record_id(NULL)
-    restore_record_id(row$sft_id[1])
+      restore_record_id(NULL)
+      restore_record_id(row$sft_id[1])
 
-    sft_show_versions_modal(
-      session = session,
-      row = row,
-      labels = labels,
-      modal_sizes = modal_sizes,
-      can_restore = sft_module_permission(can_restore, default = TRUE)
-    )
+      sft_show_versions_modal(
+        session = session,
+        row = row,
+        labels = labels,
+        modal_sizes = modal_sizes,
+        can_restore = sft_module_permission(can_restore, default = TRUE)
+      )
+    })
   })
 
   shiny::observeEvent(input$confirm_restore, {
-    record_id <- restore_record_id()
+    # Guarded: reading the selection can hit a failing connection.
+    state$guard(function() {
+      record_id <- restore_record_id()
 
-    if (!sft_module_permission(can_restore, default = TRUE)) {
-      shiny::removeModal()
-      state$notify("restore_not_allowed")
+      if (!sft_module_permission(can_restore, default = TRUE)) {
+        shiny::removeModal()
+        state$notify("restore_not_allowed")
 
-      return()
-    }
+        return()
+      }
 
-    if (is.null(record_id)) {
-      shiny::removeModal()
-      state$notify("no_valid_record_selection")
+      if (is.null(record_id)) {
+        shiny::removeModal()
+        state$notify("no_valid_record_selection")
 
-      return()
-    }
+        return()
+      }
 
-    selected_version_row <- input$restore_versions_rows_selected
+      selected_version_row <- input$restore_versions_rows_selected
 
-    if (is.null(selected_version_row) || length(selected_version_row) != 1L) {
-      state$notify("choose_version")
+      if (is.null(selected_version_row) || length(selected_version_row) != 1L) {
+        state$notify("choose_version")
 
-      return()
-    }
+        return()
+      }
 
-    versions <- restore_versions()
+      versions <- restore_versions()
 
-    if (nrow(versions) == 0L || selected_version_row > nrow(versions)) {
-      state$notify("version_unavailable")
+      if (nrow(versions) == 0L || selected_version_row > nrow(versions)) {
+        state$notify("version_unavailable")
 
-      return()
-    }
+        return()
+      }
 
-    version_no <- versions$version_no[selected_version_row]
+      version_no <- versions$version_no[selected_version_row]
 
-    state$run_mutation(
-      function() {
-        restore_record(
-          form = form,
-          record_id = record_id,
-          version_no = version_no,
-          conn = live_conn(),
-          user = sft_module_current_user(input, user),
-          reason = paste0(
-            "Restored via module dialog from version ",
-            version_no,
-            "."
+      state$run_mutation(
+        function() {
+          restore_record(
+            form = form,
+            record_id = record_id,
+            version_no = version_no,
+            conn = live_conn(),
+            user = sft_module_current_user(input, user),
+            reason = paste0(
+              "Restored via module dialog from version ",
+              version_no,
+              "."
+            )
           )
-        )
-      },
-      "version_restored",
-      success_values = list(version = version_no),
-      on_success = function() restore_record_id(NULL)
-    )
+        },
+        "version_restored",
+        success_values = list(version = version_no),
+        on_success = function() restore_record_id(NULL)
+      )
+    })
   })
 
   invisible(list(

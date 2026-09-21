@@ -132,6 +132,30 @@ db_mariadb(
 deployments; `DuckDB` is supported as an aligned local backend for CRUD, audit,
 and preferences.
 
+### Connections
+
+`form_server()` opens its own database connection for each user session and
+closes it when the session ends. Several forms on one page therefore cost
+several connections per user, which matters on a server with a connection
+limit (MariaDB allows 151 by default). To make it one, open the connection
+yourself and pass it to every form:
+
+```r
+server <- function(input, output, session) {
+  conn <- db_connect(my_db)
+  session$onSessionEnded(function() db_disconnect(conn))
+
+  form_server("customers", customers_form, conn = conn)
+  form_server("orders", orders_form, conn = conn)
+}
+```
+
+A connection you pass in is yours: the module never closes or replaces it. A
+connection the module opened itself is reopened when the server drops it after
+a long idle period. If the database refuses a connection, a running session
+shows the error and keeps the user's input, and a starting session stays up and
+connects on the next action.
+
 MySQL is **not supported**. `db_mariadb()` will connect to it — the protocol is
 the same — but the package is neither tested nor fixed against it: a field with
 a `db_default` on a text column cannot be created there. Use MariaDB.

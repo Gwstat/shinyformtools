@@ -122,9 +122,13 @@ scenario("B. dropped connection + full server, then a read", "b", quote({
   invisible(DBI::dbExecute(admin, paste("KILL", thread)))
   fill()                                  # the freed slot is taken at once
   state$refresh()
+  # The flush matters: it runs the observers that consume the read (the table
+  # proxy sync), and an error escaping one of them ends the session.
+  say("   refresh + flush while full: %s", outcome(session$flushReact()))
   say("   read while full : %s", outcome(state$records()))
   release(10)
   state$refresh()
+  say("   refresh + flush after 10 freed: %s", outcome(session$flushReact()))
   say("   read after 10 freed: %s", outcome(state$records()))
   say("   save after 10 freed: %s", save_in_session(session, 1, "B recovered"))
 }))

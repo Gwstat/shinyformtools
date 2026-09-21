@@ -183,19 +183,42 @@ sft_module_state <- function(input,
   # wait_timeout), reopens it and swaps the handle - so the session-ended
   # hook below closes the CURRENT handle, and no observer can hold a stale
   # one. A caller-supplied connection is never probed, closed or replaced.
+  #
+  # A module-owned connection that cannot be opened does NOT stop the module:
+  # a server at max_connections refuses new sessions for a while, and an app
+  # that dies with the driver's message helps nobody. The handle stays NULL,
+  # the user is told, and the next state$conn() simply tries again.
   state$owns_connection <- is.null(conn)
-  state$handle <- if (state$owns_connection) db_connect(form$db) else conn
+  state$handle <- conn
+  state$connect_error <- NULL
 
   if (state$owns_connection) {
+    state$handle <- tryCatch(
+      db_connect(form$db),
+      error = function(err) {
+        state$connect_error <- conditionMessage(err)
+        NULL
+      }
+    )
+
     session$onSessionEnded(function() {
-      db_disconnect(state$handle)
+      if (!is.null(state$handle)) {
+        db_disconnect(state$handle)
+      }
     })
   }
 
   state$conn <- function() {
-    if (state$owns_connection) {
-      state$handle <- sft_live_connection(state$handle, form$db)
+    if (!state$owns_connection) {
+      return(state$handle)
     }
+
+    state$handle <- if (is.null(state$handle)) {
+      db_connect(form$db)
+    } else {
+      sft_live_connection(state$handle, form$db)
+    }
+
     state$handle
   }
 
@@ -220,6 +243,32 @@ sft_module_state <- function(input,
 
   state$notify <- function(label, type = "warning") {
     shiny::showNotification(sft_ui_label(labels, label), type = type)
+  }
+
+  # Run `fun` and turn an error into a notification instead of letting it
+  # escape an observer, which would end the Shiny session. For observers that
+  # touch the database outside run_mutation(): the connection accessor can
+  # fail (server at max_connections), and that must cost the user one action,
+  # not the session. Returns TRUE when `fun` completed.
+  state$guard <- function(fun) {
+    tryCatch(
+      {
+        fun()
+        invisible(TRUE)
+      },
+      error = function(err) {
+        shiny::showNotification(conditionMessage(err), type = "error", duration = 8)
+        invisible(FALSE)
+      }
+    )
+  }
+
+  if (!is.null(state$connect_error)) {
+    shiny::showNotification(
+      sft_ui_label(labels, "db_unavailable", values = list(reason = state$connect_error)),
+      type = "error",
+      duration = NULL
+    )
   }
 
   # Shared reactive values ---------------------------------------------------
@@ -294,12 +343,15 @@ sft_module_state <- function(input,
                                  success_label,
                                  success_values = list(),
                                  on_success = NULL) {
-    # Heal a connection the server dropped while the session sat idle
-    # (MariaDB wait_timeout) before writing.
-    state$conn()
-
     tryCatch(
       {
+        # Heal a connection the server dropped while the session sat idle
+        # (MariaDB wait_timeout) before writing. INSIDE the tryCatch: the
+        # reconnect itself can fail (server at max_connections), and then the
+        # user must get the message and keep the dialog - an error escaping
+        # this observer would end the session and lose the input.
+        state$conn()
+
         # Validation warnings (`warning_if()` rules, `on_edit_missing_required
         # = "warn"`) are raised with base warning(): surface each one as a
         # notification and carry on, since a warning must not block the save.
@@ -382,7 +434,9 @@ sft_module_state <- function(input,
   state$display_context <- function() {
     sft_form_context(
       form = form,
-      conn = state$conn(),
+      # The context also reaches input-binding observers; a connection that
+      # cannot be opened right now yields NULL here instead of an error.
+      conn = tryCatch(state$conn(), error = function(err) NULL),
       input = input,
       output = output,
       session = session,

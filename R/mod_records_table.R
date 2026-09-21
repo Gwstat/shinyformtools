@@ -71,9 +71,13 @@ sft_register_records_table <- function(input, output, session, state) {
 
   records_proxy <- DT::dataTableProxy("records", session = session)
 
+  # Keeps the rendered table in sync through the DT proxy. A read that fails
+  # (connection refused) is reported by the table output itself, so this
+  # observer stays quiet - but it must stay ALIVE: an error escaping it would
+  # end the session on the next refresh.
   shiny::observeEvent(
-    list(refresh_tick(), current_record_columns()),
-    {
+    list(refresh_tick(), tryCatch(current_record_columns(), error = function(err) NULL)),
+    tryCatch({
       records_data <- display_records()
       records_columns <- current_record_columns()
       replacement_data <- sft_records_table_data(
@@ -102,7 +106,7 @@ sft_register_records_table <- function(input, output, session, state) {
           try(DT::selectRows(records_proxy, row_index), silent = TRUE)
         }
       }
-    },
+    }, error = function(err) NULL),
     ignoreInit = TRUE
   )
 

@@ -57,6 +57,16 @@
 
 ## Bug fixes
 
+* A database that refuses connections (MariaDB at `max_connections`) no longer
+  takes user sessions down. Measured with a live server: a save in a session
+  whose connection had been dropped lost the input and left the save button
+  dead, a refresh killed the session through the table-sync observer, and a new
+  session died at start-up with the driver's message. Now the save reports the
+  error and keeps the dialog, the next save works once capacity is back, and a
+  session that cannot connect stays up, says so, and connects on the next
+  action. The README gained a "Connections" section on sharing one connection
+  between forms.
+
 * After a server-dropped connection was healed, the audit table, the
   deleted-records dialog, restore, saved column views and the conflict
   attribution kept using the dead handle. Every part of the module now reads

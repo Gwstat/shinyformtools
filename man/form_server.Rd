@@ -33,7 +33,13 @@ form_server(
 \item{conn}{Optional existing DBI connection. When \code{NULL} the module opens
 its own connection from \code{form$db}, closes it when the session ends, and
 reopens it if the server drops it (see \code{connection()} in the return
-value). A connection you pass in is yours: it is never closed or replaced.}
+value). A connection you pass in is yours: it is never closed or replaced.
+Because every form opens its own, a page with three forms costs three
+database connections per user; to stay well below a server's connection
+limit, open one connection in your \code{server()} function, pass it as \code{conn}
+to every \code{form_server()} and close it in \code{session$onSessionEnded()}. If
+the database cannot be reached the module stays up, tells the user and
+tries again on the next action.}
 
 \item{user}{Optional user identifier or function returning a user
 identifier. Falls back to \code{permissions$user} when the adapters supply one.}

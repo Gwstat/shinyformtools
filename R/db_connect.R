@@ -100,6 +100,14 @@ db_duckdb <- function(path = "form_data.duckdb",
 #'     triggered by the *form* changing, and the system tables are not part of
 #'     that signature -- so on a database whose form is already current, run
 #'     [init_db()] once after upgrading the package to be sure.
+#'   \item **Every form holds one connection per user session.** `form_server()`
+#'     opens its own connection unless you pass one, so a page with three forms
+#'     costs three of the server's `max_connections` (151 by default) per
+#'     user. Open one connection in your `server()` function and pass it as
+#'     `conn` to every `form_server()` to make that one. A server that
+#'     is full refuses new connections at once; running sessions keep working,
+#'     and a session that cannot connect tells the user and tries again on the
+#'     next action instead of failing.
 #' }
 #'
 #' MySQL is not supported. This function will connect to it, because the

@@ -68,6 +68,7 @@ sft_default_ui_labels <- function() {
     table_not_allowed = "Viewing the records table is not permitted for this user.",
     deleted_cannot_edit = "Deleted records cannot be edited. Please restore via Show versions.",
     already_deleted = "Record is already deleted.",
+    db_unavailable = "The database cannot be reached right now ({reason}). Nothing is lost: the form connects again on your next action.",
     record_added = "Record added.",
     record_updated = "Record updated.",
     record_deleted = "Record soft-deleted.",

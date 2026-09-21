@@ -150,6 +150,7 @@ german_labels <- function() {
     table_not_allowed = "Das Anzeigen der Datensatztabelle ist f\u00fcr diesen Benutzer nicht erlaubt.",
     deleted_cannot_edit = "Gel\u00f6schte Datens\u00e4tze k\u00f6nnen nicht bearbeitet werden. Bitte \u00fcber \u201eVersionen anzeigen\u201c wiederherstellen.",
     already_deleted = "Datensatz ist bereits gel\u00f6scht.",
+    db_unavailable = "Die Datenbank ist gerade nicht erreichbar ({reason}). Es geht nichts verloren: das Formular verbindet sich bei der n\u00e4chsten Aktion neu.",
     record_added = "Datensatz hinzugef\u00fcgt.",
     record_updated = "Datensatz aktualisiert.",
     record_deleted = "Datensatz gel\u00f6scht.",

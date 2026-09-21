@@ -578,26 +578,29 @@ sft_register_column_settings <- function(input, output, session, state) {
   }
 
   load_column_view_by_name <- function(view_name) {
-    view_name <- sft_column_view_key(view_name %||% "Standard")
-    resolved_columns <- resolve_column_view_columns(view_name)
+    # Guarded: a failing connection costs this action, not the session.
+    state$guard(function() {
+      view_name <- sft_column_view_key(view_name %||% "Standard")
+      resolved_columns <- resolve_column_view_columns(view_name)
 
-    set_record_columns(resolved_columns)
-    active_column_view(view_name)
+      set_record_columns(resolved_columns)
+      active_column_view(view_name)
 
-    if (isTRUE(persist_column_settings)) {
-      sft_set_active_column_view(
-        conn = live_conn(),
-        form = form,
-        user = sft_module_current_user(input, user),
-        view_name = view_name
+      if (isTRUE(persist_column_settings)) {
+        sft_set_active_column_view(
+          conn = live_conn(),
+          form = form,
+          user = sft_module_current_user(input, user),
+          view_name = view_name
+        )
+      }
+
+      shiny::removeModal()
+      shiny::showNotification(
+        sft_ui_label(labels, "columns_loaded"),
+        type = "message"
       )
-    }
-
-    shiny::removeModal()
-    shiny::showNotification(
-      sft_ui_label(labels, "columns_loaded"),
-      type = "message"
-    )
+    })
   }
 
   output$column_settings_widget_ui <- shiny::renderUI({
@@ -628,32 +631,35 @@ sft_register_column_settings <- function(input, output, session, state) {
   }, ignoreInit = TRUE)
 
   show_column_views_modal <- function() {
-    can_select_columns <- sft_module_permission(can_select_column_view, default = TRUE)
-    can_save_columns <- sft_module_permission(can_change_column_settings, default = TRUE)
+    # Guarded: a failing connection costs this action, not the session.
+    state$guard(function() {
+      can_select_columns <- sft_module_permission(can_select_column_view, default = TRUE)
+      can_save_columns <- sft_module_permission(can_change_column_settings, default = TRUE)
 
-    if (!isTRUE(can_select_columns) && !isTRUE(can_save_columns)) {
-      state$notify("column_selection_not_allowed")
+      if (!isTRUE(can_select_columns) && !isTRUE(can_save_columns)) {
+        state$notify("column_selection_not_allowed")
 
-      return()
-    }
+        return()
+      }
 
-    view_names <- sft_column_view_names(
-      table_views = table_views,
-      persist_column_settings = persist_column_settings,
-      conn = live_conn(),
-      form = form
-    )
+      view_names <- sft_column_view_names(
+        table_views = table_views,
+        persist_column_settings = persist_column_settings,
+        conn = live_conn(),
+        form = form
+      )
 
-    sft_show_column_views_modal(
-      session = session,
-      labels = labels,
-      choices = column_choices(),
-      selected = current_record_columns(),
-      view_names = view_names,
-      active_view = active_column_view(),
-      modal_sizes = modal_sizes,
-      can_save = can_save_columns
-    )
+      sft_show_column_views_modal(
+        session = session,
+        labels = labels,
+        choices = column_choices(),
+        selected = current_record_columns(),
+        view_names = view_names,
+        active_view = active_column_view(),
+        modal_sizes = modal_sizes,
+        can_save = can_save_columns
+      )
+    })
   }
 
   shiny::observeEvent(input$open_column_settings, {
@@ -686,46 +692,49 @@ sft_register_column_settings <- function(input, output, session, state) {
   })
 
   shiny::observeEvent(input$save_column_view, {
-    if (!sft_module_permission(can_change_column_settings, default = TRUE)) {
-      state$notify("column_settings_not_allowed")
+    # Guarded: a failing connection costs this action, not the session.
+    state$guard(function() {
+      if (!sft_module_permission(can_change_column_settings, default = TRUE)) {
+        state$notify("column_settings_not_allowed")
 
-      return()
-    }
+        return()
+      }
 
-    selected_columns <- input$column_settings_order
+      selected_columns <- input$column_settings_order
 
-    resolved_columns <- sft_resolve_record_columns(
-      form = form,
-      data = display_records(),
-      columns = selected_columns,
-      show_system_columns = show_system_columns
-    )
-
-    view_name <- sft_column_view_key(input$column_settings_view_name %||% "")
-
-    if (!nzchar(view_name) || identical(view_name, "Standard")) {
-      state$notify("standard_column_view_not_overwritable")
-
-      return()
-    }
-
-    set_record_columns(resolved_columns)
-    active_column_view(view_name)
-
-    if (isTRUE(persist_column_settings)) {
-      sft_set_shared_column_view(
-        conn = live_conn(),
+      resolved_columns <- sft_resolve_record_columns(
         form = form,
-        view_name = view_name,
-        columns = resolved_columns
+        data = display_records(),
+        columns = selected_columns,
+        show_system_columns = show_system_columns
       )
-    }
 
-    shiny::removeModal()
-    shiny::showNotification(
-      sft_ui_label(labels, "columns_saved"),
-      type = "message"
-    )
+      view_name <- sft_column_view_key(input$column_settings_view_name %||% "")
+
+      if (!nzchar(view_name) || identical(view_name, "Standard")) {
+        state$notify("standard_column_view_not_overwritable")
+
+        return()
+      }
+
+      set_record_columns(resolved_columns)
+      active_column_view(view_name)
+
+      if (isTRUE(persist_column_settings)) {
+        sft_set_shared_column_view(
+          conn = live_conn(),
+          form = form,
+          view_name = view_name,
+          columns = resolved_columns
+        )
+      }
+
+      shiny::removeModal()
+      shiny::showNotification(
+        sft_ui_label(labels, "columns_saved"),
+        type = "message"
+      )
+    })
   })
 
   invisible(list(

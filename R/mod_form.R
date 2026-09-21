@@ -196,6 +196,12 @@ form_ui <- function(id,
 #'   its own connection from `form$db`, closes it when the session ends, and
 #'   reopens it if the server drops it (see `connection()` in the return
 #'   value). A connection you pass in is yours: it is never closed or replaced.
+#'   Because every form opens its own, a page with three forms costs three
+#'   database connections per user; to stay well below a server's connection
+#'   limit, open one connection in your `server()` function, pass it as `conn`
+#'   to every `form_server()` and close it in `session$onSessionEnded()`. If
+#'   the database cannot be reached the module stays up, tells the user and
+#'   tries again on the next action.
 #' @param user Optional user identifier or function returning a user
 #'   identifier. Falls back to `permissions$user` when the adapters supply one.
 #' @param permissions Named list of permissions. Each entry is a logical, or a
@@ -416,11 +422,15 @@ form_server <- function(id,
       NA_character_
     }
 
-    sft_ensure_schema(
-      conn = state$handle,
-      form = form,
-      user = initial_user
-    )
+    # No handle means the database refused the connection at start-up; the
+    # module stays up, and every CRUD call ensures the schema itself anyway.
+    if (!is.null(state$handle)) {
+      sft_ensure_schema(
+        conn = state$handle,
+        form = form,
+        user = initial_user
+      )
+    }
 
     if (is.function(form$server)) {
       form$server(input, output, session)
