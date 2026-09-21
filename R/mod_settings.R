@@ -19,6 +19,7 @@ sft_permission_defaults <- function() {
     can_view_audit = TRUE,
     can_view_table = TRUE,
     can_reset_table = TRUE,
+    can_export = TRUE,
     hide_forbidden = TRUE,
     editable_fields = NULL,
     user = NULL

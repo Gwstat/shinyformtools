@@ -65,6 +65,8 @@ client.}
 \item{\code{can_view_table}}{See the records table at all; when \code{FALSE} the
 table is hidden and no rows are sent.}
 \item{\code{can_reset_table}}{Use the reset/refresh button.}
+\item{\code{can_export}}{Download the records table (only effective with
+\code{form_ui(show_export = )}). Also requires \code{can_view_table}.}
 \item{\code{hide_forbidden}}{Logical (default \code{TRUE}). Hide every control
 whose permission is \code{FALSE} reactively. The server-side guards stay in
 force regardless, so a hidden control can never trigger its action.}

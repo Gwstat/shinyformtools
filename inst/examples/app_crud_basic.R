@@ -148,6 +148,8 @@ server <- function(input, output, session) {
 #> NOTE: table_style picks a visual preset for the tables ("classic",
 #> NOTE: "clean", "publication", "compact"); it can also be set app-wide via
 #> NOTE: options(shinyformtools.table_style = "clean").
+#> NOTE: show_export adds download buttons (CSV, and Excel when the openxlsx
+#> NOTE: package is installed). The file holds what the table shows.
 ui <- fluidPage(
   titlePanel("Basic CRUD"),
   how_to(),
@@ -156,6 +158,7 @@ ui <- fluidPage(
     title = "Contacts",
     show_audit = TRUE,
     show_deleted_records = TRUE,
+    show_export = TRUE,
     table_style = "clean"
   )
 )

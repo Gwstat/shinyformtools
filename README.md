@@ -68,6 +68,10 @@ permission-aware administrative use cases.
 - **Field highlighting** — `form_server(highlight = list(fields = ...))` glows
   chosen inputs (and their tab) to draw the eye; `show_changed` auto-glows edit
   fields that have changed since the record was created.
+- **Export** — `export_records()` writes a form's records to CSV or Excel with
+  labels as headers and multi-value fields as readable text;
+  `form_ui(show_export = TRUE)` adds download buttons that export what the
+  table shows.
 - **Three backends** — `SQLite`, `MariaDB`, and `DuckDB` behind one interface.
 
 ## Installation

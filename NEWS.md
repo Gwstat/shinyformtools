@@ -1,3 +1,16 @@
+# shinyformtools 0.3.0
+
+* New: export to CSV and Excel. `export_records(form, "people.xlsx")` writes a
+  form's records from a script; `form_ui(show_export = TRUE)` adds download
+  buttons to the module (off by default). The file has field labels as
+  headers, multi-value fields as readable text instead of JSON arrays, numbers
+  as numbers, checkboxes as `TRUE` / `FALSE` and timestamps in local time. CSV
+  files carry a UTF-8 byte order mark so that Excel reads umlauts correctly;
+  `"csv2"` is the semicolon / decimal-comma dialect for European Excel. The
+  module's download holds what the table holds: the visible columns and, when
+  the user has searched the table, the matching rows. New permission
+  `can_export` (default `TRUE`; it also requires `can_view_table`).
+
 # shinyformtools 0.2.2
 
 * Fixed: the audit log listed EVERY submitted field of an update as changed.

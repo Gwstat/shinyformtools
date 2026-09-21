@@ -15,6 +15,7 @@ form_buttons(
   show_column_selection = FALSE,
   labels = list(),
   button_options = list(),
+  show_export = FALSE,
   ...
 )
 }
@@ -27,6 +28,8 @@ form_buttons(
 
 \item{button_options}{Optional named list controlling action-button alignment
 and classes. The same structure as in \code{\link[=form_ui]{form_ui()}} is supported.}
+
+\item{show_export}{Download buttons for the records table; see \code{\link[=form_ui]{form_ui()}}.}
 
 \item{...}{Deprecated: \code{show_versions} (no effect; versions are shown inside
 the edit dialog when permitted).}

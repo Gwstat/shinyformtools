@@ -15,6 +15,9 @@ sft_default_button_options <- function() {
       open_edit = "btn-default",
       delete = "btn-default",
       refresh_table = "btn-default",
+      export_csv = "btn-default",
+      export_csv2 = "btn-default",
+      export_xlsx = "btn-default",
       open_deleted_records = "btn-default",
       open_column_settings = "btn-default",
       open_column_selection = "btn-default"
@@ -209,7 +212,8 @@ sft_form_button_row <- function(ns,
                                 show_versions = TRUE,
                                 show_deleted_records = TRUE,
                                 show_column_settings = TRUE,
-                                show_column_selection = TRUE) {
+                                show_column_selection = TRUE,
+                                show_export = FALSE) {
   labels <- sft_ui_labels(labels)
   button_options <- sft_normalize_button_options(button_options)
 
@@ -246,7 +250,8 @@ sft_form_button_row <- function(ns,
     },
     if (isTRUE(show_column_settings) || isTRUE(show_column_selection)) {
       sft_action_button_if_label(ns, "open_column_selection", labels, "open_column_selection", button_options)
-    }
+    },
+    sft_export_buttons(ns, labels, show_export, button_options)
   )
 }
 
@@ -264,6 +269,7 @@ sft_form_button_row <- function(ns,
 #'
 #' @param id Module id matching [form_ui()] and [form_server()].
 #' @param show_add,show_edit,show_delete,show_refresh_table,show_deleted_records,show_column_settings,show_column_selection Logical flags controlling individual buttons. `show_deleted_records`, `show_column_settings` and `show_column_selection` default to `FALSE`, matching [form_ui()].
+#' @param show_export Download buttons for the records table; see [form_ui()].
 #' @param labels Optional named list overriding UI labels and button texts.
 #' @param button_options Optional named list controlling action-button alignment
 #'   and classes. The same structure as in [form_ui()] is supported.
@@ -300,6 +306,7 @@ form_buttons <- function(id,
                              show_column_selection = FALSE,
                              labels = list(),
                              button_options = list(),
+                             show_export = FALSE,
                              ...) {
   ns <- shiny::NS(id)
   sft_map_deprecated_args(
@@ -320,7 +327,8 @@ form_buttons <- function(id,
       show_refresh_table = show_refresh_table,
       show_deleted_records = show_deleted_records,
       show_column_settings = show_column_settings,
-      show_column_selection = show_column_selection
+      show_column_selection = show_column_selection,
+      show_export = show_export
     )
   )
 }
@@ -354,6 +362,14 @@ sft_register_visibility <- function(input, output, session, state) {
       shinyjs::toggle(
         id = button_id,
         condition = sft_module_permission(button_permissions[[button_id]], default = TRUE)
+      )
+    }
+
+    # No-op for the formats form_ui() drew no button for.
+    for (export_format in sft_export_formats()) {
+      shinyjs::toggle(
+        id = sft_export_button_id(export_format),
+        condition = state$permission("can_export") && state$permission("can_view_table")
       )
     }
 

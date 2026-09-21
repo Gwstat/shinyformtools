@@ -27,6 +27,14 @@
 #'   column-settings button. Off by default.
 #' @param show_column_selection Logical. Whether to show the user
 #'   column-selection button. Off by default.
+#' @param show_export Download buttons that export the records table. `FALSE`
+#'   (the default) shows none, `TRUE` shows CSV and, when the \pkg{openxlsx}
+#'   package is installed, Excel. A character vector picks the formats:
+#'   `"csv"`, `"csv2"` (semicolon-separated with a decimal comma, which Excel
+#'   expects on German and most European systems) and `"xlsx"`. The file holds
+#'   what the table holds: the visible columns under their labels and, when the
+#'   user has typed into the table's search box, the matching rows. See
+#'   [export_records()] for the same export from a script.
 #' @param form_layout Where the add/edit forms render. `"modal"` (default) opens
 #'   them in a dialog; `"inline"` renders them in a panel above the records table,
 #'   with add and edit mutually exclusive. [form_server()] picks the layout up
@@ -86,6 +94,7 @@ form_ui <- function(id,
                         labels = list(),
                         button_options = list(),
                         language = NULL,
+                        show_export = FALSE,
                         ...) {
   ns <- shiny::NS(id)
   form_layout <- match.arg(form_layout)
@@ -116,7 +125,8 @@ form_ui <- function(id,
       show_refresh_table = show_refresh_table,
       show_deleted_records = show_deleted_records,
       show_column_settings = show_column_settings,
-      show_column_selection = show_column_selection
+      show_column_selection = show_column_selection,
+      show_export = show_export
     )
   }
 
@@ -230,6 +240,8 @@ form_ui <- function(id,
 #'     \item{`can_view_table`}{See the records table at all; when `FALSE` the
 #'       table is hidden and no rows are sent.}
 #'     \item{`can_reset_table`}{Use the reset/refresh button.}
+#'     \item{`can_export`}{Download the records table (only effective with
+#'       `form_ui(show_export = )`). Also requires `can_view_table`.}
 #'     \item{`hide_forbidden`}{Logical (default `TRUE`). Hide every control
 #'       whose permission is `FALSE` reactively. The server-side guards stay in
 #'       force regardless, so a hidden control can never trigger its action.}
@@ -470,6 +482,7 @@ form_server <- function(id,
     sft_register_crud(input, output, session, state)
     sft_expose(state, sft_register_deleted_versions(input, output, session, state))
     sft_register_records_table(input, output, session, state)
+    sft_register_export(input, output, session, state)
 
     list(
       records = state$records,

@@ -21,6 +21,7 @@ form_ui(
   labels = list(),
   button_options = list(),
   language = NULL,
+  show_export = FALSE,
   ...
 )
 }
@@ -81,6 +82,15 @@ and classes. Supported entries are \code{placement} (\code{"top"}, \code{"bottom
 \item{language}{Optional \code{\link[=language]{language()}} object, e.g. \code{\link[=german]{german()}}: every text of
 this form in one argument, for this form only. Pass the same object to
 \code{\link[=form_server]{form_server()}}. Entries of \code{labels} still win over it.}
+
+\item{show_export}{Download buttons that export the records table. \code{FALSE}
+(the default) shows none, \code{TRUE} shows CSV and, when the \pkg{openxlsx}
+package is installed, Excel. A character vector picks the formats:
+\code{"csv"}, \code{"csv2"} (semicolon-separated with a decimal comma, which Excel
+expects on German and most European systems) and \code{"xlsx"}. The file holds
+what the table holds: the visible columns under their labels and, when the
+user has typed into the table's search box, the matching rows. See
+\code{\link[=export_records]{export_records()}} for the same export from a script.}
 
 \item{...}{Deprecated arguments, accepted with a warning for one release:
 \code{show_include_deleted} (the legacy include-deleted checkbox; use
