@@ -143,3 +143,33 @@ testthat::test_that("the backoff ceiling doubles per attempt and stays small", {
   # Generous upper bounds (scheduler noise): 10, 20, 40, 80 ms ceilings.
   testthat::expect_true(all(ceilings < c(0.05, 0.06, 0.08, 0.12)))
 })
+
+testthat::test_that("exhausted retries raise a classed, readable write conflict", {
+  db_path <- tempfile(fileext = ".sqlite")
+  conn <- local_test_conn(db_path)
+  testthat::local_mocked_bindings(sft_retry_wait = function(attempt) invisible(NULL))
+
+  cond <- tryCatch(
+    sft_db_with_transaction(conn, stop("Record has changed since last read in table 't' [1020]"), max_attempts = 3L),
+    error = function(e) e
+  )
+
+  testthat::expect_s3_class(cond, "sft_write_conflict")
+  testthat::expect_match(conditionMessage(cond), "please save again")
+  testthat::expect_match(conditionMessage(cond), "after 3 attempts")
+  # The database's wording stays in the message, and the condition keeps the
+  # original error for callers that need it.
+  testthat::expect_match(conditionMessage(cond), "[1020]", fixed = TRUE)
+  testthat::expect_match(conditionMessage(cond$parent), "Record has changed")
+
+  # A non-retryable error and a caller that asked for a single attempt get the
+  # raw error, unclassed.
+  plain <- tryCatch(sft_db_with_transaction(conn, stop("no such table: t")), error = function(e) e)
+  testthat::expect_false(inherits(plain, "sft_write_conflict"))
+
+  single <- tryCatch(
+    sft_db_with_transaction(conn, stop("UNIQUE constraint failed: t.id"), max_attempts = 1L),
+    error = function(e) e
+  )
+  testthat::expect_false(inherits(single, "sft_write_conflict"))
+})

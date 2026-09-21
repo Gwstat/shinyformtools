@@ -57,6 +57,13 @@
 
 ## Bug fixes
 
+* A write that loses its race five times in a row now fails with a readable
+  message ("someone else was saving the same data at the same moment ... please
+  save again") and the class `sft_write_conflict`, instead of the database's
+  raw text. The original message is kept in parentheses.
+* The schema check that precedes every database call no longer lists the
+  tables twice; on MariaDB that is three round trips less per operation.
+
 * A write that loses a race now waits a short, random moment before it
   retries. Retries used to fire at once, so writers that had collided collided
   again; measured with 8 processes updating one record, failed updates fell

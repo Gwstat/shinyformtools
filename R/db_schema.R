@@ -637,7 +637,8 @@ sft_schema_is_current <- function(conn, form) {
     return(FALSE)
   }
 
-  forms_info <- sft_table_info(conn, "sft_forms")
+  # The table list above already proved sft_forms exists.
+  forms_info <- sft_table_info(conn, "sft_forms", exists = TRUE)
   if (!all(c("active_version", "schema_hash") %in% forms_info$name)) {
     return(FALSE)
   }

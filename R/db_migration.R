@@ -152,8 +152,11 @@ sft_widen_long_text_columns <- function(conn) {
   invisible(TRUE)
 }
 
-sft_table_info <- function(conn, table_name) {
-  if (!sft_table_exists(conn, table_name)) {
+# `exists` lets a caller that has just listed the tables say so: the existence
+# check is a statement of its own, and on the CRUD hot path (the schema probe)
+# every statement is up to three round trips on MariaDB.
+sft_table_info <- function(conn, table_name, exists = NULL) {
+  if (!isTRUE(exists %||% sft_table_exists(conn, table_name))) {
     return(
       data.frame(
         cid = integer(),

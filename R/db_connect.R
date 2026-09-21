@@ -709,6 +709,27 @@ sft_retry_wait <- function(attempt) {
   Sys.sleep(stats::runif(1L, min = 0, max = 0.01 * 2^(attempt - 1L)))
 }
 
+# The error raised when a write kept losing its race until the attempts ran
+# out. The database's own wording ("Record has changed since last read ...
+# [1020]", "UNIQUE constraint failed ...") means nothing to a form user, so the
+# message says what happened and what to do; the original text stays in it for
+# logs and for callers that match on it. Classed, so a caller can tell "busy,
+# try again" from a real failure; `parent` is the original condition.
+sft_write_conflict_condition <- function(err, attempts) {
+  structure(
+    class = c("sft_write_conflict", "error", "condition"),
+    list(
+      message = paste0(
+        "Someone else was saving the same data at the same moment, and the ",
+        "write did not get through after ", attempts, " attempts. Nothing was ",
+        "changed - please save again. (", conditionMessage(err), ")"
+      ),
+      call = NULL,
+      parent = err
+    )
+  )
+}
+
 sft_db_with_transaction <- function(conn, code, max_attempts = 5L) {
   code_expr <- substitute(code)
   env <- parent.frame()
@@ -729,7 +750,14 @@ sft_db_with_transaction <- function(conn, code, max_attempts = 5L) {
       return(result)
     }
 
-    if (attempt >= max_attempts || !sft_is_retryable_conflict(err)) {
+    retryable <- sft_is_retryable_conflict(err)
+
+    if (attempt >= max_attempts || !retryable) {
+      # Only an exhausted RETRY is a write conflict; with max_attempts = 1 the
+      # caller asked for the raw error.
+      if (retryable && max_attempts > 1L) {
+        stop(sft_write_conflict_condition(err, max_attempts))
+      }
       stop(err)
     }
 
