@@ -263,3 +263,78 @@ test_that("register_input(db_type = ) sets the default column type of its fields
   register_input("plain", fun = dial)
   expect_identical(form_field(id = "p", label = "P", input_type = "plain")$db_type, "TEXT")
 })
+
+test_that("dynamic values work for choice inputs, and an empty value clears the selection", {
+  withr::defer(rm(list = ls(.sft_input_registry), envir = .sft_input_registry))
+
+  for (input_type in c("selectInput", "selectizeInput", "radioButtons",
+                       "checkboxGroupInput", "multiInput", "sliderTextInput")) {
+    spec <- sft_input_spec(input_type)
+    expect_true(is.function(spec$update_value), info = input_type)
+    expect_identical(spec$update_value, spec$update_choices, info = input_type)
+  }
+
+  # It used to stop with "Dynamic values are not supported for input type
+  # selectInput yet".
+  session <- shiny::MockShinySession$new()
+  expect_no_error(sft_update_value_input(session, "selectInput", "x", "a"))
+  expect_no_error(sft_update_value_input(session, "checkboxGroupInput", "x", c("a", "b")))
+
+  calls <- new.env()
+  pick <- function(inputId, label, ...) shiny::selectInput(inputId, label, choices = c("a", "b"))
+  fake_update <- function(session, inputId, ...) {
+    calls$args <- list(...)
+    invisible(NULL)
+  }
+  register_input("picker", fun = pick, value_arg = "selected", update_fun = fake_update)
+
+  sft_update_value_input(NULL, "picker", "picker", "b")
+  expect_identical(calls$args$selected, "b")
+
+  sft_update_value_input(NULL, "picker", "picker", NULL)
+  expect_identical(calls$args$selected, character(0))
+
+  # A value input is not touched by an empty value.
+  register_input("plainText", fun = pick, update_fun = fake_update)
+  calls$args <- "untouched"
+  sft_update_value_input(NULL, "plainText", "plainText", NULL)
+  expect_identical(calls$args, list())
+})
+
+test_that("the conflict view pushes stored values, and empties, through the type's update function", {
+  withr::defer(rm(list = ls(.sft_input_registry), envir = .sft_input_registry))
+
+  calls <- new.env()
+  widget <- function(inputId, label, ...) shiny::textInput(inputId, label)
+  fake_update <- function(session, inputId, ...) {
+    calls$id <- inputId
+    calls$args <- list(...)
+    invisible(NULL)
+  }
+  register_input("cPick", fun = widget, value_arg = "selected", multiple = TRUE, update_fun = fake_update)
+  register_input("cText", fun = widget, update_fun = fake_update)
+
+  pick <- form_field(id = "tags", label = "Tags", input_type = "cPick")
+  text <- form_field(id = "note", label = "Note", input_type = "cText")
+
+  sft_conflict_set_input(NULL, pick, "[\"a\",\"b\"]")
+  expect_identical(calls$id, "edit_tags")
+  expect_identical(calls$args$selected, c("a", "b"))
+
+  # An empty stored value clears a choice input and blanks a text input.
+  sft_conflict_set_input(NULL, pick, NA_character_)
+  expect_identical(calls$args$selected, character(0))
+
+  sft_conflict_set_input(NULL, text, NA_character_)
+  expect_identical(calls$args$value, "")
+
+  # Built-in empties: a checkbox falls back to FALSE.
+  expect_identical(sft_input_spec("checkboxInput")$empty, FALSE)
+  expect_null(sft_input_spec("selectInput")$empty)
+
+  # An input without an update function is left alone instead of erroring.
+  register_input("cStatic", fun = widget)
+  expect_no_error(
+    sft_conflict_set_input(NULL, form_field(id = "s", label = "S", input_type = "cStatic"), "x")
+  )
+})

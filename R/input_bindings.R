@@ -429,19 +429,29 @@ sft_update_value_input <- function(session,
                                    input_id,
                                    value,
                                    update_args = list()) {
+  spec <- sft_input_spec(input_type)
+
+  value_args <- sft_input_value_args(
+    input_type = input_type,
+    value = value
+  )
+
+  # An empty value clears a choice input: without `selected` the update
+  # function would leave the old selection standing. Value inputs keep their
+  # behaviour (an empty value is no update).
+  if (length(value_args) == 0L && !is.null(spec) && identical(spec$value_arg, "selected")) {
+    value_args <- list(selected = character(0))
+  }
+
   args <- c(
     list(
       session = session,
       inputId = input_id
     ),
-    sft_input_value_args(
-      input_type = input_type,
-      value = value
-    ),
+    value_args,
     update_args
   )
 
-  spec <- sft_input_spec(input_type)
 
   if (is.null(spec) || is.null(spec$update_value)) {
     stop(

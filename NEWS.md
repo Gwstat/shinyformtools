@@ -37,6 +37,10 @@
 * A two-handle `sliderTextInput` is restored to its range in the edit dialog
   and shown as "from - to" in the tables (it came back as a raw JSON string),
   and `sliderTextInput` now supports `dynamic_choices()`.
+* `dynamic_value()` works on choice inputs (`selectInput`, `selectizeInput`,
+  `radioButtons`, `checkboxGroupInput`, `multiInput`, `sliderTextInput`); it
+  used to stop with "not supported yet". Returning an empty value clears the
+  selection.
 
 ## Bug fixes
 

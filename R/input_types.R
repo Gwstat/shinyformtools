@@ -19,9 +19,12 @@
 #   sep            separator used when a multi-value is displayed
 #   prepare_args   optional function(args) -> args, last-minute argument scrub
 #   update_value   update function used for dynamic values, or NULL
-#   update_choices update function used for dynamic choices, or NULL
+#   update_choices update function used for dynamic choices, or NULL. For
+#                  choice inputs both are the same function: it takes
+#                  `selected` with or without `choices`
 #   empty          what the conflict view pushes into the input for an empty
-#                  stored value
+#                  stored value; NULL for choice inputs, which
+#                  sft_update_value_input() turns into "nothing selected"
 
 .sft_input_type_cache <- new.env(parent = emptyenv())
 
@@ -134,7 +137,9 @@ sft_builtin_input_specs <- function() {
       encode = sft_encode_json_strings,
       decode = sft_parse_json_vector,
       format = function(value, sep) sft_format_json_vector_value(value, sep = sep),
-      update_choices = update
+      update_value = update,
+      update_choices = update,
+      empty = NULL
     )
   }
 
@@ -145,7 +150,9 @@ sft_builtin_input_specs <- function() {
       encode = sft_encode_json_if_multiple,
       decode = sft_parse_json_vector,
       format = sft_format_json_if_array,
-      update_choices = update
+      update_value = update,
+      update_choices = update,
+      empty = NULL
     )
   }
 
@@ -237,7 +244,9 @@ sft_builtin_input_specs <- function() {
     radioButtons = row(
       shiny::radioButtons,
       value_arg = "selected",
-      update_choices = shiny::updateRadioButtons
+      update_value = shiny::updateRadioButtons,
+      update_choices = shiny::updateRadioButtons,
+      empty = NULL
     ),
 
     # One handle stores the label verbatim; a two-handle range is a JSON array,
@@ -249,7 +258,9 @@ sft_builtin_input_specs <- function() {
       decode = sft_parse_json_vector,
       format = sft_format_json_if_array,
       sep = " - ",
-      update_choices = shinyWidgets::updateSliderTextInput
+      update_value = shinyWidgets::updateSliderTextInput,
+      update_choices = shinyWidgets::updateSliderTextInput,
+      empty = NULL
     ),
 
     multiInput = utils::modifyList(
@@ -353,7 +364,8 @@ sft_registered_input_spec <- function(reg) {
     decode = decode,
     format = format,
     update_value = reg$update_fun,
-    update_choices = reg$update_fun
+    update_choices = reg$update_fun,
+    empty = if (identical(reg$value_arg, "selected")) NULL else ""
   )
 }
 

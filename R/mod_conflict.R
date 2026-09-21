@@ -149,35 +149,25 @@ sft_conflict_changes_meta <- function(conn, form, record_id, since, fallback_use
   list(by_column = by_column, users = unique(users))
 }
 
-# Push a stored value into an edit input. Inputs whose value lives in
-# `selected` are updated through their choices update function (leaving the
-# choices alone); everything else goes through sft_update_value_input. Errors
-# are swallowed: an input type without an update function keeps its value.
+# Push a stored value into an edit input. An empty stored value becomes the
+# type's `empty` (text: "", checkbox: FALSE, choice inputs: nothing selected).
+# Errors are swallowed: an input type without an update function keeps its
+# value.
 sft_conflict_set_input <- function(session, field, value) {
-  input_id <- paste0("edit_", field$id)
-  ui_value <- sft_ui_value(field, value)
   spec <- sft_input_spec(field$input_type)
+  ui_value <- sft_ui_value(field, value)
+
+  if (is.null(ui_value) && !is.null(spec)) {
+    ui_value <- spec$empty
+  }
 
   tryCatch(
-    if (!is.null(spec) &&
-        identical(spec$value_arg, "selected") &&
-        is.function(spec$update_choices)) {
-      do.call(
-        spec$update_choices,
-        list(
-          session = session,
-          inputId = input_id,
-          selected = ui_value %||% character(0)
-        )
-      )
-    } else {
-      sft_update_value_input(
-        session = session,
-        input_type = field$input_type,
-        input_id = input_id,
-        value = ui_value %||% (if (is.null(spec)) "" else spec$empty)
-      )
-    },
+    sft_update_value_input(
+      session = session,
+      input_type = field$input_type,
+      input_id = paste0("edit_", field$id),
+      value = ui_value
+    ),
     error = function(err) NULL
   )
 
