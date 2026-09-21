@@ -632,10 +632,7 @@ sft_register_column_settings <- function(input, output, session, state) {
     can_save_columns <- sft_module_permission(can_change_column_settings, default = TRUE)
 
     if (!isTRUE(can_select_columns) && !isTRUE(can_save_columns)) {
-      shiny::showNotification(
-        sft_ui_label(labels, "column_selection_not_allowed"),
-        type = "warning"
-      )
+      state$notify("column_selection_not_allowed")
 
       return()
     }
@@ -670,10 +667,7 @@ sft_register_column_settings <- function(input, output, session, state) {
   shiny::observeEvent(input$load_column_view, {
     if (!sft_module_permission(can_select_column_view, default = TRUE) &&
         !sft_module_permission(can_change_column_settings, default = TRUE)) {
-      shiny::showNotification(
-        sft_ui_label(labels, "column_selection_not_allowed"),
-        type = "warning"
-      )
+      state$notify("column_selection_not_allowed")
 
       return()
     }
@@ -683,10 +677,7 @@ sft_register_column_settings <- function(input, output, session, state) {
 
   shiny::observeEvent(input$load_column_selection_view, {
     if (!sft_module_permission(can_select_column_view, default = TRUE)) {
-      shiny::showNotification(
-        sft_ui_label(labels, "column_selection_not_allowed"),
-        type = "warning"
-      )
+      state$notify("column_selection_not_allowed")
 
       return()
     }
@@ -696,10 +687,7 @@ sft_register_column_settings <- function(input, output, session, state) {
 
   shiny::observeEvent(input$save_column_view, {
     if (!sft_module_permission(can_change_column_settings, default = TRUE)) {
-      shiny::showNotification(
-        sft_ui_label(labels, "column_settings_not_allowed"),
-        type = "warning"
-      )
+      state$notify("column_settings_not_allowed")
 
       return()
     }
@@ -716,10 +704,7 @@ sft_register_column_settings <- function(input, output, session, state) {
     view_name <- sft_column_view_key(input$column_settings_view_name %||% "")
 
     if (!nzchar(view_name) || identical(view_name, "Standard")) {
-      shiny::showNotification(
-        sft_ui_label(labels, "standard_column_view_not_overwritable"),
-        type = "warning"
-      )
+      state$notify("standard_column_view_not_overwritable")
 
       return()
     }

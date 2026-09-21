@@ -22,7 +22,6 @@ sft_register_deleted_versions <- function(input, output, session, state) {
   can_view_deleted_records <- state$permissions$can_view_deleted_records
   can_view_versions <- state$permissions$can_view_versions
   can_restore <- state$permissions$can_restore
-  refresh <- state$refresh
   refresh_tick <- state$refresh_tick
   restore_record_id <- state$restore_record_id
   selected_record <- state$selected_record
@@ -143,10 +142,7 @@ sft_register_deleted_versions <- function(input, output, session, state) {
 
   shiny::observeEvent(input$open_deleted_records, {
     if (!sft_module_permission(can_view_deleted_records, default = TRUE)) {
-      shiny::showNotification(
-        sft_ui_label(labels, "deleted_records_not_allowed"),
-        type = "warning"
-      )
+      state$notify("deleted_records_not_allowed")
 
       return()
     }
@@ -164,10 +160,7 @@ sft_register_deleted_versions <- function(input, output, session, state) {
   # versions accordion in the view-case dialog, not here.
   shiny::observeEvent(input$restore_deleted, {
     if (!sft_module_permission(can_restore, default = TRUE)) {
-      shiny::showNotification(
-        sft_ui_label(labels, "restore_not_allowed"),
-        type = "warning"
-      )
+      state$notify("restore_not_allowed")
 
       return()
     }
@@ -175,16 +168,15 @@ sft_register_deleted_versions <- function(input, output, session, state) {
     row <- selected_deleted_record()
 
     if (is.null(row)) {
-      shiny::showNotification(
-        sft_ui_label(labels, "no_selection"),
-        type = "warning"
-      )
+      state$notify("no_selection")
 
       return()
     }
 
-    tryCatch(
-      {
+    # Same wrapper as add / edit / delete: heals a dropped connection first,
+    # shows validation warnings, keeps the dialog open on error.
+    state$run_mutation(
+      function() {
         restore_record(
           form = form,
           record_id = row$sft_id[1],
@@ -192,31 +184,14 @@ sft_register_deleted_versions <- function(input, output, session, state) {
           user = sft_module_current_user(input, user),
           reason = "Restored latest version via deleted-records dialog."
         )
-
-        shiny::removeModal()
-        shiny::showNotification(
-          sft_ui_label(labels, "record_restored"),
-          type = "message"
-        )
-
-        refresh()
       },
-      error = function(err) {
-        shiny::showNotification(
-          conditionMessage(err),
-          type = "error",
-          duration = 8
-        )
-      }
+      "record_restored"
     )
   })
 
   shiny::observeEvent(input$open_versions, {
     if (!sft_module_permission(can_view_versions, default = TRUE)) {
-      shiny::showNotification(
-        sft_ui_label(labels, "versions_not_allowed"),
-        type = "warning"
-      )
+      state$notify("versions_not_allowed")
 
       return()
     }
@@ -224,10 +199,7 @@ sft_register_deleted_versions <- function(input, output, session, state) {
     row <- selected_record()
 
     if (is.null(row)) {
-      shiny::showNotification(
-        sft_ui_label(labels, "no_selection"),
-        type = "warning"
-      )
+      state$notify("no_selection")
 
       return()
     }
@@ -249,20 +221,14 @@ sft_register_deleted_versions <- function(input, output, session, state) {
 
     if (!sft_module_permission(can_restore, default = TRUE)) {
       shiny::removeModal()
-      shiny::showNotification(
-        sft_ui_label(labels, "restore_not_allowed"),
-        type = "warning"
-      )
+      state$notify("restore_not_allowed")
 
       return()
     }
 
     if (is.null(record_id)) {
       shiny::removeModal()
-      shiny::showNotification(
-        sft_ui_label(labels, "no_valid_record_selection"),
-        type = "warning"
-      )
+      state$notify("no_valid_record_selection")
 
       return()
     }
@@ -270,10 +236,7 @@ sft_register_deleted_versions <- function(input, output, session, state) {
     selected_version_row <- input$restore_versions_rows_selected
 
     if (is.null(selected_version_row) || length(selected_version_row) != 1L) {
-      shiny::showNotification(
-        sft_ui_label(labels, "choose_version"),
-        type = "warning"
-      )
+      state$notify("choose_version")
 
       return()
     }
@@ -281,18 +244,15 @@ sft_register_deleted_versions <- function(input, output, session, state) {
     versions <- restore_versions()
 
     if (nrow(versions) == 0L || selected_version_row > nrow(versions)) {
-      shiny::showNotification(
-        sft_ui_label(labels, "version_unavailable"),
-        type = "warning"
-      )
+      state$notify("version_unavailable")
 
       return()
     }
 
     version_no <- versions$version_no[selected_version_row]
 
-    tryCatch(
-      {
+    state$run_mutation(
+      function() {
         restore_record(
           form = form,
           record_id = record_id,
@@ -305,27 +265,10 @@ sft_register_deleted_versions <- function(input, output, session, state) {
             "."
           )
         )
-
-        shiny::removeModal()
-        shiny::showNotification(
-          sft_ui_label(
-            labels = labels,
-            key = "version_restored",
-            values = list(version = version_no)
-          ),
-          type = "message"
-        )
-
-        restore_record_id(NULL)
-        refresh()
       },
-      error = function(err) {
-        shiny::showNotification(
-          conditionMessage(err),
-          type = "error",
-          duration = 8
-        )
-      }
+      "version_restored",
+      success_values = list(version = version_no),
+      on_success = function() restore_record_id(NULL)
     )
   })
 

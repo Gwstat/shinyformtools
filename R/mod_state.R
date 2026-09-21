@@ -284,8 +284,13 @@ sft_module_state <- function(input,
 
   # Run a mutating CRUD action, then on success close the modal, notify, and
   # refresh the table; on error keep the modal open and show the error. Shared
-  # by the add / edit / delete submit handlers and the restore flows.
-  state$run_mutation <- function(action, success_label) {
+  # by the add / edit / delete submit handlers and both restore flows.
+  # `success_values` interpolate into the success label; `on_success` runs
+  # after the notification and before the refresh.
+  state$run_mutation <- function(action,
+                                 success_label,
+                                 success_values = list(),
+                                 on_success = NULL) {
     # Heal a connection the server dropped while the session sat idle
     # (MariaDB wait_timeout) before writing.
     state$conn()
@@ -311,9 +316,13 @@ sft_module_state <- function(input,
         shiny::removeModal()
         state$inline_active(NULL)
         shiny::showNotification(
-          sft_ui_label(labels, success_label),
+          sft_ui_label(labels, success_label, values = success_values),
           type = "message"
         )
+
+        if (is.function(on_success)) {
+          on_success()
+        }
 
         state$refresh()
       },
