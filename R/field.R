@@ -30,18 +30,6 @@ sft_supported_shape_encodings <- function() {
   c("geojson", "wkt")
 }
 
-sft_default_db_type <- function(input_type) {
-  if (input_type %in% c("numericInput", "sliderInput")) {
-    return("REAL")
-  }
-
-  if (identical(input_type, "checkboxInput")) {
-    return("INTEGER")
-  }
-
-  "TEXT"
-}
-
 sft_check_optional_label <- function(value, name) {
   if (is.null(value)) {
     return(invisible(TRUE))

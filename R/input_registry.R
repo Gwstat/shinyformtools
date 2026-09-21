@@ -1,8 +1,8 @@
-# Runtime registry of user-defined input types. Populated by register_input()
-# and consulted, after the built-ins, by every input_type-keyed helper in this
-# file (render, value placement, DB encode/decode, table display) and by the
-# dynamic-update helpers in input_bindings.R. The environment is created once
-# when the namespace loads and is shared across the R session.
+# Runtime registry of user-defined input types, populated by register_input().
+# A registered input is normalised into the same spec shape as a built-in
+# (input_types.R), so the helpers below never distinguish the two: they look
+# the spec up with sft_input_spec() and use it. The environment is created
+# once when the namespace loads and is shared across the R session.
 .sft_input_registry <- new.env(parent = emptyenv())
 
 #' Register a custom form input
@@ -47,6 +47,9 @@
 #'   handed to the input when a record is edited. Overrides the default.
 #' @param format Optional function mapping a stored value to the string shown in
 #'   the records and versions tables. Overrides the default.
+#' @param db_type Optional default column type for fields of this input type,
+#'   for example `"REAL"` for a numeric widget. `NULL` means `"TEXT"`. A
+#'   `db_type` given to [form_field()] still wins.
 #'
 #' @return Invisibly, `name`.
 #' @examples
@@ -56,12 +59,14 @@
 #'   "knobInput",
 #'   fun = shinyWidgets::knobInput,
 #'   value_arg = "value",
-#'   update_fun = shinyWidgets::updateKnobInput
+#'   update_fun = shinyWidgets::updateKnobInput,
+#'   decode = as.numeric,
+#'   db_type = "REAL"
 #' )
 #'
 #' vol <- form_field(
 #'   id = "vol", label = "Volume", input_type = "knobInput",
-#'   args = list(min = 0, max = 100), db_type = "REAL"
+#'   args = list(min = 0, max = 100)
 #' )
 #' }
 #' @export
@@ -72,7 +77,8 @@ register_input <- function(name,
                            update_fun = NULL,
                            encode = NULL,
                            decode = NULL,
-                           format = NULL) {
+                           format = NULL,
+                           db_type = NULL) {
   if (!sft_is_scalar_character(name)) {
     stop("name must be a non-empty character scalar.", call. = FALSE)
   }
@@ -109,6 +115,10 @@ register_input <- function(name,
     }
   }
 
+  if (!is.null(db_type) && !sft_is_scalar_character(db_type)) {
+    stop("db_type must be NULL or a non-empty character scalar.", call. = FALSE)
+  }
+
   assign(
     name,
     list(
@@ -119,7 +129,8 @@ register_input <- function(name,
       update_fun = update_fun,
       encode = encode,
       decode = decode,
-      format = format
+      format = format,
+      db_type = db_type
     ),
     envir = .sft_input_registry
   )
@@ -144,59 +155,15 @@ sft_is_registered_input <- function(input_type) {
   !is.null(sft_registered_input(input_type))
 }
 
+# ---- helpers keyed by input type ---------------------------------------------
+# Each one looks the spec up (input_types.R) and uses it; none of them knows a
+# type by name.
+
 sft_supported_input_types <- function() {
-  c(
-    "textInput",
-    "passwordInput",
-    "textAreaInput",
-    "numericInput",
-    "selectInput",
-    "selectizeInput",
-    "sliderInput",
-    "dateInput",
-    "dateRangeInput",
-    "checkboxInput",
-    "checkboxGroupInput",
-    "radioButtons",
-    "sliderTextInput",
-    "multiInput",
-    "timeInput",
-    "ibanInput"
-  )
+  names(sft_builtin_input_specs())
 }
 
-sft_input_function <- function(input_type) {
-  builtin <- switch(
-    input_type,
-    textInput = shiny::textInput,
-    passwordInput = shiny::passwordInput,
-    textAreaInput = shiny::textAreaInput,
-    numericInput = shiny::numericInput,
-    selectInput = shiny::selectInput,
-    selectizeInput = shiny::selectizeInput,
-    sliderInput = shiny::sliderInput,
-    dateInput = shiny::dateInput,
-    dateRangeInput = shiny::dateRangeInput,
-    checkboxInput = shiny::checkboxInput,
-    checkboxGroupInput = shiny::checkboxGroupInput,
-    radioButtons = shiny::radioButtons,
-    sliderTextInput = shinyWidgets::sliderTextInput,
-    multiInput = shinyWidgets::multiInput,
-    timeInput = shinyTime::timeInput,
-    ibanInput = ibanInput,
-    NULL
-  )
-
-  if (!is.null(builtin)) {
-    return(builtin)
-  }
-
-  reg <- sft_registered_input(input_type)
-
-  if (!is.null(reg)) {
-    return(reg$fun)
-  }
-
+sft_unsupported_input_type <- function(input_type) {
   stop(
     "Unsupported input_type: ",
     input_type,
@@ -207,45 +174,43 @@ sft_input_function <- function(input_type) {
   )
 }
 
+sft_input_function <- function(input_type) {
+  spec <- sft_input_spec(input_type)
+
+  if (is.null(spec)) {
+    sft_unsupported_input_type(input_type)
+  }
+
+  spec$fun
+}
+
 sft_validate_input_type <- function(input_type) {
-  if (!input_type %in% sft_supported_input_types() &&
-      !sft_is_registered_input(input_type)) {
-    stop(
-      "Unsupported input_type: ",
-      input_type,
-      ". Supported types are: ",
-      paste(sft_supported_input_types(), collapse = ", "),
-      ".",
-      call. = FALSE
-    )
+  if (is.null(sft_input_spec(input_type))) {
+    sft_unsupported_input_type(input_type)
   }
 
   invisible(input_type)
 }
 
+# Default column type of a field with this input type.
+sft_default_db_type <- function(input_type) {
+  spec <- sft_input_spec(input_type)
+
+  if (is.null(spec)) {
+    return("TEXT")
+  }
+
+  spec$db_type
+}
+
 sft_input_value_argument <- function(input_type) {
-  if (input_type %in% c(
-    "selectInput",
-    "selectizeInput",
-    "checkboxGroupInput",
-    "radioButtons",
-    "sliderTextInput",
-    "multiInput"
-  )) {
-    return("selected")
+  spec <- sft_input_spec(input_type)
+
+  if (is.null(spec)) {
+    return("value")
   }
 
-  if (identical(input_type, "dateRangeInput")) {
-    return(NULL)
-  }
-
-  reg <- sft_registered_input(input_type)
-
-  if (!is.null(reg)) {
-    return(reg$value_arg)
-  }
-
-  "value"
+  spec$value_arg
 }
 
 sft_input_value_args <- function(input_type, value) {
@@ -257,20 +222,10 @@ sft_input_value_args <- function(input_type, value) {
     return(list())
   }
 
-  if (identical(input_type, "dateRangeInput")) {
-    value <- as.Date(value)
+  spec <- sft_input_spec(input_type)
 
-    out <- list()
-
-    if (length(value) >= 1L && !is.na(value[1L])) {
-      out$start <- value[1L]
-    }
-
-    if (length(value) >= 2L && !is.na(value[2L])) {
-      out$end <- value[2L]
-    }
-
-    return(out)
+  if (!is.null(spec) && is.function(spec$value_args)) {
+    return(spec$value_args(value))
   }
 
   value_arg <- sft_input_value_argument(input_type)
@@ -300,100 +255,19 @@ sft_parse_json_vector <- function(value) {
   )
 }
 
+# Input value -> scalar stored in the database.
 sft_field_db_value <- function(field, value) {
   if (is.null(value) || length(value) == 0L) {
     return(NA_character_)
   }
 
-  if (identical(field$input_type, "checkboxInput")) {
-    if (length(value) == 1L && is.na(value)) {
-      return(NA_integer_)
-    }
+  spec <- sft_input_spec(field$input_type)
 
-    return(as.integer(isTRUE(value)))
+  if (is.null(spec)) {
+    return(sft_clean_db_value(value))
   }
 
-  if (identical(field$input_type, "dateInput")) {
-    if (length(value) == 1L && is.na(value)) {
-      return(NA_character_)
-    }
-
-    return(as.character(as.Date(value)))
-  }
-
-  if (identical(field$input_type, "dateRangeInput")) {
-    if (all(is.na(value))) {
-      return(NA_character_)
-    }
-
-    return(as.character(sft_as_json_array(as.character(as.Date(value)))))
-  }
-
-  if (identical(field$input_type, "timeInput")) {
-    if (length(value) == 1L && is.na(value)) {
-      return(NA_character_)
-    }
-
-    if (inherits(value, "POSIXt")) {
-      return(format(value, "%H:%M:%S"))
-    }
-
-    return(as.character(value))
-  }
-
-  if (identical(field$input_type, "ibanInput")) {
-    if (length(value) == 1L && is.na(value)) {
-      return(NA_character_)
-    }
-
-    return(sft_normalize_iban(value))
-  }
-
-  if (field$input_type %in% c("checkboxGroupInput", "multiInput")) {
-    if (all(is.na(value))) {
-      return(NA_character_)
-    }
-
-    return(as.character(sft_as_json_array(as.character(value))))
-  }
-
-  if (field$input_type %in% c("selectInput", "selectizeInput")) {
-    if (length(value) > 1L) {
-      return(as.character(sft_as_json_array(as.character(value))))
-    }
-  }
-
-  if (identical(field$input_type, "sliderInput") && length(value) > 1L) {
-    return(as.character(sft_as_json_array(as.numeric(value))))
-  }
-
-  reg <- sft_registered_input(field$input_type)
-
-  if (!is.null(reg)) {
-    if (length(value) == 1L && is.na(value)) {
-      return(NA_character_)
-    }
-
-    if (!is.null(reg$encode)) {
-      encoded <- reg$encode(value)
-
-      if (is.null(encoded) || length(encoded) == 0L) {
-        return(NA_character_)
-      }
-
-      return(as.character(encoded))
-    }
-
-    if (isTRUE(reg$multiple)) {
-      if (all(is.na(value))) {
-        return(NA_character_)
-      }
-
-      return(as.character(sft_as_json_array(as.character(value))))
-    }
-  }
-
-  sft_clean_db_value(value)
+  spec$encode(value)
 }
 
 sft_prepare_input_args <- function(field, value = NULL) {
@@ -402,8 +276,10 @@ sft_prepare_input_args <- function(field, value = NULL) {
   local_args$input_type <- NULL
   local_args$db_val <- NULL
 
-  if (identical(field$input_type, "multiInput")) {
-    local_args$multiple <- NULL
+  spec <- sft_input_spec(field$input_type)
+
+  if (!is.null(spec) && is.function(spec$prepare_args)) {
+    local_args <- spec$prepare_args(local_args)
   }
 
   if (!is.null(value)) {
@@ -420,6 +296,8 @@ sft_prepare_input_args <- function(field, value = NULL) {
   local_args
 }
 
+# Stored value -> value handed to the input. Empty stored values are NULL for
+# every type, so a decode function never sees NULL or NA.
 sft_ui_value <- function(field, value) {
   if (is.null(value) || length(value) == 0L) {
     return(NULL)
@@ -429,84 +307,23 @@ sft_ui_value <- function(field, value) {
     return(NULL)
   }
 
-  if (identical(field$input_type, "numericInput")) {
-    return(as.numeric(value))
+  spec <- sft_input_spec(field$input_type)
+
+  if (is.null(spec)) {
+    return(value)
   }
 
-  if (identical(field$input_type, "sliderInput")) {
-    parsed <- sft_parse_json_vector(value)
-    return(as.numeric(parsed))
-  }
-
-  if (identical(field$input_type, "checkboxInput")) {
-    return(isTRUE(value) || identical(value, 1L) || identical(value, "1") || identical(value, "TRUE"))
-  }
-
-  if (identical(field$input_type, "dateInput")) {
-    return(as.Date(value))
-  }
-
-  if (identical(field$input_type, "dateRangeInput")) {
-    parsed <- sft_parse_json_vector(value)
-    return(as.Date(parsed))
-  }
-
-  if (identical(field$input_type, "timeInput")) {
-    if (inherits(value, "POSIXt")) {
-      return(value)
-    }
-
-    parsed <- tryCatch(
-      as.POSIXct(value, format = "%H:%M:%S"),
-      error = function(err) NA
-    )
-
-    if (is.na(parsed)) {
-      parsed <- tryCatch(
-        as.POSIXct(value),
-        error = function(err) NA
-      )
-    }
-
-    # A stored value nothing can parse yields NULL, i.e. the input keeps its
-    # current state. It used to return Sys.time(), which quietly turned an
-    # unreadable stored time into "now" on the next save.
-    if (is.na(parsed)) {
-      return(NULL)
-    }
-
-    return(parsed)
-  }
-
-  if (field$input_type %in% c("selectInput", "selectizeInput", "multiInput", "checkboxGroupInput")) {
-    return(sft_parse_json_vector(value))
-  }
-
-  if (identical(field$input_type, "ibanInput")) {
-    return(sft_format_iban(value))
-  }
-
-  reg <- sft_registered_input(field$input_type)
-
-  if (!is.null(reg)) {
-    if (!is.null(reg$decode)) {
-      return(reg$decode(value))
-    }
-
-    if (isTRUE(reg$multiple)) {
-      return(sft_parse_json_vector(value))
-    }
-  }
-
-  value
+  spec$decode(value)
 }
 
 sft_field_display_separator <- function(field, value = NULL) {
-  if (field$input_type %in% c("dateRangeInput", "sliderInput")) {
-    return(" - ")
+  spec <- sft_input_spec(field$input_type)
+
+  if (is.null(spec)) {
+    return("; ")
   }
 
-  "; "
+  spec$sep
 }
 
 sft_format_json_vector_value <- function(value, sep = "; ") {
@@ -540,40 +357,14 @@ sft_format_json_vector_value <- function(value, sep = "; ") {
   paste(parsed, collapse = sep)
 }
 
+# Stored value -> string shown in the records and versions tables.
 sft_format_field_display_value <- function(field, value, sep = NULL) {
   sep <- sep %||% sft_field_display_separator(field, value)
+  spec <- sft_input_spec(field$input_type)
 
-  if (field$input_type %in% c(
-    "checkboxGroupInput",
-    "multiInput",
-    "dateRangeInput"
-  )) {
-    return(sft_format_json_vector_value(value, sep = sep))
+  if (is.null(spec)) {
+    return(value)
   }
 
-  if (field$input_type %in% c("selectInput", "selectizeInput", "sliderInput")) {
-    value_chr <- as.character(value)
-
-    if (length(value_chr) == 1L && !is.na(value_chr) && grepl("^\\s*\\[", value_chr)) {
-      return(sft_format_json_vector_value(value_chr, sep = sep))
-    }
-  }
-
-  if (identical(field$input_type, "ibanInput")) {
-    return(sft_format_iban(value))
-  }
-
-  reg <- sft_registered_input(field$input_type)
-
-  if (!is.null(reg)) {
-    if (!is.null(reg$format)) {
-      return(reg$format(value))
-    }
-
-    if (isTRUE(reg$multiple)) {
-      return(sft_format_json_vector_value(value, sep = sep))
-    }
-  }
-
-  value
+  spec$format(value, sep)
 }

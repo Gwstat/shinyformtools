@@ -405,30 +405,23 @@ sft_update_choices_input <- function(session,
     update_args
   )
 
-  switch(
-    input_type,
-    selectInput = do.call(shiny::updateSelectInput, args),
-    selectizeInput = do.call(shiny::updateSelectizeInput, args),
-    radioButtons = do.call(shiny::updateRadioButtons, args),
-    checkboxGroupInput = do.call(shiny::updateCheckboxGroupInput, args),
-    multiInput = do.call(shinyWidgets::updateMultiInput, args),
-    {
-      reg <- sft_registered_input(input_type)
+  spec <- sft_input_spec(input_type)
 
-      if (!is.null(reg) && !is.null(reg$update_fun)) {
-        return(do.call(reg$update_fun, args))
-      }
+  if (is.null(spec) || is.null(spec$update_choices)) {
+    stop(
+      "Dynamic choices are only supported for input types with a choices ",
+      "update function (selectInput, selectizeInput, radioButtons, ",
+      "checkboxGroupInput, multiInput, sliderTextInput and registered inputs ",
+      "with an update_fun). Field '",
+      input_id,
+      "' uses ",
+      input_type,
+      ".",
+      call. = FALSE
+    )
+  }
 
-      stop(
-        "Dynamic choices are only supported for selectInput, selectizeInput, radioButtons, checkboxGroupInput, multiInput and registered inputs with an update_fun. Field '",
-        input_id,
-        "' uses ",
-        input_type,
-        ".",
-        call. = FALSE
-      )
-    }
-  )
+  do.call(spec$update_choices, args)
 }
 
 sft_update_value_input <- function(session,
@@ -448,33 +441,18 @@ sft_update_value_input <- function(session,
     update_args
   )
 
-  switch(
-    input_type,
-    textInput = do.call(shiny::updateTextInput, args),
-    passwordInput = do.call(shiny::updateTextInput, args),
-    textAreaInput = do.call(shiny::updateTextAreaInput, args),
-    numericInput = do.call(shiny::updateNumericInput, args),
-    sliderInput = do.call(shiny::updateSliderInput, args),
-    dateInput = do.call(shiny::updateDateInput, args),
-    dateRangeInput = do.call(shiny::updateDateRangeInput, args),
-    checkboxInput = do.call(shiny::updateCheckboxInput, args),
-    timeInput = do.call(shinyTime::updateTimeInput, args),
-    ibanInput = do.call(updateIbanInput, args),
-    {
-      reg <- sft_registered_input(input_type)
+  spec <- sft_input_spec(input_type)
 
-      if (!is.null(reg) && !is.null(reg$update_fun)) {
-        return(do.call(reg$update_fun, args))
-      }
+  if (is.null(spec) || is.null(spec$update_value)) {
+    stop(
+      "Dynamic values are not supported for input type ",
+      input_type,
+      " yet.",
+      call. = FALSE
+    )
+  }
 
-      stop(
-        "Dynamic values are not supported for input type ",
-        input_type,
-        " yet.",
-        call. = FALSE
-      )
-    }
-  )
+  do.call(spec$update_value, args)
 }
 
 sft_binding_event_key <- function(input, prefix, depends_on, open_input_id) {

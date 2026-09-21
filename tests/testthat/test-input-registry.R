@@ -161,3 +161,105 @@ test_that("an unparseable stored time never becomes the current time", {
   expect_null(sft_ui_value(field, "not a time"))
   expect_null(sft_ui_value(field, NA_character_))
 })
+
+# ---- the input-type table ---------------------------------------------------
+
+test_that("every built-in input type is one complete row of the table", {
+  specs <- sft_builtin_input_specs()
+
+  expect_identical(sft_supported_input_types(), names(specs))
+  expect_false(anyDuplicated(names(specs)) > 0L)
+
+  for (input_type in names(specs)) {
+    spec <- specs[[input_type]]
+
+    expect_true(is.function(spec$fun), info = input_type)
+    expect_true(is.function(spec$encode), info = input_type)
+    expect_true(is.function(spec$decode), info = input_type)
+    expect_true(is.function(spec$format), info = input_type)
+    expect_true(spec$db_type %in% c("TEXT", "REAL", "INTEGER"), info = input_type)
+    expect_true(is.null(spec$value_arg) || spec$value_arg %in% c("value", "selected"), info = input_type)
+    # Every built-in can be driven dynamically one way or the other.
+    expect_true(is.function(spec$update_value) || is.function(spec$update_choices), info = input_type)
+
+    # The spec is what the type-keyed helpers return.
+    expect_identical(sft_input_function(input_type), spec$fun)
+    expect_identical(sft_default_db_type(input_type), spec$db_type)
+  }
+})
+
+test_that("a stored value survives decode -> encode unchanged for every built-in", {
+  samples <- list(
+    textInput = "hello",
+    passwordInput = "secret",
+    textAreaInput = "two\nlines",
+    numericInput = 4.5,
+    selectInput = "a",
+    selectizeInput = "[\"a\",\"b\"]",
+    sliderInput = "[1,5]",
+    dateInput = "2026-09-21",
+    dateRangeInput = "[\"2026-01-01\",\"2026-12-31\"]",
+    checkboxInput = 1L,
+    checkboxGroupInput = "[\"a\"]",
+    radioButtons = "b",
+    sliderTextInput = "[\"low\",\"high\"]",
+    multiInput = "[\"a\",\"c\"]",
+    timeInput = "08:30:00",
+    ibanInput = "DE89370400440532013000"
+  )
+
+  # A new built-in has to be added here too, or this test says so.
+  expect_setequal(names(samples), sft_supported_input_types())
+
+  for (input_type in names(samples)) {
+    field <- form_field(id = "f", label = "F", input_type = input_type)
+    stored <- samples[[input_type]]
+
+    expect_equal(
+      sft_field_db_value(field, sft_ui_value(field, stored)),
+      stored,
+      info = input_type
+    )
+  }
+})
+
+test_that("a two-handle sliderTextInput round-trips and displays as a range", {
+  field <- form_field(
+    id = "level", label = "Level", input_type = "sliderTextInput",
+    args = list(choices = c("low", "mid", "high"))
+  )
+
+  stored <- sft_field_db_value(field, c("low", "high"))
+  expect_identical(stored, "[\"low\",\"high\"]")
+  # Decoded back to a vector: it used to come back as the raw JSON string, so
+  # the edit dialog could not select the stored range.
+  expect_identical(sft_ui_value(field, stored), c("low", "high"))
+  expect_identical(sft_format_field_display_value(field, stored), "low - high")
+
+  # One handle is stored and shown verbatim.
+  expect_identical(sft_field_db_value(field, "mid"), "mid")
+  expect_identical(sft_ui_value(field, "mid"), "mid")
+  expect_identical(sft_format_field_display_value(field, "mid"), "mid")
+
+  expect_identical(sft_input_value_argument("sliderTextInput"), "selected")
+  expect_true(is.function(sft_input_spec("sliderTextInput")$update_choices))
+})
+
+test_that("register_input(db_type = ) sets the default column type of its fields", {
+  withr::defer(rm(list = ls(.sft_input_registry), envir = .sft_input_registry))
+
+  dial <- function(inputId, label, ...) shiny::numericInput(inputId, label, value = 0)
+
+  expect_error(register_input("dial", fun = dial, db_type = 1), "db_type must be")
+
+  register_input("dial", fun = dial, decode = as.numeric, db_type = "REAL")
+  expect_identical(form_field(id = "v", label = "V", input_type = "dial")$db_type, "REAL")
+  # An explicit db_type on the field still wins.
+  expect_identical(
+    form_field(id = "v", label = "V", input_type = "dial", db_type = "INTEGER")$db_type,
+    "INTEGER"
+  )
+
+  register_input("plain", fun = dial)
+  expect_identical(form_field(id = "p", label = "P", input_type = "plain")$db_type, "TEXT")
+})

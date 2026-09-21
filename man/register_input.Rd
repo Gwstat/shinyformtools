@@ -12,7 +12,8 @@ register_input(
   update_fun = NULL,
   encode = NULL,
   decode = NULL,
-  format = NULL
+  format = NULL,
+  db_type = NULL
 )
 }
 \arguments{
@@ -44,6 +45,10 @@ handed to the input when a record is edited. Overrides the default.}
 
 \item{format}{Optional function mapping a stored value to the string shown in
 the records and versions tables. Overrides the default.}
+
+\item{db_type}{Optional default column type for fields of this input type,
+for example \code{"REAL"} for a numeric widget. \code{NULL} means \code{"TEXT"}. A
+\code{db_type} given to \code{\link[=form_field]{form_field()}} still wins.}
 }
 \value{
 Invisibly, \code{name}.
@@ -76,12 +81,14 @@ register_input(
   "knobInput",
   fun = shinyWidgets::knobInput,
   value_arg = "value",
-  update_fun = shinyWidgets::updateKnobInput
+  update_fun = shinyWidgets::updateKnobInput,
+  decode = as.numeric,
+  db_type = "REAL"
 )
 
 vol <- form_field(
   id = "vol", label = "Volume", input_type = "knobInput",
-  args = list(min = 0, max = 100), db_type = "REAL"
+  args = list(min = 0, max = 100)
 )
 }
 }

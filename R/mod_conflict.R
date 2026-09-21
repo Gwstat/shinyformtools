@@ -149,44 +149,35 @@ sft_conflict_changes_meta <- function(conn, form, record_id, since, fallback_use
   list(by_column = by_column, users = unique(users))
 }
 
-# Push a stored value into an edit input. Choices-based inputs update their
-# selection; everything else goes through sft_update_value_input. Errors are
-# swallowed: an input type without an update function simply keeps its value.
+# Push a stored value into an edit input. Inputs whose value lives in
+# `selected` are updated through their choices update function (leaving the
+# choices alone); everything else goes through sft_update_value_input. Errors
+# are swallowed: an input type without an update function keeps its value.
 sft_conflict_set_input <- function(session, field, value) {
   input_id <- paste0("edit_", field$id)
   ui_value <- sft_ui_value(field, value)
-
-  update_selected <- function(fun) {
-    do.call(
-      fun,
-      list(
-        session = session,
-        inputId = input_id,
-        selected = ui_value %||% character(0)
-      )
-    )
-  }
+  spec <- sft_input_spec(field$input_type)
 
   tryCatch(
-    switch(
-      field$input_type,
-      selectInput = update_selected(shiny::updateSelectInput),
-      selectizeInput = update_selected(shiny::updateSelectizeInput),
-      radioButtons = update_selected(shiny::updateRadioButtons),
-      checkboxGroupInput = update_selected(shiny::updateCheckboxGroupInput),
-      multiInput = update_selected(shinyWidgets::updateMultiInput),
-      checkboxInput = shiny::updateCheckboxInput(
-        session = session,
-        inputId = input_id,
-        value = isTRUE(ui_value)
-      ),
+    if (!is.null(spec) &&
+        identical(spec$value_arg, "selected") &&
+        is.function(spec$update_choices)) {
+      do.call(
+        spec$update_choices,
+        list(
+          session = session,
+          inputId = input_id,
+          selected = ui_value %||% character(0)
+        )
+      )
+    } else {
       sft_update_value_input(
         session = session,
         input_type = field$input_type,
         input_id = input_id,
-        value = ui_value %||% ""
+        value = ui_value %||% (if (is.null(spec)) "" else spec$empty)
       )
-    ),
+    },
     error = function(err) NULL
   )
 

@@ -29,6 +29,15 @@
 * `form_server()` returns `connection()`, a function yielding the module's
   current connection, next to the start-up `conn`.
 
+## Input types
+
+* `register_input()` gained `db_type`: the default column type of fields using
+  that input, so a numeric widget no longer needs `db_type = "REAL"` on every
+  `form_field()`. A `db_type` on the field still wins.
+* A two-handle `sliderTextInput` is restored to its range in the edit dialog
+  and shown as "from - to" in the tables (it came back as a raw JSON string),
+  and `sliderTextInput` now supports `dynamic_choices()`.
+
 ## Bug fixes
 
 * After a server-dropped connection was healed, the audit table, the

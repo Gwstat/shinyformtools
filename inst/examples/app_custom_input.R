@@ -27,11 +27,16 @@ db_path <- tempfile(fileext = ".sqlite")
 #> NOTE: it BEFORE the form_field() that uses the new input_type. knobInput is a
 #> NOTE: single numeric dial; pickerInput is multi-valued, so multiple = TRUE
 #> NOTE: stores the selection as a JSON array and decodes it back to a vector.
+#> NOTE: db_type = "REAL" makes every knobInput field a numeric column (the
+#> NOTE: default for a registered input is TEXT), and decode hands the stored
+#> NOTE: number back to the dial as a number.
 register_input(
   "knobInput",
   fun = shinyWidgets::knobInput,
   value_arg = "value",
-  update_fun = shinyWidgets::updateKnobInput
+  update_fun = shinyWidgets::updateKnobInput,
+  decode = as.numeric,
+  db_type = "REAL"
 )
 
 register_input(
@@ -44,9 +49,8 @@ register_input(
 
 #> STEP: Describe the form
 #> NOTE: The two registered names are used as input_type just like a built-in.
-#> NOTE: A custom input that stores a number sets db_type explicitly (the default
-#> NOTE: column type for an unknown input is TEXT); args are passed straight to
-#> NOTE: the widget function.
+#> NOTE: The column type comes from the registration, so the field does not
+#> NOTE: repeat it; args are passed straight to the widget function.
 tracks_form <- form(
   form_id = "tracks_custom",
   form_name = "Tracks",
@@ -59,7 +63,7 @@ tracks_form <- form(
       id = "rating", label = "Rating", input_type = "knobInput",
       args = list(min = 0, max = 10, value = 5, displayPrevious = TRUE,
                   width = 90, height = 90),
-      db_type = "REAL", col = 2, pos = 1
+      col = 2, pos = 1
     ),
     # A multi-select; the chosen genres are stored as a JSON array.
     form_field(
