@@ -55,6 +55,15 @@
   used to stop with "not supported yet". Returning an empty value clears the
   selection.
 
+## Performance
+
+* New option `shinyformtools.schema_probe_ttl` (seconds, default 0 = off):
+  remember a passed schema check per database and form definition. Meant for a
+  remote database, where the check costs about 12 round trips per call; with
+  `30`, a read drops from 15 round trips to 3 and an update from 19 to 7. A
+  schema change made by another process is then noticed up to that many seconds
+  late.
+
 ## Bug fixes
 
 * A write that loses its race five times in a row now fails with a readable

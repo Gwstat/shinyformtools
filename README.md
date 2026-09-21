@@ -156,6 +156,12 @@ a long idle period. If the database refuses a connection, a running session
 shows the error and keeps the user's input, and a starting session stays up and
 connects on the next action.
 
+Against a **remote** database, the schema check that precedes every call is the
+dominant cost (about 12 round trips on MariaDB). `options(
+shinyformtools.schema_probe_ttl = 30)` remembers a passed check for 30 seconds;
+the trade-off is that a schema change made by another process is noticed up to
+30 seconds late, which is why it is off by default. See `?db_mariadb`.
+
 MySQL is **not supported**. `db_mariadb()` will connect to it — the protocol is
 the same — but the package is neither tested nor fixed against it: a field with
 a `db_default` on a text column cannot be created there. Use MariaDB.

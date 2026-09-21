@@ -15,6 +15,11 @@
 pkg <- Sys.getenv("SFT_LOAD_PKG", ".")
 suppressMessages(devtools::load_all(pkg, quiet = TRUE))
 
+# SFT_LOAD_PROBE_TTL=30 measures the opt-in probe cache
+# (options(shinyformtools.schema_probe_ttl = )); unset = the default, off.
+ttl <- suppressWarnings(as.numeric(Sys.getenv("SFT_LOAD_PROBE_TTL", "0")))
+if (!is.na(ttl) && ttl > 0) options(shinyformtools.schema_probe_ttl = ttl)
+
 host <- Sys.getenv("SFT_LOAD_HOST", "sft-load-db")
 port <- as.integer(Sys.getenv("SFT_LOAD_PORT", "3306"))
 say <- function(...) cat(sprintf(...), "\n", sep = "")
@@ -67,11 +72,17 @@ results <- list(
 )
 
 probe <- results[["schema probe alone"]]
-say("MariaDB %s - statements per operation (one connection, schema current)", DBI::dbGetQuery(admin, "SELECT VERSION() AS v")$v)
+say("MariaDB %s - round trips per operation (one connection, schema current, probe ttl = %s)",
+    DBI::dbGetQuery(admin, "SELECT VERSION() AS v")$v, getOption("shinyformtools.schema_probe_ttl", 0))
 say("%-40s %5s %12s", "operation", "total", "of it probe")
 for (name in names(results)) {
   say("%-40s %5d %12s", name, results[[name]],
-      if (name %in% c("schema probe alone", "sft_live_connection (reconnect probe)")) "-" else sprintf("%d (%.0f%%)", probe, 100 * probe / results[[name]]))
+      if (getOption("shinyformtools.schema_probe_ttl", 0) > 0 ||
+          name %in% c("schema probe alone", "sft_live_connection (reconnect probe)")) {
+        "-"
+      } else {
+        sprintf("%d (%.0f%%)", probe, 100 * probe / results[[name]])
+      })
 }
 
 # ---- what exactly the probe sends ------------------------------------------

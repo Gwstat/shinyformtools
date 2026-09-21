@@ -73,6 +73,16 @@ user. Open one connection in your \code{server()} function and pass it as
 is full refuses new connections at once; running sessions keep working,
 and a session that cannot connect tells the user and tries again on the
 next action instead of failing.
+\item \strong{A remote server makes the schema check expensive.} Before every
+database call the package checks that the schema matches the form. That
+is about 12 network round trips here (the driver turns each statement
+into prepare, execute and commit): unnoticeable on the same machine,
+around a quarter of a second per call at 20 ms latency. Set
+\code{options(shinyformtools.schema_probe_ttl = 30)} to remember a passed
+check for 30 seconds per database and form definition; a read then
+costs 3 round trips instead of 15. The price: a schema change made by
+another process is noticed up to that many seconds late. Off by
+default.
 }
 
 MySQL is not supported. This function will connect to it, because the

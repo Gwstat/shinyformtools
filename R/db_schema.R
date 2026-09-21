@@ -675,10 +675,28 @@ sft_schema_is_current <- function(conn, form) {
 # database) is reported instead of migrated, and the caller runs init_db()
 # deliberately. Only this gate consults the policy; init_db() / apply_migration()
 # are the manual step and stay callable under either policy.
+#
+# OPT-IN probe cache. `options(shinyformtools.schema_probe_ttl = <seconds>)`
+# remembers a positive probe for that long, per database and form definition,
+# so calls inside the window skip the probe. It exists for a REMOTE database:
+# the probe is ~12 round trips on MariaDB (the driver turns each statement into
+# prepare + execute + commit), which at 20 ms each dominates every CRUD call,
+# while locally it is noise. The price is stated, not hidden: a schema change
+# made by ANOTHER process is noticed up to `ttl` seconds late. Default 0 = off,
+# i.e. exactly the behaviour described above.
 sft_ensure_schema <- function(conn, form, user = NULL) {
-  if (sft_schema_is_current(conn, form)) {
+  cache_key <- sft_probe_cache_key(conn, form)
+
+  if (sft_probe_cache_hit(cache_key)) {
     return(invisible(FALSE))
   }
+
+  if (sft_schema_is_current(conn, form)) {
+    sft_probe_cache_store(cache_key)
+    return(invisible(FALSE))
+  }
+
+  sft_probe_cache_drop(cache_key)
 
   if (identical(form$schema_policy, "manual")) {
     stop(
@@ -690,7 +708,88 @@ sft_ensure_schema <- function(conn, form, user = NULL) {
   }
 
   init_db(form, conn = conn, apply = TRUE, user = user)
+  sft_probe_cache_store(cache_key)
   invisible(TRUE)
+}
+
+# ---- the opt-in probe cache -----------------------------------------------------
+
+.sft_probe_cache <- new.env(parent = emptyenv())
+
+sft_probe_ttl <- function() {
+  ttl <- getOption("shinyformtools.schema_probe_ttl", 0)
+
+  if (!is.numeric(ttl) || length(ttl) != 1L || is.na(ttl) || ttl <= 0) {
+    return(0)
+  }
+
+  ttl
+}
+
+# Seconds on a monotonic-enough clock; a function so tests can move time.
+sft_probe_clock <- function() {
+  as.numeric(Sys.time())
+}
+
+# What a cached probe is valid for: one DATABASE (not one connection - the
+# schema belongs to the database, and scripts open a connection per call) and
+# one form DEFINITION (the signature, so an edited form re-probes at once).
+# NULL means "do not cache": the cache is off, or the database has no stable
+# identity (an in-memory database: two of them share the name ":memory:").
+sft_probe_cache_key <- function(conn, form) {
+  if (sft_probe_ttl() == 0) {
+    return(NULL)
+  }
+
+  info <- tryCatch(DBI::dbGetInfo(conn), error = function(err) NULL)
+  dbname <- as.character(info$dbname %||% "")
+
+  if (length(dbname) != 1L || is.na(dbname) || !nzchar(dbname) || grepl("memory", dbname, fixed = TRUE)) {
+    return(NULL)
+  }
+
+  paste(
+    sft_db_backend(conn),
+    as.character(info$host %||% ""),
+    as.character(info$port %||% ""),
+    dbname,
+    form$form_id,
+    form$table_name,
+    form$version,
+    sft_schema_signature(form),
+    sep = "\037"
+  )
+}
+
+sft_probe_cache_hit <- function(key) {
+  if (is.null(key)) {
+    return(FALSE)
+  }
+
+  stamp <- .sft_probe_cache[[key]]
+
+  !is.null(stamp) && (sft_probe_clock() - stamp) < sft_probe_ttl()
+}
+
+sft_probe_cache_store <- function(key) {
+  if (!is.null(key)) {
+    assign(key, sft_probe_clock(), envir = .sft_probe_cache)
+  }
+
+  invisible(NULL)
+}
+
+sft_probe_cache_drop <- function(key) {
+  if (!is.null(key) && exists(key, envir = .sft_probe_cache, inherits = FALSE)) {
+    rm(list = key, envir = .sft_probe_cache)
+  }
+
+  invisible(NULL)
+}
+
+sft_probe_cache_clear <- function() {
+  rm(list = ls(.sft_probe_cache, all.names = TRUE), envir = .sft_probe_cache)
+  invisible(NULL)
 }
 
 # Deterministic name for a unique index, prefixed with the table name so it is
