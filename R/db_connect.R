@@ -699,6 +699,16 @@ sft_is_retryable_conflict <- function(e) {
 # each attempt, so a full rollback and retry recomputes any MAX(id) + 1 values
 # and re-runs validation against the now-committed state. Non-conflict errors and
 # exhausted retries surface unchanged.
+# Wait before retry number `attempt` (1 = first retry). Randomised and growing:
+# writers that collided once would otherwise retry in lockstep and collide
+# again, which is what exhausted the five attempts under contention (measured
+# with tools/load-test/write_contention.R). The ceiling doubles per attempt -
+# 10, 20, 40, 80 ms - so a writer that loses every round has waited 150 ms at
+# most, and one that never conflicts never waits.
+sft_retry_wait <- function(attempt) {
+  Sys.sleep(stats::runif(1L, min = 0, max = 0.01 * 2^(attempt - 1L)))
+}
+
 sft_db_with_transaction <- function(conn, code, max_attempts = 5L) {
   code_expr <- substitute(code)
   env <- parent.frame()
@@ -723,6 +733,7 @@ sft_db_with_transaction <- function(conn, code, max_attempts = 5L) {
       stop(err)
     }
 
+    sft_retry_wait(attempt)
     attempt <- attempt + 1L
   }
 }

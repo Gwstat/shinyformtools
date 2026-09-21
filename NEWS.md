@@ -57,6 +57,12 @@
 
 ## Bug fixes
 
+* A write that loses a race now waits a short, random moment before it
+  retries. Retries used to fire at once, so writers that had collided collided
+  again; measured with 8 processes updating one record, failed updates fell
+  from 45% to 22%. No write was ever lost either way - a failed update raises
+  an error.
+
 * A database that refuses connections (MariaDB at `max_connections`) no longer
   takes user sessions down. Measured with a live server: a save in a session
   whose connection had been dropped lost the input and left the save button
