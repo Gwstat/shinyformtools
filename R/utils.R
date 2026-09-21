@@ -169,6 +169,25 @@ sft_sql_update_by_id <- function(conn, table_name, columns) {
   )
 }
 
+# Run one UPDATE with every value bound: `values` are the columns to set,
+# `where` the columns that identify the row(s), both as named lists. The named
+# counterpart of sft_sql_insert() - a wide row keeps each value next to its
+# column instead of relying on the order of a long placeholder list.
+sft_sql_update <- function(conn, table_name, values, where) {
+  DBI::dbExecute(
+    conn,
+    paste0(
+      "UPDATE ",
+      sft_quote_identifier(conn, table_name),
+      " SET ",
+      sft_sql_assignments(conn, names(values)),
+      " WHERE ",
+      sft_sql_assignments(conn, names(where), sep = " AND ")
+    ),
+    params = unname(c(values, where))
+  )
+}
+
 # Run one INSERT with every value bound. `id_column` names an integer key the
 # backend cannot generate itself (DuckDB): it is then allocated and prepended.
 # Pass `values` as a named list and leave `columns` out to take the column

@@ -40,17 +40,19 @@ sft_register_deleted_versions <- function(input, output, session, state) {
       return(data.frame())
     }
 
+    # Filtered by the database: the dialog used to fetch the whole table and
+    # throw the live rows away in R.
     data <- fetch_records(
       form = form,
       conn = live_conn(),
-      include_deleted = TRUE
+      include_deleted = "only"
     )
 
-    if (!is.data.frame(data) || nrow(data) == 0L || !"sft_is_deleted" %in% names(data)) {
+    if (!is.data.frame(data) || nrow(data) == 0L) {
       return(data.frame())
     }
 
-    data[data$sft_is_deleted == 1L, , drop = FALSE]
+    data
   })
 
   display_deleted_records <- shiny::reactive({

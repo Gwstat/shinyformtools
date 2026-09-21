@@ -317,232 +317,167 @@ sft_register_form_schema <- function(conn,
   sft_validate_form(form)
 
   now <- sft_now()
+
+  sft_upsert_form_row(conn, form, now)
+
+  for (field in form$fields) {
+    sft_upsert_field_row(conn, form, field, now)
+  }
+
+  sft_retire_missing_fields(conn, form, now)
+  sft_register_orphaned_columns(conn, form, orphaned_columns, now)
+
+  invisible(TRUE)
+}
+
+# The form's row in sft_forms: its current version, the schema signature the
+# probe compares against, and the definition as JSON (without functions and
+# without credentials).
+sft_upsert_form_row <- function(conn, form, now) {
   form_config <- form
   form_config$server <- NULL
   form_config$header <- NULL
   form_config$footer <- NULL
   form_config$db <- sft_redact_db_config(form_config$db)
-  config_json <- as.character(sft_as_json(form_config))
-  schema_hash <- sft_schema_signature(form)
 
-  existing_form <- DBI::dbGetQuery(
+  values <- list(
+    form_name = form$form_name,
+    table_name = form$table_name,
+    active_version = form$version,
+    status = "active",
+    config_json = as.character(sft_as_json(form_config)),
+    schema_hash = sft_schema_signature(form),
+    updated_at = now
+  )
+
+  existing <- DBI::dbGetQuery(
     conn,
     "SELECT form_id FROM sft_forms WHERE form_id = ?",
     params = list(form$form_id)
   )
 
-  if (nrow(existing_form) == 0L) {
-    DBI::dbExecute(
+  if (nrow(existing) == 0L) {
+    sft_sql_insert(
       conn,
-      "
-      INSERT INTO sft_forms (
-        form_id, form_name, table_name, active_version, status,
-        config_json, schema_hash, created_at, updated_at
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ",
-      params = list(
-        form$form_id,
-        form$form_name,
-        form$table_name,
-        form$version,
-        "active",
-        config_json,
-        schema_hash,
-        now,
-        now
-      )
+      "sft_forms",
+      values = c(list(form_id = form$form_id), values, list(created_at = now))
     )
   } else {
-    DBI::dbExecute(
-      conn,
-      "
-      UPDATE sft_forms
-      SET form_name = ?,
-          table_name = ?,
-          active_version = ?,
-          status = ?,
-          config_json = ?,
-          schema_hash = ?,
-          updated_at = ?
-      WHERE form_id = ?
-      ",
-      params = list(
-        form$form_name,
-        form$table_name,
-        form$version,
-        "active",
-        config_json,
-        schema_hash,
-        now,
-        form$form_id
-      )
-    )
+    sft_sql_update(conn, "sft_forms", values, where = list(form_id = form$form_id))
   }
 
-  field_ids <- vapply(form$fields, function(x) x$id, character(1))
+  invisible(TRUE)
+}
 
-  for (field in form$fields) {
-    existing_field <- DBI::dbGetQuery(
-      conn,
-      "
-      SELECT form_id, field_id
-      FROM sft_fields
-      WHERE form_id = ? AND field_id = ?
-      ",
-      params = list(form$form_id, field$id)
-    )
+# One field's row in sft_fields. `first_version` and `created_at` are written
+# once; everything else follows the current definition.
+sft_upsert_field_row <- function(conn, form, field, now) {
+  values <- list(
+    db_column = field$db_column,
+    label = field$label,
+    input_type = field$input_type,
+    db_type = field$db_type,
+    status = field$status,
+    last_version = form$version,
+    mandatory = as.integer(field$mandatory),
+    unique_field = as.integer(field$unique),
+    editable = sft_field_editable_storage(field),
+    show_field = as.integer(field$show),
+    tab = field$tab,
+    slide = field$slide,
+    col = field$col,
+    pos = field$pos,
+    args_json = as.character(sft_as_json(field$args)),
+    renamed_from = sft_db_param(field$renamed_from),
+    retired_at = if (identical(field$status, "active")) NA_character_ else now
+  )
 
-    args_json <- as.character(sft_as_json(field$args))
+  key <- list(form_id = form$form_id, field_id = field$id)
 
-    if (nrow(existing_field) == 0L) {
-      sft_sql_insert(
-        conn,
-        "sft_fields",
-        values = list(
-          form_id = form$form_id,
-          field_id = field$id,
-          db_column = field$db_column,
-          label = field$label,
-          input_type = field$input_type,
-          db_type = field$db_type,
-          status = field$status,
-          first_version = form$version,
-          last_version = form$version,
-          mandatory = as.integer(field$mandatory),
-          unique_field = as.integer(field$unique),
-          editable = sft_field_editable_storage(field),
-          show_field = as.integer(field$show),
-          tab = field$tab,
-          slide = field$slide,
-          col = field$col,
-          pos = field$pos,
-          args_json = args_json,
-          renamed_from = sft_db_param(field$renamed_from),
-          created_at = now,
-          retired_at = if (identical(field$status, "active")) NA_character_ else now
-        )
-      )
-    } else {
-      DBI::dbExecute(
-        conn,
-        "
-        UPDATE sft_fields
-        SET db_column = ?,
-            label = ?,
-            input_type = ?,
-            db_type = ?,
-            status = ?,
-            last_version = ?,
-            mandatory = ?,
-            unique_field = ?,
-            editable = ?,
-            show_field = ?,
-            tab = ?,
-            slide = ?,
-            col = ?,
-            pos = ?,
-            args_json = ?,
-            renamed_from = ?,
-            retired_at = ?
-        WHERE form_id = ? AND field_id = ?
-        ",
-        params = list(
-          field$db_column,
-          field$label,
-          field$input_type,
-          field$db_type,
-          field$status,
-          form$version,
-          as.integer(field$mandatory),
-          as.integer(field$unique),
-          sft_field_editable_storage(field),
-          as.integer(field$show),
-          field$tab,
-          field$slide,
-          field$col,
-          field$pos,
-          args_json,
-          sft_db_param(field$renamed_from),
-          if (identical(field$status, "active")) NA_character_ else now,
-          form$form_id,
-          field$id
-        )
-      )
-    }
-  }
-
-  active_registered_fields <- DBI::dbGetQuery(
+  existing <- DBI::dbGetQuery(
     conn,
-    "
-    SELECT field_id
-    FROM sft_fields
-    WHERE form_id = ? AND status = 'active'
-    ",
+    "SELECT field_id FROM sft_fields WHERE form_id = ? AND field_id = ?",
+    params = unname(key)
+  )
+
+  if (nrow(existing) == 0L) {
+    sft_sql_insert(
+      conn,
+      "sft_fields",
+      values = c(key, values, list(first_version = form$version, created_at = now))
+    )
+  } else {
+    sft_sql_update(conn, "sft_fields", values, where = key)
+  }
+
+  invisible(TRUE)
+}
+
+# A field that is registered as active but no longer part of the form is
+# marked retired. Its column stays in the table (migrations are additive), and
+# this row is what explains the column later.
+sft_retire_missing_fields <- function(conn, form, now) {
+  field_ids <- vapply(form$fields, function(field) field$id, character(1))
+
+  registered <- DBI::dbGetQuery(
+    conn,
+    "SELECT field_id FROM sft_fields WHERE form_id = ? AND status = 'active'",
     params = list(form$form_id)
   )
 
-  retired_field_ids <- setdiff(active_registered_fields$field_id, field_ids)
-
-  for (field_id in retired_field_ids) {
-    DBI::dbExecute(
+  for (field_id in setdiff(registered$field_id, field_ids)) {
+    sft_sql_update(
       conn,
-      "
-      UPDATE sft_fields
-      SET status = 'retired',
-          last_version = ?,
-          retired_at = ?
-      WHERE form_id = ? AND field_id = ?
-      ",
-      params = list(
-        form$version,
-        now,
-        form$form_id,
-        field_id
-      )
+      "sft_fields",
+      values = list(status = "retired", last_version = form$version, retired_at = now),
+      where = list(form_id = form$form_id, field_id = field_id)
     )
   }
 
+  invisible(TRUE)
+}
+
+# A column the table has but the form never declared is recorded as orphaned,
+# once, so that it is accounted for rather than silently present.
+sft_register_orphaned_columns <- function(conn, form, orphaned_columns, now) {
   for (column_name in orphaned_columns) {
-    existing_orphan <- DBI::dbGetQuery(
+    existing <- DBI::dbGetQuery(
       conn,
-      "
-      SELECT form_id, field_id
-      FROM sft_fields
-      WHERE form_id = ? AND db_column = ?
-      ",
+      "SELECT field_id FROM sft_fields WHERE form_id = ? AND db_column = ?",
       params = list(form$form_id, column_name)
     )
 
-    if (nrow(existing_orphan) == 0L) {
-      sft_sql_insert(
-        conn,
-        "sft_fields",
-        values = list(
-          form_id = form$form_id,
-          field_id = column_name,
-          db_column = column_name,
-          label = column_name,
-          input_type = NA_character_,
-          db_type = NA_character_,
-          status = "orphaned",
-          first_version = form$version,
-          last_version = form$version,
-          mandatory = 0L,
-          unique_field = 0L,
-          editable = 0L,
-          show_field = 0L,
-          tab = NA_integer_,
-          slide = NA_integer_,
-          col = NA_integer_,
-          pos = NA_integer_,
-          args_json = "{}",
-          renamed_from = NA_character_,
-          created_at = now,
-          retired_at = now
-        )
-      )
+    if (nrow(existing) > 0L) {
+      next
     }
+
+    sft_sql_insert(
+      conn,
+      "sft_fields",
+      values = list(
+        form_id = form$form_id,
+        field_id = column_name,
+        db_column = column_name,
+        label = column_name,
+        input_type = NA_character_,
+        db_type = NA_character_,
+        status = "orphaned",
+        first_version = form$version,
+        last_version = form$version,
+        mandatory = 0L,
+        unique_field = 0L,
+        editable = 0L,
+        show_field = 0L,
+        tab = NA_integer_,
+        slide = NA_integer_,
+        col = NA_integer_,
+        pos = NA_integer_,
+        args_json = "{}",
+        renamed_from = NA_character_,
+        created_at = now,
+        retired_at = now
+      )
+    )
   }
 
   invisible(TRUE)

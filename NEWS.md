@@ -82,6 +82,15 @@
 
 ## Bug fixes
 
+* A checkbox field stored `0` for every value that was not literally `TRUE`:
+  a script inserting `1`, `"1"` or `"TRUE"` - an import from a table, say -
+  silently saved "no". Storing and reading back now share one notion of true
+  (`TRUE`, a non-zero number, `"1"`, `"true"`, `"yes"`). The checkbox in the app
+  always delivered `TRUE` / `FALSE` and was never affected.
+* `fetch_records(include_deleted = "only")` returns just the soft-deleted
+  records, filtered by the database; the deleted-records dialog uses it instead
+  of fetching the whole table.
+
 * A write that loses its race five times in a row now fails with a readable
   message ("someone else was saving the same data at the same moment ... please
   save again") and the class `sft_write_conflict`, instead of the database's

@@ -417,44 +417,6 @@ sft_show_column_views_modal <- function(session,
   )
 }
 
-sft_show_column_settings_modal <- function(session,
-                                           labels,
-                                           choices,
-                                           selected,
-                                           view_names,
-                                           active_view,
-                                           modal_sizes) {
-  sft_show_column_views_modal(
-    session = session,
-    labels = labels,
-    choices = choices,
-    selected = selected,
-    view_names = view_names,
-    active_view = active_view,
-    modal_sizes = modal_sizes,
-    can_save = TRUE
-  )
-}
-
-sft_show_column_selection_modal <- function(session,
-                                            labels,
-                                            choices,
-                                            selected,
-                                            view_names,
-                                            active_view,
-                                            modal_sizes) {
-  sft_show_column_views_modal(
-    session = session,
-    labels = labels,
-    choices = choices,
-    selected = selected,
-    view_names = view_names,
-    active_view = active_view,
-    modal_sizes = modal_sizes,
-    can_save = FALSE
-  )
-}
-
 # Column-view selection / column-settings reactive glue for the form module.
 #
 # Registers the column-settings widget renderUI and the observers that open the

@@ -159,6 +159,7 @@ sft_get_record <- function(conn,
 #' @param form Object created with [form()].
 #' @param conn Optional DBI connection.
 #' @param include_deleted Logical. Whether soft-deleted records are included.
+#'   `"only"` returns just the soft-deleted records, filtered by the database.
 #'
 #' @return A data frame.
 #' @examples
@@ -187,7 +188,9 @@ fetch_records <- function(form,
     sft_quote_identifier(conn, form$table_name)
   )
 
-  if (!isTRUE(include_deleted)) {
+  if (identical(include_deleted, "only")) {
+    sql <- paste0(sql, " WHERE sft_is_deleted = 1")
+  } else if (!isTRUE(include_deleted)) {
     sql <- paste0(sql, " WHERE sft_is_deleted = 0")
   }
 
@@ -349,6 +352,127 @@ sft_edit_conflict_condition <- function(current_record, columns) {
   )
 }
 
+# Optimistic-locking check of update_record(): stop with an sft_edit_conflict
+# when the stored record no longer looks the way the editor saw it. Runs inside
+# the transaction, so no writer can slip in between this comparison and the
+# UPDATE.
+sft_check_edit_conflict <- function(form, expected_record, current_record) {
+  if (is.null(expected_record)) {
+    return(invisible(TRUE))
+  }
+
+  conflict_columns <- sft_conflicting_columns(
+    form = form,
+    expected_record = expected_record,
+    current_record = current_record
+  )
+
+  if (length(conflict_columns) > 0L) {
+    stop(
+      sft_edit_conflict_condition(
+        current_record = current_record,
+        columns = conflict_columns
+      )
+    )
+  }
+
+  invisible(TRUE)
+}
+
+# What update_record() will write: the caller's `values` reduced to editable
+# fields and encoded for storage. Refuses a mandatory field that was supplied
+# empty, and an update that names no editable field at all.
+sft_update_field_values <- function(form, values) {
+  editable_fields <- sft_editable_input_fields(form)
+  editable_names <- c(
+    vapply(editable_fields, function(field) field$id, character(1)),
+    vapply(editable_fields, function(field) field$db_column, character(1))
+  )
+
+  if (is.data.frame(values)) {
+    values <- sft_row_to_list(values)
+  }
+
+  values <- as.list(values)
+  values <- values[intersect(names(values), editable_names)]
+
+  empty_supplied_mandatory <- sft_supplied_empty_mandatory_fields(
+    form = form,
+    record = values
+  )
+
+  if (length(empty_supplied_mandatory) > 0L) {
+    stop(sft_validation_error(list(sft_issue(
+      fields = empty_supplied_mandatory,
+      severity = "error",
+      message = sft_message(
+        form = form,
+        key = "mandatory_empty",
+        values = list(fields = paste(empty_supplied_mandatory, collapse = ", "))
+      ),
+      source = "mandatory"
+    ))))
+  }
+
+  field_values <- sft_record_field_values(
+    form = form,
+    record = values,
+    include_missing = FALSE,
+    editable_only = TRUE
+  )
+
+  if (length(field_values) == 0L) {
+    stop(
+      sft_message(
+        form = form,
+        key = "no_active_fields_for_update"
+      ),
+      call. = FALSE
+    )
+  }
+
+  field_values
+}
+
+# Validate the record as it will look after the update: the stored row with the
+# new values laid over it, decoded back to input shapes (see
+# sft_decode_record_values). `on_edit_missing_required` decides what a
+# mandatory field that is empty in an OLD record means: "require" refuses,
+# "warn" warns and saves, "ignore" saves.
+sft_validate_update <- function(form, conn, old_record, field_values) {
+  merged_record <- sft_row_to_list(old_record)
+
+  for (column_name in names(field_values)) {
+    merged_record[[column_name]] <- field_values[[column_name]]
+  }
+
+  merged_record <- sft_decode_record_values(form, merged_record)
+  require_all <- identical(form$on_edit_missing_required, "require")
+
+  if (!require_all && identical(form$on_edit_missing_required, "warn")) {
+    missing <- sft_missing_mandatory_fields(form, merged_record)
+
+    if (length(missing) > 0L) {
+      warning(
+        sft_message(
+          form = form,
+          key = "mandatory_missing",
+          values = list(fields = paste(missing, collapse = ", "))
+        ),
+        call. = FALSE
+      )
+    }
+  }
+
+  validate_record(
+    form = form,
+    record = merged_record,
+    conn = conn,
+    record_id = old_record$sft_id[1],
+    require_all_mandatory = require_all
+  )
+}
+
 #' Update a form record
 #'
 #' @param form Object created with [form()].
@@ -405,121 +529,10 @@ update_record <- function(form,
       include_deleted = FALSE
     )
 
-    # Optimistic-locking check, inside the transaction so no writer can slip in
-    # between the comparison and the UPDATE below.
-    if (!is.null(expected_record)) {
-      conflict_columns <- sft_conflicting_columns(
-        form = form,
-        expected_record = expected_record,
-        current_record = old_record
-      )
+    sft_check_edit_conflict(form, expected_record, current_record = old_record)
 
-      if (length(conflict_columns) > 0L) {
-        stop(
-          sft_edit_conflict_condition(
-            current_record = old_record,
-            columns = conflict_columns
-          )
-        )
-      }
-    }
-
-    editable_field_ids <- vapply(
-      sft_editable_input_fields(form),
-      function(field) field$id,
-      character(1)
-    )
-
-    editable_field_columns <- vapply(
-      sft_editable_input_fields(form),
-      function(field) field$db_column,
-      character(1)
-    )
-
-    if (is.data.frame(values)) {
-      values <- sft_row_to_list(values)
-    }
-
-    values <- as.list(values)
-    values <- values[intersect(names(values), c(editable_field_ids, editable_field_columns))]
-
-    empty_supplied_mandatory <- sft_supplied_empty_mandatory_fields(
-      form = form,
-      record = values
-    )
-
-    if (length(empty_supplied_mandatory) > 0L) {
-      stop(sft_validation_error(list(sft_issue(
-        fields = empty_supplied_mandatory,
-        severity = "error",
-        message = sft_message(
-          form = form,
-          key = "mandatory_empty",
-          values = list(fields = paste(empty_supplied_mandatory, collapse = ", "))
-        ),
-        source = "mandatory"
-      ))))
-    }
-
-    field_values <- sft_record_field_values(
-      form = form,
-      record = values,
-      include_missing = FALSE,
-      editable_only = TRUE
-    )
-
-    if (length(field_values) == 0L) {
-      stop(
-        sft_message(
-          form = form,
-          key = "no_active_fields_for_update"
-        ),
-        call. = FALSE
-      )
-    }
-
-    merged_record <- sft_row_to_list(old_record)
-
-    for (column_name in names(field_values)) {
-      merged_record[[column_name]] <- field_values[[column_name]]
-    }
-
-    # Validation runs on input-shaped values (see sft_decode_record_values).
-    merged_record <- sft_decode_record_values(form, merged_record)
-
-    if (identical(form$on_edit_missing_required, "require")) {
-      validate_record(
-        form = form,
-        record = merged_record,
-        conn = conn,
-        record_id = old_record$sft_id[1],
-        require_all_mandatory = TRUE
-      )
-    } else {
-      missing <- sft_missing_mandatory_fields(form, merged_record)
-
-      if (
-        length(missing) > 0L &&
-          identical(form$on_edit_missing_required, "warn")
-      ) {
-        warning(
-          sft_message(
-            form = form,
-            key = "mandatory_missing",
-            values = list(fields = paste(missing, collapse = ", "))
-          ),
-          call. = FALSE
-        )
-      }
-
-      validate_record(
-        form = form,
-        record = merged_record,
-        conn = conn,
-        record_id = old_record$sft_id[1],
-        require_all_mandatory = FALSE
-      )
-    }
+    field_values <- sft_update_field_values(form, values)
+    sft_validate_update(form, conn, old_record, field_values)
 
     now <- sft_now()
 

@@ -154,6 +154,58 @@ sft_get_restore_audit_row <- function(conn,
   out
 }
 
+# The snapshot restore_record() goes back to: the audit row (the requested
+# version, or the latest non-deleted one) and its new_data parsed to a record.
+sft_restore_snapshot <- function(conn, form, record_id, record_uuid, version_no) {
+  audit_row <- sft_get_restore_audit_row(
+    conn = conn,
+    form = form,
+    record_id = record_id,
+    record_uuid = record_uuid,
+    version_no = version_no
+  )
+
+  if (nrow(audit_row) == 0L) {
+    stop("No audit snapshot found for restore.", call. = FALSE)
+  }
+
+  if (is.na(audit_row$new_data_json[1]) || !nzchar(audit_row$new_data_json[1])) {
+    stop("Selected audit version has no restorable snapshot.", call. = FALSE)
+  }
+
+  list(
+    audit_row = audit_row,
+    record = sft_json_to_record(audit_row$new_data_json[1])
+  )
+}
+
+# Friendly pre-check of a REACTIVATING restore (slot back to 0): refuse up front
+# when a unique field's restored value is already held by a live row, instead of
+# surfacing the raw constraint error from the UPDATE. Excludes the record
+# itself. A non-reactivating restore leaves the row soft-deleted (slot =
+# sft_id), so it cannot collide and is not checked.
+sft_check_restore_unique <- function(form, conn, restore_values, record_id) {
+  unique_errors <- sft_validate_unique_fields(
+    form = form,
+    record = sft_decode_record_values(form, restore_values),
+    conn = conn,
+    current_id = record_id
+  )
+
+  if (length(unique_errors) > 0L) {
+    stop(
+      paste0(
+        "Cannot restore: a unique field's value is already held by an ",
+        "active record. ",
+        paste(unique_errors, collapse = " ")
+      ),
+      call. = FALSE
+    )
+  }
+
+  invisible(TRUE)
+}
+
 #' Fetch audit log entries
 #'
 #' @param form Object created with [form()].
@@ -352,31 +404,19 @@ restore_record <- function(form,
     resolved_record_id <- current_record$sft_id[1]
     resolved_record_uuid <- current_record$sft_uuid[1]
 
-    audit_row <- sft_get_restore_audit_row(
+    snapshot <- sft_restore_snapshot(
       conn = conn,
       form = form,
       record_id = resolved_record_id,
       record_uuid = resolved_record_uuid,
       version_no = version_no
     )
-
-    if (nrow(audit_row) == 0L) {
-      stop("No audit snapshot found for restore.", call. = FALSE)
-    }
-
-    if (
-      is.na(audit_row$new_data_json[1]) ||
-        !nzchar(audit_row$new_data_json[1])
-    ) {
-      stop("Selected audit version has no restorable snapshot.", call. = FALSE)
-    }
-
-    snapshot <- sft_json_to_record(audit_row$new_data_json[1])
+    audit_row <- snapshot$audit_row
 
     restore_values <- sft_restore_values_from_snapshot(
       conn = conn,
       form = form,
-      snapshot = snapshot,
+      snapshot = snapshot$record,
       current_record = current_record,
       reactivate = reactivate,
       user = user
@@ -386,29 +426,8 @@ restore_record <- function(form,
       stop("No values available for restore.", call. = FALSE)
     }
 
-    # Friendly pre-check: when the record is being reactivated (slot back to 0),
-    # reject the restore up front if a unique field's restored value is already
-    # held by a live row, instead of surfacing the raw database constraint error
-    # from the UPDATE below. Excludes this record itself. A non-reactivating
-    # restore leaves the row soft-deleted (slot = sft_id), so it cannot collide.
     if (isTRUE(reactivate)) {
-      unique_errors <- sft_validate_unique_fields(
-        form = form,
-        record = sft_decode_record_values(form, restore_values),
-        conn = conn,
-        current_id = resolved_record_id
-      )
-
-      if (length(unique_errors) > 0L) {
-        stop(
-          paste0(
-            "Cannot restore: a unique field's value is already held by an ",
-            "active record. ",
-            paste(unique_errors, collapse = " ")
-          ),
-          call. = FALSE
-        )
-      }
+      sft_check_restore_unique(form, conn, restore_values, resolved_record_id)
     }
 
     sql <- sft_sql_update_by_id(conn, form$table_name, names(restore_values))

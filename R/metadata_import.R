@@ -301,7 +301,10 @@ sft_metadata_input_type <- function(row) {
 sft_make_identifier <- function(value, fallback = "form") {
   value <- as.character(value %||% fallback)
   value <- value[[1L]]
-  value <- iconv(value, from = "", to = "ASCII//TRANSLIT")
+  # iconv() answers NA for text it cannot transliterate; fall back to the raw
+  # value and let the character filter below reduce it.
+  ascii <- iconv(value, from = "", to = "ASCII//TRANSLIT")
+  value <- if (is.na(ascii)) value else ascii
   value <- gsub("[^A-Za-z0-9_]+", "_", value)
   value <- gsub("_+", "_", value)
   value <- gsub("^_+|_+$", "", value)

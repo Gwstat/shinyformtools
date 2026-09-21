@@ -229,12 +229,14 @@ sft_builtin_input_specs <- function() {
     checkboxInput = row(
       shiny::checkboxInput,
       db_type = "INTEGER",
+      # One notion of "true" in both directions (sft_truthy: TRUE, a non-zero
+      # number, "1" / "true" / "yes"). Encoding used to be as.integer(isTRUE(x)),
+      # so a script that inserted 1, "1" or "TRUE" - an import from a table -
+      # silently stored 0. The checkbox itself always delivers TRUE / FALSE.
       encode = function(value) {
-        if (sft_is_single_na(value)) NA_integer_ else as.integer(isTRUE(value))
+        if (sft_is_single_na(value)) NA_integer_ else as.integer(sft_truthy(value))
       },
-      decode = function(value) {
-        isTRUE(value) || identical(value, 1L) || identical(value, "1") || identical(value, "TRUE")
-      },
+      decode = function(value) sft_truthy(value),
       update_value = shiny::updateCheckboxInput,
       empty = FALSE
     ),

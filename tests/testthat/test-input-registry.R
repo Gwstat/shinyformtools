@@ -338,3 +338,31 @@ test_that("the conflict view pushes stored values, and empties, through the type
     sft_conflict_set_input(NULL, form_field(id = "s", label = "S", input_type = "cStatic"), "x")
   )
 })
+
+# A checkbox stored as.integer(isTRUE(x)): a script inserting 1, "1" or "TRUE"
+# - an import from a table - silently stored 0. Storing and reading back now
+# share one notion of "true".
+test_that("a checkbox stores every spelling of true as 1, and false as 0", {
+  field <- form_field(id = "active", label = "Active", input_type = "checkboxInput")
+
+  for (yes in list(TRUE, 1, 1L, "1", "TRUE", "true", "yes")) {
+    expect_identical(sft_field_db_value(field, yes), 1L, info = paste(class(yes)[1], format(yes)))
+  }
+
+  for (no in list(FALSE, 0, 0L, "0", "FALSE", "no", "")) {
+    expect_identical(sft_field_db_value(field, no), 0L, info = paste(class(no)[1], format(no)))
+  }
+
+  expect_identical(sft_field_db_value(field, NA), NA_integer_)
+  expect_true(sft_ui_value(field, 1L))
+  expect_false(sft_ui_value(field, 0L))
+
+  conn <- local_test_conn()
+  flags <- form(
+    form_id = "flags", table_name = "flags", db = db_sqlite(tempfile(fileext = ".sqlite")),
+    fields = list(form_field("name", "Name"), field)
+  )
+  init_db(flags, conn = conn)
+  expect_identical(as.integer(insert_record(flags, list(name = "a", active = 1), conn = conn)$active), 1L)
+  expect_identical(as.integer(insert_record(flags, list(name = "b", active = "TRUE"), conn = conn)$active), 1L)
+})

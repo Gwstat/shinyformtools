@@ -19,7 +19,7 @@ sft_register_crud <- function(input, output, session, state) {
 
   shiny::observeEvent(input$include_deleted, {
     state$refresh()
-  })
+  }, ignoreInit = TRUE)
 
   shiny::observeEvent(input$open_add, {
     # Guarded: runs in the form's language and survives a failing connection.

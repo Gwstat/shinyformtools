@@ -11,7 +11,8 @@ fetch_records(form, conn = NULL, include_deleted = FALSE)
 
 \item{conn}{Optional DBI connection.}
 
-\item{include_deleted}{Logical. Whether soft-deleted records are included.}
+\item{include_deleted}{Logical. Whether soft-deleted records are included.
+\code{"only"} returns just the soft-deleted records, filtered by the database.}
 }
 \value{
 A data frame.

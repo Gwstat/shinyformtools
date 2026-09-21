@@ -310,3 +310,17 @@ testthat::test_that("sft_update_record does not overwrite non-editable fields", 
   testthat::expect_equal(updated$name, "Ada Lovelace")
   testthat::expect_equal(updated$created_note, "initial")
 })
+
+testthat::test_that("fetch_records(include_deleted = \"only\") lets the database pick the deleted rows", {
+  conn <- local_test_conn()
+  f <- test_form_basic()
+  init_db(f, conn = conn)
+
+  keep <- insert_record(f, list(name = "Ada"), conn = conn)
+  gone <- insert_record(f, list(name = "Bob"), conn = conn)
+  soft_delete_record(f, record_id = gone$sft_id[1], conn = conn)
+
+  testthat::expect_identical(fetch_records(f, conn = conn)$name, "Ada")
+  testthat::expect_identical(fetch_records(f, conn = conn, include_deleted = "only")$name, "Bob")
+  testthat::expect_setequal(fetch_records(f, conn = conn, include_deleted = TRUE)$name, c("Ada", "Bob"))
+})
