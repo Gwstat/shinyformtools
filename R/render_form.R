@@ -42,18 +42,6 @@ sft_first_field_label <- function(fields, label_name) {
   labels[[1L]]
 }
 
-sft_slide_label <- function(form, fields, slide_value) {
-  sft_first_field_label(fields, "slide_label") %||%
-    sft_layout_index_label(
-      labels = form$slide_labels,
-      index = slide_value,
-      default = sft_interpolate_text(
-        sft_table_labels()$slide_default,
-        values = list(n = as.integer(slide_value) + 1L)
-      )
-    )
-}
-
 sft_tab_label <- function(form, fields, tab_value) {
   sft_first_field_label(fields, "tab_label") %||%
     sft_layout_index_label(

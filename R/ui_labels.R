@@ -136,6 +136,3 @@ sft_ui_label <- function(labels, key, values = list()) {
   )
 }
 
-sft_has_ui_label <- function(labels, key) {
-  !is.null(sft_ui_label(labels, key))
-}

@@ -122,17 +122,6 @@ sft_get_column_settings <- function(conn, form, user) {
   as.character(value)
 }
 
-sft_set_column_settings <- function(conn, form, user, columns) {
-  sft_set_user_preference(
-    conn = conn,
-    form = form,
-    user = user,
-    key = "record_columns",
-    value = list(columns = as.character(columns))
-  )
-}
-
-
 sft_column_view_key <- function(view_name) {
   view_name <- as.character(view_name %||% "Standard")
 

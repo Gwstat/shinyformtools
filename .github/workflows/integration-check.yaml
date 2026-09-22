@@ -4,11 +4,9 @@
 # needs, and runs a live MariaDB service. This exercises the spatial and backend
 # code paths that the lightweight core check (R-CMD-check.yaml) skips.
 #
-# Note: the package's current test suite does not yet open a MariaDB connection
-# (the only MariaDB test just builds a config object), so the service and the
-# SFT_MARIADB_* variables are forward-looking infrastructure; they are wired with
-# the names the package reads (SFT_MARIADB_USER / SFT_MARIADB_PASSWORD, plus the
-# _DB / _HOST / _PORT convention used by the bundled example).
+# The live MariaDB tests (test-mariadb-live.R and friends) opt in through
+# SFT_TEST_MARIADB_HOST and create a throwaway database per test, so they run
+# as root here. The SFT_MARIADB_* variables serve the bundled example.
 on:
   pull_request:
   workflow_dispatch:
@@ -50,6 +48,10 @@ jobs:
       SFT_MARIADB_DB: shinyformtools
       SFT_MARIADB_HOST: 127.0.0.1
       SFT_MARIADB_PORT: "3306"
+      SFT_TEST_MARIADB_HOST: 127.0.0.1
+      SFT_TEST_MARIADB_PORT: "3306"
+      SFT_TEST_MARIADB_USER: root
+      SFT_TEST_MARIADB_PASSWORD: root
 
     steps:
       - uses: actions/checkout@v6

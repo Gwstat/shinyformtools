@@ -26,10 +26,6 @@ sft_is_stored_field <- function(field) {
   sft_is_input_field(field) || sft_is_shape_field(field)
 }
 
-sft_supported_shape_encodings <- function() {
-  c("geojson", "wkt")
-}
-
 sft_check_optional_label <- function(value, name) {
   if (is.null(value)) {
     return(invisible(TRUE))

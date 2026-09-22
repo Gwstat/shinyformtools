@@ -413,26 +413,6 @@ sft_rule_issues <- function(form,
   issues
 }
 
-# The rule messages split by severity, for callers that only report them.
-sft_validate_rules <- function(form,
-                               record,
-                               conn = NULL,
-                               current_id = NULL,
-                               context = NULL) {
-  issues <- sft_rule_issues(
-    form = form,
-    record = record,
-    conn = conn,
-    current_id = current_id,
-    context = context
-  )
-
-  list(
-    errors = sft_issue_messages(issues, "error"),
-    warnings = sft_issue_messages(issues, "warning")
-  )
-}
-
 #' Forbid a condition
 #'
 #' Convenience wrapper for [validation_rule()] for the common pattern

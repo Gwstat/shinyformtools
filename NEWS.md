@@ -1,3 +1,10 @@
+# shinyformtools (development version)
+
+* Housekeeping, no change in behaviour: the weekly integration workflow now
+  runs the live MariaDB tests (it started a server but set the wrong variable
+  names); every tracked file is stored with LF line endings; five internal
+  helpers that nothing called were removed.
+
 # shinyformtools 0.3.0
 
 * New: export to CSV and Excel. `export_records(form, "people.xlsx")` writes a
