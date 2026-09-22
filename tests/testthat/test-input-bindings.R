@@ -168,3 +168,24 @@ test_that("date range dynamic value updates use start and end arguments", {
   expect_equal(args$start, as.Date("2026-06-01"))
   expect_equal(args$end, as.Date("2026-06-05"))
 })
+
+test_that("an empty choice list sends an explicit empty selection", {
+  # Shiny's update functions insist on a real session, so the capture goes
+  # through a registered input whose update function records its arguments.
+  captured <- NULL
+  register_input(
+    "capture_select", fun = shiny::selectInput, value_arg = "selected",
+    update_fun = function(session, inputId, choices = NULL, selected = NULL, ...) {
+      captured <<- list(choices = choices, selected = selected)
+    }
+  )
+
+  sft_update_choices_input(list(), "capture_select", "street", choices = character())
+  # Without a `value` in the message Shiny's client selects the first option
+  # of an empty list and fails with a script error (server-side selectize).
+  expect_false(is.null(captured$selected))
+  expect_length(captured$selected, 0L)
+
+  sft_update_choices_input(list(), "capture_select", "city", choices = c("Bonn", "Kiel"))
+  expect_null(captured$selected)
+})

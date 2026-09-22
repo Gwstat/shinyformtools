@@ -102,9 +102,9 @@ how_to <- function() {
       shiny::tags$li(shiny::tags$b("No pager: "),
         "all rows on one page, no length menu or global search."),
       shiny::tags$li(shiny::tags$b("Type-aware filters: "),
-        "the header search is a range slider for ", shiny::tags$em("Score"),
-        ", a dropdown for ", shiny::tags$em("Team"), " and a text box for ",
-        shiny::tags$em("Name"), "."),
+        "the header search is a range slider for ", shiny::tags$em("ID"),
+        " and ", shiny::tags$em("Score"), ", and a text box for ",
+        shiny::tags$em("Name"), " and ", shiny::tags$em("Team"), "."),
       shiny::tags$li(shiny::tags$b("Colours: "),
         "Score cells are banded red/amber/green; Team text is coloured by group.")
     )

@@ -4,6 +4,16 @@
   runs the live MariaDB tests (it started a server but set the wrong variable
   names); every tracked file is stored with LF line endings; five internal
   helpers that nothing called were removed.
+* Fixed: numeric fields reached the records table as text, so DT sorted them
+  as text ("100" before "35") and drew a text box instead of a range slider
+  for the column filter. They stay numeric now.
+* Fixed: a records table with a column filter (`table = list(filter = )`)
+  loads DT's older selectize, which then broke every select input in the add
+  and edit dialog under Shiny 1.13 (the dialog stayed unbound and could not
+  save). `form_ui()` and `form_buttons()` now put Shiny's own selectize on the
+  page first.
+* Fixed: a dynamic choice list that becomes empty (`dynamic_choices()` with a
+  server-side selectize) raised a script error in the browser.
 * Slide headings: `form(slide_labels = )` and `form_field(slide_label = )` were
   stored but never shown. A multi-slide form now renders the label as a heading
   above its slide. Slides without a label get no heading, so existing slide

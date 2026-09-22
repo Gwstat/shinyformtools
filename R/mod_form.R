@@ -140,6 +140,7 @@ form_ui <- function(id,
 
   shiny::tagList(
     shinyjs::useShinyjs(),
+    sft_selectize_dependency(),
     sft_button_css(),
     sft_highlight_css(ns),
     sft_table_style_css(ns, table_style),

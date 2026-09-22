@@ -43,6 +43,7 @@ Config/testthat/edition: 3
 Imports:
     DBI,
     DT,
+    htmltools,
     jsonlite,
     RSQLite,
     shiny,

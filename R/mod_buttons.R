@@ -95,6 +95,20 @@ sft_button_justify_content <- function(align) {
   )
 }
 
+# Shiny's own selectize assets, loaded up front. The records table can carry
+# DT's older selectize (a column filter on a factor column brings it along),
+# and a dynamically rendered table registers it FIRST when the page has no
+# select input yet - the module's inputs live in a dialog that opens later.
+# The client keeps the first "selectize" it saw, so the dialog's selectInput
+# then runs on the old copy, cannot find Shiny's a11y plugin, and the whole
+# dialog stays unbound. Putting Shiny's copy on the page first ends that.
+sft_selectize_dependency <- function() {
+  htmltools::attachDependencies(
+    shiny::tags$div(class = "sft-selectize-dependency", style = "display:none"),
+    htmltools::findDependencies(shiny::selectizeInput("sft_selectize_dependency", NULL, NULL))
+  )
+}
+
 sft_button_css <- function() {
   shiny::tagList(
     shiny::tags$style(shiny::HTML(
@@ -316,6 +330,7 @@ form_buttons <- function(id,
   )
 
   shiny::tagList(
+    sft_selectize_dependency(),
     sft_button_css(),
     sft_form_button_row(
       ns = ns,

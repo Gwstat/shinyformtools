@@ -190,3 +190,14 @@ test_that("the module's download holds the visible columns and respects can_expo
     }
   )
 })
+
+test_that("form_ui and form_buttons bring Shiny's selectize before any table can", {
+  # DT's column filter ships an older selectize; whichever registers first
+  # wins on the client, and the dialog's select inputs need Shiny's copy.
+  for (ui in list(form_ui("m"), form_buttons("m"))) {
+    deps <- htmltools::findDependencies(ui)
+    selectize <- Filter(function(d) identical(d$name, "selectize"), deps)
+    expect_length(selectize, 1L)
+    expect_true(package_version(selectize[[1L]]$version) >= "0.15")
+  }
+})

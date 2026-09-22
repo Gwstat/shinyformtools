@@ -395,6 +395,13 @@ sft_update_choices_input <- function(session,
                                      choices,
                                      selected = NULL,
                                      update_args = list()) {
+  # With no choices there is nothing to select, and the message must say so:
+  # a server-side selectize update without a `value` makes Shiny's client
+  # select the first option of an empty list and fail with a script error.
+  if (is.null(selected) && length(sft_choice_values(choices)) == 0L) {
+    selected <- character()
+  }
+
   args <- c(
     list(
       session = session,

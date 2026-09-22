@@ -164,19 +164,34 @@ sft_format_field_display_columns <- function(data, form) {
       next
     }
 
-    data[[column]] <- vapply(
+    formatted <- lapply(
       data[[column]],
-      function(value) {
-        out <- sft_format_field_display_value(field = field, value = value)
-
-        if (is.null(out) || length(out) == 0L || is.na(out[1L])) {
-          return(NA_character_)
-        }
-
-        as.character(out[1L])
-      },
-      character(1)
+      function(value) sft_format_field_display_value(field = field, value = value)
     )
+
+    # A number stays a number: DT sorts and filters a numeric column as such
+    # (a text column sorts "100" before "35" and gets a text box instead of a
+    # range slider). Only when a field formats its numbers into text (a
+    # registered input's own `format`, say) does the column become text.
+    keeps_number <- is.numeric(data[[column]]) && all(vapply(
+      formatted,
+      function(out) is.null(out) || length(out) == 0L || is.numeric(out),
+      logical(1)
+    ))
+
+    if (!keeps_number) {
+      data[[column]] <- vapply(
+        formatted,
+        function(out) {
+          if (is.null(out) || length(out) == 0L || is.na(out[1L])) {
+            return(NA_character_)
+          }
+
+          as.character(out[1L])
+        },
+        character(1)
+      )
+    }
 
     if (isTRUE(field$markdown)) {
       data[[column]] <- sft_render_markdown(data[[column]])
