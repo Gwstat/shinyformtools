@@ -271,6 +271,9 @@ form_ui <- function(id,
 #'       `options(shinyformtools.datetime_timezone = "UTC")` (or any Olson
 #'       name) to pin it. Values stored without an offset, such as a user's
 #'       own date field, are never shifted.}
+#'     \item{`checkbox_labels`}{Logical, default `FALSE`. Show checkbox fields
+#'       in the records table as the language's yes / no labels instead of
+#'       0 / 1. The export keeps writing `TRUE` / `FALSE`.}
 #'   }
 #' @param columns Named list controlling which columns the records table shows:
 #'   \describe{

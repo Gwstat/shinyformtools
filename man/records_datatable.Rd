@@ -14,7 +14,8 @@ records_datatable(
   class = "display compact stripe hover nowrap",
   datetime_format = sft_default_datetime_format(),
   display_column_labels = NULL,
-  filter = "none"
+  filter = "none",
+  checkbox_labels = FALSE
 )
 }
 \arguments{
@@ -41,6 +42,9 @@ additional display-only columns created by a display transform.}
 (default), \code{"top"} or \code{"bottom"} add per-column search controls that adapt
 to each column's type (range slider for numeric columns, a select for
 factors, a text box otherwise).}
+
+\item{checkbox_labels}{Logical. Show checkbox fields as the language's
+yes / no labels instead of 0 / 1.}
 }
 \value{
 A DT table widget.

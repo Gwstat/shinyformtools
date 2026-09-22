@@ -1,4 +1,9 @@
-# shinyformtools (development version)
+# shinyformtools 0.3.1
+
+* New, off by default: `form_server(table = list(checkbox_labels = TRUE))`
+  shows checkbox fields in the records table as the language's yes / no
+  labels ("Yes" / "No", "Ja" / "Nein") instead of 0 / 1. The export keeps
+  writing `TRUE` / `FALSE`.
 
 * Housekeeping, no change in behaviour: the weekly integration workflow now
   runs the live MariaDB tests (it started a server but set the wrong variable

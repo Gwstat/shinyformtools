@@ -96,6 +96,9 @@ rendered in the time zone of the machine running the app; set
 \code{options(shinyformtools.datetime_timezone = "UTC")} (or any Olson
 name) to pin it. Values stored without an offset, such as a user's
 own date field, are never shifted.}
+\item{\code{checkbox_labels}}{Logical, default \code{FALSE}. Show checkbox fields
+in the records table as the language's yes / no labels instead of
+0 / 1. The export keeps writing \code{TRUE} / \code{FALSE}.}
 }}
 
 \item{columns}{Named list controlling which columns the records table shows:

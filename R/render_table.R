@@ -150,7 +150,7 @@ sft_format_datetime_value <- function(x, datetime_format = sft_default_datetime_
 
 
 
-sft_format_field_display_columns <- function(data, form) {
+sft_format_field_display_columns <- function(data, form, checkbox_labels = FALSE) {
   if (!is.data.frame(data) || nrow(data) == 0L) {
     return(data)
   }
@@ -161,6 +161,11 @@ sft_format_field_display_columns <- function(data, form) {
     column <- field$db_column
 
     if (!column %in% names(data)) {
+      next
+    }
+
+    if (isTRUE(checkbox_labels) && sft_is_logical_field(field, data[[column]])) {
+      data[[column]] <- sft_logical_labels(field, data[[column]])
       next
     }
 
@@ -199,6 +204,36 @@ sft_format_field_display_columns <- function(data, form) {
   }
 
   data
+}
+
+# A field whose stored values decode to TRUE / FALSE (a checkbox, or a
+# registered input that decodes to logical). Decided per value, no switch on
+# the input type.
+sft_is_logical_field <- function(field, values) {
+  decoded <- lapply(values, function(value) sft_ui_value(field, value))
+  known <- !vapply(decoded, is.null, logical(1)) & !is.na(values)
+
+  any(known) && all(vapply(decoded[known], is.logical, logical(1)))
+}
+
+# The yes / no words of the active language for a logical column; NA stays NA.
+sft_logical_labels <- function(field, values) {
+  tl <- sft_table_labels()
+
+  vapply(
+    values,
+    function(value) {
+      decoded <- sft_ui_value(field, value)
+
+      if (is.null(decoded) || is.na(value)) {
+        return(NA_character_)
+      }
+
+      as.character(if (isTRUE(decoded)) tl$flag_yes else tl$flag_no)
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
 }
 
 sft_format_display_data <- function(data, datetime_format = sft_default_datetime_format()) {
@@ -415,7 +450,8 @@ sft_records_table_data <- function(data,
                                    columns = NULL,
                                    show_system_columns = FALSE,
                                    datetime_format = sft_default_datetime_format(),
-                                   display_column_labels = NULL) {
+                                   display_column_labels = NULL,
+                                   checkbox_labels = FALSE) {
   if (!inherits(form, "sft_form")) {
     stop("form must be a form object.", call. = FALSE)
   }
@@ -432,7 +468,7 @@ sft_records_table_data <- function(data,
   )
 
   out <- data[, columns, drop = FALSE]
-  out <- sft_format_field_display_columns(out, form = form)
+  out <- sft_format_field_display_columns(out, form = form, checkbox_labels = checkbox_labels)
   out <- sft_format_display_data(out, datetime_format = datetime_format)
   out <- sft_apply_column_labels(
     data = out,
@@ -464,6 +500,8 @@ sft_records_table_data <- function(data,
 #'   (default), `"top"` or `"bottom"` add per-column search controls that adapt
 #'   to each column's type (range slider for numeric columns, a select for
 #'   factors, a text box otherwise).
+#' @param checkbox_labels Logical. Show checkbox fields as the language's
+#'   yes / no labels instead of 0 / 1.
 #'
 #' @return A DT table widget.
 #' @examples
@@ -492,7 +530,8 @@ records_datatable <- function(data,
                                   class = "display compact stripe hover nowrap",
                                   datetime_format = sft_default_datetime_format(),
                                   display_column_labels = NULL,
-                                  filter = "none") {
+                                  filter = "none",
+                                  checkbox_labels = FALSE) {
   if (!inherits(form, "sft_form")) {
     stop("form must be a form object.", call. = FALSE)
   }
@@ -507,7 +546,8 @@ records_datatable <- function(data,
     columns = columns,
     show_system_columns = show_system_columns,
     datetime_format = datetime_format,
-    display_column_labels = display_column_labels
+    display_column_labels = display_column_labels,
+    checkbox_labels = checkbox_labels
   )
 
   escape <- sft_table_escape(attr(out, "sft_markdown_positions"))

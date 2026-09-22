@@ -35,7 +35,8 @@ sft_table_defaults <- function() {
     audit_options = list(),
     version_options = list(),
     deleted_records_options = list(),
-    datetime_format = sft_default_datetime_format()
+    datetime_format = sft_default_datetime_format(),
+    checkbox_labels = FALSE
   )
 }
 

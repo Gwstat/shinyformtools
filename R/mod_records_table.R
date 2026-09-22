@@ -15,6 +15,7 @@ sft_register_records_table <- function(input, output, session, state) {
   table_format <- state$table$format
   audit_options <- state$table$audit_options
   datetime_format <- state$table$datetime_format
+  checkbox_labels <- state$table$checkbox_labels
   display_column_labels <- state$columns$labels
   can_view_table <- state$permissions$can_view_table
   can_view_audit <- state$permissions$can_view_audit
@@ -59,7 +60,8 @@ sft_register_records_table <- function(input, output, session, state) {
       datetime_format = datetime_format,
       display_column_labels = display_column_labels,
       class = table_class,
-      filter = table_filter
+      filter = table_filter,
+      checkbox_labels = checkbox_labels
     )
 
     sft_apply_table_format(
