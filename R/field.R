@@ -72,7 +72,8 @@ sft_check_optional_label <- function(value, name) {
 #' @param tab Integer-like layout tab position.
 #' @param tab_label Optional label for the tab this field belongs to.
 #' @param slide Integer-like layout slide position.
-#' @param slide_label Optional label for the slide this field belongs to.
+#' @param slide_label Optional heading shown above the slide this field
+#'   belongs to (multi-slide forms only).
 #' @param col Integer-like layout column position.
 #' @param pos Integer-like position inside tab/slide/column.
 #' @param status Field lifecycle status. One of `"active"`, `"retired"` or
@@ -164,7 +165,8 @@ form_field <- function(id,
 #' @param tab Integer-like layout tab position.
 #' @param tab_label Optional label for the tab this field belongs to.
 #' @param slide Integer-like layout slide position.
-#' @param slide_label Optional label for the slide this field belongs to.
+#' @param slide_label Optional heading shown above the slide this field
+#'   belongs to (multi-slide forms only).
 #' @param col Integer-like layout column position.
 #' @param pos Integer-like position inside tab/slide/column.
 #' @param show Logical. Whether the element is shown.
@@ -283,7 +285,8 @@ shape_field <- function(id,
 #' @param tab Integer-like layout tab position.
 #' @param tab_label Optional label for the tab this field belongs to.
 #' @param slide Integer-like layout slide position.
-#' @param slide_label Optional label for the slide this field belongs to.
+#' @param slide_label Optional heading shown above the slide this field
+#'   belongs to (multi-slide forms only).
 #' @param col Integer-like layout column position.
 #' @param pos Integer-like position inside tab/slide/column.
 #' @param show Logical. Whether the element is shown.

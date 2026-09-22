@@ -75,7 +75,8 @@ records are edited. One of \code{"warn"}, \code{"require"} or \code{"ignore"}.}
 \item{tab_labels}{Optional labels for tab indices. Named labels use the tab
 value as name; unnamed labels are interpreted as zero-based layout labels.}
 
-\item{slide_labels}{Optional labels for slide indices. Named labels use the
+\item{slide_labels}{Optional headings for the slides of a multi-slide
+form, shown above each slide. Named labels use the
 slide value as name; unnamed labels are interpreted as zero-based layout
 labels.}
 

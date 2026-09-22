@@ -4,6 +4,10 @@
   runs the live MariaDB tests (it started a server but set the wrong variable
   names); every tracked file is stored with LF line endings; five internal
   helpers that nothing called were removed.
+* Slide headings: `form(slide_labels = )` and `form_field(slide_label = )` were
+  stored but never shown. A multi-slide form now renders the label as a heading
+  above its slide. Slides without a label get no heading, so existing slide
+  forms render as before. New example `app_presentation_german`.
 
 # shinyformtools 0.3.0
 

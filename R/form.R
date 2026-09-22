@@ -81,7 +81,8 @@ sft_check_form_region <- function(region, name) {
 #'   records are edited. One of `"warn"`, `"require"` or `"ignore"`.
 #' @param tab_labels Optional labels for tab indices. Named labels use the tab
 #'   value as name; unnamed labels are interpreted as zero-based layout labels.
-#' @param slide_labels Optional labels for slide indices. Named labels use the
+#' @param slide_labels Optional headings for the slides of a multi-slide
+#'   form, shown above each slide. Named labels use the
 #'   slide value as name; unnamed labels are interpreted as zero-based layout
 #'   labels.
 #' @param messages Optional named list of validation messages.

@@ -30,7 +30,8 @@ html_field(
 
 \item{slide}{Integer-like layout slide position.}
 
-\item{slide_label}{Optional label for the slide this field belongs to.}
+\item{slide_label}{Optional heading shown above the slide this field
+belongs to (multi-slide forms only).}
 
 \item{col}{Integer-like layout column position.}
 

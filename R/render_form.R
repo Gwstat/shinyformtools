@@ -42,6 +42,18 @@ sft_first_field_label <- function(fields, label_name) {
   labels[[1L]]
 }
 
+# The heading of a slide: a field's `slide_label` or the form's `slide_labels`
+# entry. NULL when neither is set - a slide without a label gets no heading,
+# so existing slide forms render exactly as before.
+sft_slide_label <- function(form, fields, slide_value) {
+  sft_first_field_label(fields, "slide_label") %||%
+    sft_layout_index_label(
+      labels = form$slide_labels,
+      index = slide_value,
+      default = NULL
+    )
+}
+
 sft_tab_label <- function(form, fields, tab_value) {
   sft_first_field_label(fields, "tab_label") %||%
     sft_layout_index_label(
@@ -435,9 +447,14 @@ sft_render_form_slides <- function(form,
         fields
       )
 
+      slide_label <- sft_slide_label(form, slide_fields, slide_value)
+
       shinyglide::screen(
         shiny::tags$div(
           class = "sft-slide-screen",
+          if (!is.null(slide_label)) {
+            shiny::tags$h4(class = "sft-slide-title", slide_label)
+          },
           sft_render_form_tabs(
             form = form,
             fields = slide_fields,

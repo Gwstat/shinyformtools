@@ -111,6 +111,12 @@ Start with **app_crud_basic**; the rest each focus on one capability.
   response, and the form then **closes** to a thank-you ("Submit another
   response" reloads a fresh survey). Requires the optional `shinyglide` package.
 
+- **app_presentation_german** — a German talk-registration form on three
+  slides inside the regular add / edit dialog. `form(slide_labels = c(...))`
+  puts a heading above each slide (a field's `slide_label` overrides it);
+  `german()` translates the package's own text including the wizard's Back /
+  Next controls. Requires the optional `shinyglide` package.
+
 - **app_bug_report** — a "Report a bug" button living in an application's
   **header** rather than a records toolbar. `form_buttons("bugs", ...)` renders
   the form module's Add button (relabelled) using the same module id, so it opens
