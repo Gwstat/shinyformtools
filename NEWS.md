@@ -1,3 +1,9 @@
+# shinyformtools (development version)
+
+* New example `app_matrix_input`: a cross table (party x vote type) as a single
+  field via `register_input()` and `shinyMatrix::matrixInput`, stored as JSON,
+  shown as totals, validated cell by cell.
+
 # shinyformtools 0.3.1
 
 * New, off by default: `form_server(table = list(checkbox_labels = TRUE))`

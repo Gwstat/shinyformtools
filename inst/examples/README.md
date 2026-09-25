@@ -111,6 +111,13 @@ Start with **app_crud_basic**; the rest each focus on one capability.
   response, and the form then **closes** to a thank-you ("Submit another
   response" reloads a fresh survey). Requires the optional `shinyglide` package.
 
+- **app_matrix_input** — a cross table as one field. `register_input()`
+  teaches the package `shinyMatrix::matrixInput`; a party x vote-type matrix
+  is entered in the regular add / edit dialog, stored as JSON in one column
+  (`encode` / `decode`), shown as column totals in the records table
+  (`format`), and checked by a validation rule that looks into the cells.
+  Requires the optional `shinyMatrix` package.
+
 - **app_presentation_german** — a German talk-registration form on three
   slides inside the regular add / edit dialog. `form(slide_labels = c(...))`
   puts a heading above each slide (a field's `slide_label` overrides it);
