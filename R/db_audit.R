@@ -1,33 +1,36 @@
+# The next version number of a record's audit trail. The version numbers are
+# read as rows and the maximum is taken in R, on purpose: DuckDB (1.5.2)
+# raises an INTERNAL error for MAX() over the unique index when the
+# transaction already holds uncommitted audit rows and the filter matches
+# nothing - exactly the second insert of upsert_records(). A record has few
+# versions, so the rows are cheap; the query shape is the same on every
+# backend.
 sft_next_version_no <- function(conn, form, record_id = NULL, record_uuid = NULL) {
   if (!is.null(record_id)) {
     res <- DBI::dbGetQuery(
       conn,
       "
-      SELECT COALESCE(MAX(version_no), 0) + 1 AS version_no
+      SELECT version_no
       FROM sft_audit_log
       WHERE form_id = ? AND table_name = ? AND record_id = ?
       ",
       params = list(form$form_id, form$table_name, record_id)
     )
-
-    return(res$version_no[1])
-  }
-
-  if (!is.null(record_uuid)) {
+  } else if (!is.null(record_uuid)) {
     res <- DBI::dbGetQuery(
       conn,
       "
-      SELECT COALESCE(MAX(version_no), 0) + 1 AS version_no
+      SELECT version_no
       FROM sft_audit_log
       WHERE form_id = ? AND table_name = ? AND record_uuid = ?
       ",
       params = list(form$form_id, form$table_name, record_uuid)
     )
-
-    return(res$version_no[1])
+  } else {
+    return(1L)
   }
 
-  1L
+  as.integer(max(c(0L, res$version_no), na.rm = TRUE)) + 1L
 }
 
 sft_changed_fields <- function(old_data, new_data) {

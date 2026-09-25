@@ -215,6 +215,84 @@ fetch_records <- function(form,
   DBI::dbGetQuery(conn, sql)
 }
 
+# The body of insert_record() without the transaction, so that a caller
+# writing several records (upsert_records) can run them in ONE transaction.
+# Every caller must hold an open transaction on `conn`.
+sft_insert_record_tx <- function(conn, form, record, user = NULL, reason = NULL) {
+  validate_record(
+    form = form,
+    record = record,
+    conn = conn,
+    require_all_mandatory = TRUE
+  )
+
+  now <- sft_now()
+
+  field_values <- sft_record_field_values(
+    form = form,
+    record = record,
+    include_missing = FALSE
+  )
+
+  explicit_sft_id <- if (sft_requires_explicit_sft_id(conn)) {
+    sft_next_sft_id(conn, form$table_name)
+  } else {
+    NULL
+  }
+
+  system_values <- c(
+    if (sft_form_has_uuid(form)) list(sft_uuid = uuid::UUIDgenerate()),
+    list(
+      sft_form_version = form$version,
+      sft_created_at = now,
+      sft_created_by = sft_db_param(user),
+      sft_updated_at = now,
+      sft_updated_by = sft_db_param(user),
+      sft_is_deleted = 0L,
+      sft_unique_slot = 0L
+    )
+  )
+
+  if (!is.null(explicit_sft_id)) {
+    system_values <- c(
+      list(sft_id = explicit_sft_id),
+      system_values
+    )
+  }
+
+  values <- c(system_values, field_values)
+
+  sft_sql_insert(conn, form$table_name, names(values), values)
+
+  new_id <- explicit_sft_id %||% sft_last_insert_id(conn)
+
+  # sft_easy_id derives from the id the database just assigned, so it can only
+  # be written once that id is known - hence the follow-up UPDATE. Skipped
+  # entirely when the form does not store one.
+  if (sft_form_has_easy_id(form)) {
+    DBI::dbExecute(
+      conn,
+      paste0(
+        "UPDATE ",
+        sft_quote_identifier(conn, form$table_name),
+        " SET sft_easy_id = ? WHERE sft_id = ?"
+      ),
+      params = list(paste0(new_id, "-", sft_random_letters()), new_id)
+    )
+  }
+
+  sft_finalize_mutation(
+    conn = conn,
+    form = form,
+    record_id = new_id,
+    action = "insert",
+    old_data = NULL,
+    changed_fields = names(values),
+    user = user,
+    reason = reason
+  )
+}
+
 #' Insert a form record
 #'
 #' @param form Object created with [form()].
@@ -246,80 +324,10 @@ insert_record <- function(form,
                               reason = NULL) {
   conn <- sft_prepare_mutation(form, conn, user = user)
 
-  sft_db_with_transaction(conn, {
-    validate_record(
-      form = form,
-      record = record,
-      conn = conn,
-      require_all_mandatory = TRUE
-    )
-
-    now <- sft_now()
-
-    field_values <- sft_record_field_values(
-      form = form,
-      record = record,
-      include_missing = FALSE
-    )
-
-    explicit_sft_id <- if (sft_requires_explicit_sft_id(conn)) {
-      sft_next_sft_id(conn, form$table_name)
-    } else {
-      NULL
-    }
-
-    system_values <- c(
-      if (sft_form_has_uuid(form)) list(sft_uuid = uuid::UUIDgenerate()),
-      list(
-        sft_form_version = form$version,
-        sft_created_at = now,
-        sft_created_by = sft_db_param(user),
-        sft_updated_at = now,
-        sft_updated_by = sft_db_param(user),
-        sft_is_deleted = 0L,
-        sft_unique_slot = 0L
-      )
-    )
-
-    if (!is.null(explicit_sft_id)) {
-      system_values <- c(
-        list(sft_id = explicit_sft_id),
-        system_values
-      )
-    }
-
-    values <- c(system_values, field_values)
-
-    sft_sql_insert(conn, form$table_name, names(values), values)
-
-    new_id <- explicit_sft_id %||% sft_last_insert_id(conn)
-
-    # sft_easy_id derives from the id the database just assigned, so it can only
-    # be written once that id is known - hence the follow-up UPDATE. Skipped
-    # entirely when the form does not store one.
-    if (sft_form_has_easy_id(form)) {
-      DBI::dbExecute(
-        conn,
-        paste0(
-          "UPDATE ",
-          sft_quote_identifier(conn, form$table_name),
-          " SET sft_easy_id = ? WHERE sft_id = ?"
-        ),
-        params = list(paste0(new_id, "-", sft_random_letters()), new_id)
-      )
-    }
-
-    sft_finalize_mutation(
-      conn = conn,
-      form = form,
-      record_id = new_id,
-      action = "insert",
-      old_data = NULL,
-      changed_fields = names(values),
-      user = user,
-      reason = reason
-    )
-  })
+  sft_db_with_transaction(
+    conn,
+    sft_insert_record_tx(conn, form, record, user = user, reason = reason)
+  )
 }
 
 # Columns of the form's active input fields whose stored value differs between
@@ -489,6 +497,62 @@ sft_validate_update <- function(form, conn, old_record, field_values) {
   )
 }
 
+# The body of update_record() without the transaction; see sft_insert_record_tx.
+sft_update_record_tx <- function(conn,
+                                 form,
+                                 values,
+                                 record_id = NULL,
+                                 record_uuid = NULL,
+                                 user = NULL,
+                                 reason = NULL,
+                                 expected_record = NULL) {
+  old_record <- sft_get_record(
+    conn = conn,
+    form = form,
+    record_id = record_id,
+    record_uuid = record_uuid,
+    include_deleted = FALSE
+  )
+
+  sft_check_edit_conflict(form, expected_record, current_record = old_record)
+
+  field_values <- sft_update_field_values(form, values)
+  sft_validate_update(form, conn, old_record, field_values)
+
+  now <- sft_now()
+
+  update_values <- c(
+    field_values,
+    list(
+      # sft_form_version is intentionally left untouched: it is creation
+      # provenance, not a marker of the last write.
+      sft_updated_at = now,
+      sft_updated_by = sft_db_param(user)
+    )
+  )
+
+  DBI::dbExecute(
+    conn,
+    sft_sql_update_by_id(conn, form$table_name, names(update_values)),
+    params = c(
+      unname(update_values),
+      list(old_record$sft_id[1])
+    )
+  )
+
+  sft_finalize_mutation(
+    conn = conn,
+    form = form,
+    record_id = old_record$sft_id[1],
+    action = "update",
+    old_data = old_record,
+    changed_fields = names(field_values),
+    user = user,
+    reason = reason,
+    actual_changes_only = TRUE
+  )
+}
+
 #' Update a form record
 #'
 #' @param form Object created with [form()].
@@ -536,53 +600,70 @@ update_record <- function(form,
                               expected_record = NULL) {
   conn <- sft_prepare_mutation(form, conn, user = user)
 
-  sft_db_with_transaction(conn, {
-    old_record <- sft_get_record(
-      conn = conn,
-      form = form,
-      record_id = record_id,
-      record_uuid = record_uuid,
-      include_deleted = FALSE
+  sft_db_with_transaction(
+    conn,
+    sft_update_record_tx(
+      conn, form, values,
+      record_id = record_id, record_uuid = record_uuid,
+      user = user, reason = reason, expected_record = expected_record
     )
+  )
+}
 
-    sft_check_edit_conflict(form, expected_record, current_record = old_record)
+# The body of soft_delete_record() without the transaction; see sft_insert_record_tx.
+sft_soft_delete_record_tx <- function(conn,
+                                      form,
+                                      record_id = NULL,
+                                      record_uuid = NULL,
+                                      user = NULL,
+                                      reason = NULL) {
+  old_record <- sft_get_record(
+    conn = conn,
+    form = form,
+    record_id = record_id,
+    record_uuid = record_uuid,
+    include_deleted = FALSE
+  )
 
-    field_values <- sft_update_field_values(form, values)
-    sft_validate_update(form, conn, old_record, field_values)
+  now <- sft_now()
 
-    now <- sft_now()
-
-    update_values <- c(
-      field_values,
-      list(
-        # sft_form_version is intentionally left untouched: it is creation
-        # provenance, not a marker of the last write.
-        sft_updated_at = now,
-        sft_updated_by = sft_db_param(user)
-      )
+  DBI::dbExecute(
+    conn,
+    paste0(
+      "UPDATE ",
+      sft_quote_identifier(conn, form$table_name),
+      " SET sft_is_deleted = 1,
+            sft_deleted_at = ?,
+            sft_deleted_by = ?,
+            sft_updated_at = ?,
+            sft_updated_by = ?,
+            sft_unique_slot = ?
+        WHERE sft_id = ?"
+    ),
+    params = list(
+      now,
+      sft_db_param(user),
+      now,
+      sft_db_param(user),
+      old_record$sft_id[1],
+      old_record$sft_id[1]
     )
+  )
 
-    DBI::dbExecute(
-      conn,
-      sft_sql_update_by_id(conn, form$table_name, names(update_values)),
-      params = c(
-        unname(update_values),
-        list(old_record$sft_id[1])
-      )
-    )
-
-    sft_finalize_mutation(
-      conn = conn,
-      form = form,
-      record_id = old_record$sft_id[1],
-      action = "update",
-      old_data = old_record,
-      changed_fields = names(field_values),
-      user = user,
-      reason = reason,
-      actual_changes_only = TRUE
-    )
-  })
+  sft_finalize_mutation(
+    conn = conn,
+    form = form,
+    record_id = old_record$sft_id[1],
+    action = "delete",
+    old_data = old_record,
+    changed_fields = c(
+      "sft_is_deleted",
+      "sft_deleted_at",
+      "sft_deleted_by"
+    ),
+    user = user,
+    reason = reason
+  )
 }
 
 #' Soft-delete a form record
@@ -621,53 +702,12 @@ soft_delete_record <- function(form,
                                    reason = NULL) {
   conn <- sft_prepare_mutation(form, conn, user = user)
 
-  sft_db_with_transaction(conn, {
-    old_record <- sft_get_record(
-      conn = conn,
-      form = form,
-      record_id = record_id,
-      record_uuid = record_uuid,
-      include_deleted = FALSE
+  sft_db_with_transaction(
+    conn,
+    sft_soft_delete_record_tx(
+      conn, form,
+      record_id = record_id, record_uuid = record_uuid,
+      user = user, reason = reason
     )
-
-    now <- sft_now()
-
-    DBI::dbExecute(
-      conn,
-      paste0(
-        "UPDATE ",
-        sft_quote_identifier(conn, form$table_name),
-        " SET sft_is_deleted = 1,
-              sft_deleted_at = ?,
-              sft_deleted_by = ?,
-              sft_updated_at = ?,
-              sft_updated_by = ?,
-              sft_unique_slot = ?
-          WHERE sft_id = ?"
-      ),
-      params = list(
-        now,
-        sft_db_param(user),
-        now,
-        sft_db_param(user),
-        old_record$sft_id[1],
-        old_record$sft_id[1]
-      )
-    )
-
-    sft_finalize_mutation(
-      conn = conn,
-      form = form,
-      record_id = old_record$sft_id[1],
-      action = "delete",
-      old_data = old_record,
-      changed_fields = c(
-        "sft_is_deleted",
-        "sft_deleted_at",
-        "sft_deleted_by"
-      ),
-      user = user,
-      reason = reason
-    )
-  })
+  )
 }

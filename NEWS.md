@@ -1,5 +1,12 @@
 # shinyformtools (development version)
 
+* New: `upsert_records(form, records, key, ...)` writes several records in
+  one transaction, matched to the stored rows by key fields: insert what is
+  new, update what changed, leave the rest alone, all through the usual
+  validation and audit log. `empty` soft-deletes rows that count as empty
+  (a grid of counts stores only what was entered), `scope` soft-deletes stored
+  rows of a group that the records no longer mention. First building block of
+  grid entry over several records.
 * New example `app_matrix_input`: a cross table (party x vote type) as a single
   field via `register_input()` and `shinyMatrix::matrixInput`, stored as JSON,
   shown as totals, validated cell by cell.
