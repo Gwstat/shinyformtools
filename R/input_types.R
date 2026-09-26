@@ -302,6 +302,15 @@ sft_builtin_input_specs <- function() {
       decode = sft_format_iban,
       format = function(value, sep) sft_format_iban(value),
       update_value = updateIbanInput
+    ),
+
+    grid_input = row(
+      grid_input,
+      encode = sft_grid_encode,
+      decode = sft_grid_decode,
+      format = sft_grid_format,
+      update_value = update_grid_input,
+      empty = NULL
     )
   )
 

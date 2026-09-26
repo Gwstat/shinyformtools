@@ -205,7 +205,8 @@ test_that("a stored value survives decode -> encode unchanged for every built-in
     sliderTextInput = "[\"low\",\"high\"]",
     multiInput = "[\"a\",\"c\"]",
     timeInput = "08:30:00",
-    ibanInput = "DE89370400440532013000"
+    ibanInput = "DE89370400440532013000",
+    grid_input = "{\"rows\":[\"A\",\"B\"],\"cols\":[\"x\",\"y\"],\"values\":[[1,null],[2.5,0]]}"
   )
 
   # A new built-in has to be added here too, or this test says so.

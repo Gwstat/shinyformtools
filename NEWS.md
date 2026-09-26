@@ -1,5 +1,11 @@
 # shinyformtools (development version)
 
+* New: `grid_input()`, a table of number cells as a Shiny input (Enter and
+  arrow keys walk the cells, a block pasted from a spreadsheet lands from the
+  focused cell, row / column / total sums follow the entries, a `hint` matrix
+  shows greyed reference values); `update_grid_input()` sets values and hints
+  from the server. Also a built-in `input_type = "grid_input"` for
+  `form_field()`: stored as one JSON text, shown as column totals.
 * New: `upsert_records(form, records, key, ...)` writes several records in
   one transaction, matched to the stored rows by key fields: insert what is
   new, update what changed, leave the rest alone, all through the usual
