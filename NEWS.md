@@ -1,5 +1,12 @@
 # shinyformtools (development version)
 
+* New: grid entry over several records. `grid_ui()` / `grid_server(id, form,
+  rows, key, group, ...)` show one record per row of a grid (a group's
+  parties, an order's items) with the form's numeric fields as columns, and
+  save the whole grid through `upsert_records()` in one transaction, half a
+  second after the last change or on a Save button. Empty rows are
+  soft-deleted, a `hint` matrix shows reference values greyed, the returned
+  `changed` refreshes other modules. Example `app_grid_entry`.
 * New: `grid_input()`, a table of number cells as a Shiny input (Enter and
   arrow keys walk the cells, a block pasted from a spreadsheet lands from the
   focused cell, row / column / total sums follow the entries, a `hint` matrix

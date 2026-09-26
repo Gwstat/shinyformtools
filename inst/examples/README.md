@@ -111,6 +111,15 @@ Start with **app_crud_basic**; the rest each focus on one capability.
   response, and the form then **closes** to a thank-you ("Submit another
   response" reloads a fresh survey). Requires the optional `shinyglide` package.
 
+- **app_grid_entry** — grid entry over several records. One stored record
+  per station x day x party, the three distance-zone counts as its numeric
+  fields; `grid_server()` shows a station's parties as a grid (rows = records,
+  columns = counts) and saves the whole grid through `upsert_records()` in one
+  transaction, half a second after the last change. Empty rows are
+  soft-deleted, Friday's counts show greyed on election day (`hint`), and the
+  regular form module below lists the same table, refreshed by the grid's
+  `changed`.
+
 - **app_matrix_input** — a cross table as one field. `register_input()`
   teaches the package `shinyMatrix::matrixInput`; a party x vote-type matrix
   is entered in the regular add / edit dialog, stored as JSON in one column
