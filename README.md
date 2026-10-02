@@ -1,0 +1,369 @@
+# shinyformtools <img src="inst/img/shinyformtools-hex.svg" align="right" height="139" alt="shinyformtools hex logo" />
+
+<!-- badges: start -->
+[![R-CMD-check](https://github.com/Gwstat/shinyformtools/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/Gwstat/shinyformtools/actions/workflows/R-CMD-check.yaml)
+[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+<!-- badges: end -->
+
+`shinyformtools` builds database-backed [Shiny](https://shiny.posit.co/) form
+modules from a single declarative schema. A form is described once with `form()`
+and `form_field()`; the package derives the database schema, CRUD operations,
+rendering, and the Shiny module from that one description. It is aimed at
+production-style workflows where records are created, edited, audited, restored,
+and displayed through configurable table views.
+
+It is not limited to classic data-entry forms: the same declarative description
+drives **questionnaires and surveys, feedback boxes, and admin tables** — anything
+backed by records. A wide range of input types is built in (text, password,
+multi-line text, select / selectize, radio and checkbox groups, multi-select,
+numeric, slider, date and date-range, time, IBAN, ...) and
+every field is customizable.
+
+<p align="center">
+  <img src="man/figures/example-app.png" width="98%" alt="The example app app_crud_basic: on the left the walkthrough of how it is built, on the right the running app with its buttons, the records table and the audit log" />
+</p>
+<p align="center">
+  <img src="man/figures/edit-dialog.png" width="49%" alt="The edit dialog of a record, laid out in two columns, with the time and user of the last edit and the record's versions" />
+  <img src="man/figures/validation.png" width="49%" alt="The add dialog after a refused save: the empty mandatory name and the e-mail that is already taken are outlined in red" />
+</p>
+<p align="center"><em>The example app <code>app_crud_basic</code>: walkthrough and running
+app (top), the edit dialog and a save refused by validation (bottom).</em></p>
+
+## Background
+
+`shinyformtools` grew out of recurring applied Shiny use cases where forms needed to be connected to data workflows in R: feedback forms, simple data queries, questionnaires, rating forms, and coordinated data collection processes. These projects often required the same components repeatedly: declarative form definitions, validation, database-backed storage, record editing, auditability, and reusable Shiny modules.
+
+The original idea was inspired in part by existing Shiny form tooling, especially Dean Attali's [`shinyforms`](https://github.com/daattali/shinyforms), and by Niels van der Velden's article [“Editable DataTables in R Shiny using SQL”](https://www.nielsvandervelden.com/blog/editable-datatables-in-r-shiny-using-sql/). What started as a relatively small modular form idea gradually expanded to support a wider range of use cases, including schema-driven CRUD workflows, validation, permissions, audit logs, restore workflows, and multiple database backends.
+
+The project started as a personal side project and was delayed several times because it needed substantial refactoring, stronger tests, and clearer release hygiene. More recently, Claude Code was used as an AI-assisted development tool for refactoring, testing, security hardening, and implementation cleanup. The package is maintained by me and is still at an early stage. Suggestions and bug reports are very welcome.
+
+## Related work
+
+[shinyforms](https://github.com/daattali/shinyforms),
+[shinysurveys](https://github.com/jdtrat/shinysurveys),
+[shinyvalidate](https://github.com/rstudio/shinyvalidate),
+[datamods](https://github.com/dreamRs/datamods), and
+[editbl](https://github.com/openanalytics/editbl) address related parts of the
+Shiny form / editing space. shinyformtools focuses on schema-driven,
+database-backed CRUD forms with validation, audit/restore workflows, and
+permission-aware administrative use cases.
+
+## Features
+
+- **Declarative core** — describe a form once with `form()` / `form_field()`;
+  the schema, CRUD, rendering, and Shiny module are derived from it.
+- **Database-backed CRUD** with soft delete only (no hard deletes), a full audit
+  log, and record restore from any past version.
+- **Additive schema migrations** — the schema is reconciled to the form
+  definition automatically; safe changes apply themselves, unsafe ones throw.
+- **Database-level uniqueness** via composite unique indexes, so a value can be
+  reused after a soft delete while live duplicates are rejected.
+- **Configurable table views** with user-selectable, saveable column layouts.
+- **Flexible layout** — render the add/edit form in a modal or inline above the
+  table, or spread fields across a multi-step **slide wizard**
+  (`form_field(slide = ...)`, e.g. a questionnaire). Action buttons can stay in
+  the module or live anywhere via `form_buttons()` — for example a *Report a bug*
+  button in an app header.
+- **Dynamic and cross-referencing inputs** through `dynamic_choices()`,
+  `dynamic_value()`, and `reference_choices()`, plus display-only derived columns
+  via `display_transform`.
+- **Server-side validation** with `validation_rule()`, `required_if()`,
+  `forbid_if()`, and `warning_if()` — rules that cannot be bypassed from the
+  client.
+- **Permissions** — fine-grained `can_*` controls in
+  `form_server(permissions = list(...))`, a rights table built with
+  `permissions_form()` / `rights_permissions()`, and a `shinymanager` adapter.
+- **Grid entry and basket fields** live in the companion package
+  [shinygridtools](https://github.com/Gwstat/shinygridtools) since 0.9.0:
+  `grid_ui()` / `grid_server()` enter many records at once in a
+  spreadsheet-like grid, `grid_input()` is the grid as a field, and
+  `input_type = "cart_input"` is a basket field with a shared stock and a
+  board (`form_ui(show_board = TRUE)`). Apps that use them attach it with
+  `library(shinygridtools)`; shinyformtools itself does not depend on it. `upsert_records()`, the building block
+  underneath, stays here: several records in one transaction, matched by a
+  key.
+- **Extension API** — `register_input()` takes a `validate` hook (a check
+  on every save) and a `server` hook (a module part inside `form_server()`),
+  and the helpers an extension needs are exported (`?db_helpers`,
+  `?module_helpers`, `?language_helpers`, ...). shinygridtools is built
+  on it.
+- **Transactions across writes** — `with_transaction(conn, { ... })` makes
+  several package writes and your own SQL one transaction: all or nothing,
+  retried as a whole when writers collide.
+- **Shape fields** — attach a fixed, non-editable geometry to each record with
+  `shape_field()` / `attach_shapes()`, stored backend-neutrally as text.
+- **Field highlighting** — `form_server(highlight = list(fields = ...))` glows
+  chosen inputs (and their tab) to draw the eye; `show_changed` auto-glows edit
+  fields that have changed since the record was created.
+- **Export** — `export_records()` writes a form's records to CSV or Excel with
+  labels as headers and multi-value fields as readable text;
+  `form_ui(show_export = TRUE)` adds download buttons that export what the
+  table shows.
+- **Three backends** — `SQLite`, `MariaDB`, and `DuckDB` behind one interface.
+
+## Installation
+
+```r
+# install.packages("remotes")
+remotes::install_github("Gwstat/shinyformtools")
+```
+
+## Minimal example
+
+```r
+library(shiny)
+library(shinyformtools)
+
+contacts <- form(
+  form_id = "contacts",
+  table_name = "contacts",
+  db = db_sqlite("contacts.sqlite"),
+  fields = list(
+    form_field(id = "name", label = "Name", mandatory = TRUE),
+    form_field(id = "phone", label = "Phone"),
+    form_field(id = "birth_date", label = "Birth date", input_type = "dateInput")
+  )
+)
+
+ui <- fluidPage(
+  form_ui("contacts", title = "Contacts")
+)
+
+server <- function(input, output, session) {
+  form_server(id = "contacts", form = contacts)
+}
+
+shinyApp(ui, server)
+```
+
+The table, audit log, and supporting system tables are created on first contact;
+no manual migration step is required.
+
+## Backends
+
+Pick a backend with one of the explicit helpers and pass it to `form(db = ...)`.
+
+```r
+# Local single-user or demo app (default local backend)
+db_sqlite("app.sqlite")
+
+# Local analytical backend, useful for larger local data
+db_duckdb("app.duckdb")
+
+# Production multi-user backend
+db_mariadb(
+  dbname = "shinyformtools",
+  host = "127.0.0.1",
+  user = Sys.getenv("SFT_MARIADB_USER"),
+  password = Sys.getenv("SFT_MARIADB_PASSWORD")
+)
+```
+
+`SQLite` is the default local backend; `MariaDB` is recommended for multi-user
+deployments; `DuckDB` is supported as an aligned local backend for CRUD, audit,
+and preferences.
+
+### Connections
+
+`form_server()` (and `grid_server()` of shinygridtools) opens a database connection for each user
+session and close it when the session ends. All modules of a session that use
+the same database share that one connection, so a page with several forms
+costs one connection per user, which matters on a server with a connection
+limit (MariaDB allows 151 by default).
+`options(shinyformtools.share_connections = FALSE)` gives every module its own
+again. You can also open the connection yourself and pass it to every form:
+
+```r
+server <- function(input, output, session) {
+  conn <- db_connect(my_db)
+  session$onSessionEnded(function() db_disconnect(conn))
+
+  form_server("customers", customers_form, conn = conn)
+  form_server("orders", orders_form, conn = conn)
+}
+```
+
+A connection you pass in is yours: the module never closes or replaces it. A
+connection the module opened itself is reopened when the server drops it after
+a long idle period. If the database refuses a connection, a running session
+shows the error and keeps the user's input, and a starting session stays up and
+connects on the next action.
+
+Against a **remote** database, the schema check that precedes every call is the
+dominant cost (about 12 round trips on MariaDB). `options(
+shinyformtools.schema_probe_ttl = 30)` remembers a passed check for 30 seconds;
+the trade-off is that a schema change made by another process is noticed up to
+30 seconds late, which is why it is off by default. See `?db_mariadb`.
+
+MySQL is **not supported**. `db_mariadb()` will connect to it — the protocol is
+the same — but the package is neither tested nor fixed against it: a field with
+a `db_default` on a text column cannot be created there. Use MariaDB.
+
+## Server-side validation
+
+Cross-field rules are evaluated on the server during insert and update, so they
+cannot be bypassed by client-side manipulation.
+
+```r
+checks <- form(
+  form_id = "checks",
+  table_name = "checks",
+  db = db_sqlite("checks.sqlite"),
+  fields = list(
+    form_field(id = "status", label = "Status"),
+    form_field(id = "reason", label = "Reason")
+  ),
+  validation_rules = list(
+    required_if(
+      id = "reason_required_when_rejected",
+      condition = function(values) identical(values$status, "Rejected"),
+      fields = "reason",
+      message = "A reason is required when the status is Rejected."
+    )
+  )
+)
+```
+
+When a save is rejected, the dialog stays open with the user's input, the
+message names the problem, and the fields the failed checks concern glow
+(`highlight = list(invalid = FALSE)` turns that off). Outside the app,
+`validation_issues()` returns the same findings as a data frame of severity,
+source, message and fields, and the error `validate_record()` raises is of class
+`sft_validation_error` with those issues attached.
+
+`changelog_box()` can be used in `modal_header` hooks to show a compact audit
+history for the edited record.
+
+## Languages
+
+All text the package shows is English by default and comes from four
+vocabularies: UI labels, validation messages, table labels and the DataTables
+chrome. A `language()` object bundles overrides for all four, and `german()` is a
+ready-made one:
+
+```r
+de <- german()
+de$labels$open_add <- "Neuer Kontakt"   # rename one button
+
+ui <- fluidPage(form_ui("contacts", language = de))
+server <- function(input, output, session) {
+  form_server("contacts", contacts_form, language = de)
+}
+```
+
+A language belongs to the form it is passed to, so one app can serve forms (or
+users) in different languages. `form_server(language = )` also takes a reactive,
+which switches tables, dialogs and messages while the app runs; draw `form_ui()`
+inside a `renderUI()` that reads the same reactive to redraw the buttons too. `use_german()` remains as the switch for a whole R
+process, `labels = list(...)` still overrides single entries, and
+`language_keys()` lists every key with its English default - the reference for a
+translation of your own.
+
+## Permissions
+
+`form_server(permissions = list(...))` takes a `can_*` entry for each action
+(add, edit, delete, restore, view versions, view the audit log, and so on); with
+the default `hide_forbidden = TRUE` the matching controls are hidden when a
+permission is `FALSE`, and the server-side guards are enforced regardless. For
+multi-user apps, `permissions_form()` stores permissions as an editable rights
+table and `rights_permissions()` resolves them into exactly such a list,
+reactively, so it can be passed straight to `permissions`.
+
+A save never changes a field the user cannot see or may not edit: another user
+with more rights may have filled it. Fields locked by `editable` or
+`editable_fields` are not submitted, a field hidden by `dynamic_visibility()`
+keeps its stored value on edit, and restoring an older version needs
+`can_edit` as well as `can_restore` and is refused when the version differs in
+a field the user may not edit.
+
+## Security
+
+All database access uses parameterized queries: values are bound with `?`
+placeholders and `params`, and are never interpolated into SQL. Identifiers
+(table, column, and index names) are quoted with `DBI::dbQuoteIdentifier()`, and
+because every identifier originates from a form or field definition, they are
+additionally validated at definition time against a strict allowlist
+(`^[A-Za-z][A-Za-z0-9_]*$`, with the `sft_` prefix reserved). The two DDL spots
+that cannot be parameterized (a `PRAGMA table_info()` table name and a column
+`DEFAULT` clause) use `DBI::dbQuoteString()` on developer-defined metadata. The
+package is designed so that user-entered values and form definitions are not
+interpolated into SQL, and SQL-injection regressions are covered by tests in
+[`tests/testthat/test-sql-injection.R`](tests/testthat/test-sql-injection.R).
+
+## Example apps
+
+Self-contained demo apps ship with the package; each shows a
+**"How it is built"** walkthrough beside the running form. List and run them:
+
+```r
+list_examples()
+run_example("app_crud_basic")
+```
+
+- **app_crud_basic** — the smallest complete app: one `form()` drives the schema,
+  the add/edit/delete dialogs, the records table, soft-delete with restore, and
+  the audit log. **Start here.**
+- **app_input_types** — a tour of every supported input type, plus the
+  `html_field()` and `output_field()` field kinds and a server-fed live preview.
+- **app_custom_input** — `register_input()` makes any Shiny input usable as an
+  `input_type`: a `shinyWidgets` knob dial (single value, stored in a `REAL`
+  column) and a multi-select picker (stored as a JSON array).
+- **app_field_control** — constraining fields: per-user `editable`, locked/derived
+  fields, hidden-but-stored columns (`show = FALSE`), and conditional inputs
+  (`dynamic_visibility()`).
+- **app_cascading_inputs** — chained inputs via `dynamic_choices()` /
+  `dynamic_value()` (street → house number → suffix → derived ZIP), no
+  hand-written observers. Needs `dplyr`.
+- **app_calculated_columns** — render-time derived columns with
+  `display_transform()`, both within a row and joined from another table (live via
+  `refresh_triggers`).
+- **app_inline_forms** — `form_layout = "inline"`: the add/edit form sits in a
+  panel above the table instead of a modal dialog.
+- **app_questionnaire** — a survey rendered as a `shinyglide` slide wizard (one
+  or two questions per slide), shown always-open with `render_form_fields()` +
+  `collect_input_values()` — no records table, no Add button. Needs `shinyglide`.
+- **app_bug_report** — a "Report a bug" button placed in the app header with
+  `form_buttons()` (the same module id, so it opens the report form); submitted
+  reports land in the table below.
+- **app_table_style** — style and transform the records table through
+  `form_server(table = list(options, filter, format))` (`DT::formatStyle()`).
+- **app_design_presets** — the visual presets for the module's tables: radio
+  buttons switch `form_ui(table_style = ...)` live between `"classic"`,
+  `"clean"`, `"publication"` and `"compact"`; also settable app-wide via
+  `options(shinyformtools.table_style = ...)`.
+- **app_markdown** — `form_field(markdown = TRUE)` renders stored text as
+  (HTML-sanitized) Markdown in the table. Needs `commonmark`.
+- **app_backends** — one form, two backends side by side: **SQLite** and
+  **DuckDB** (the DuckDB tab appears when `duckdb` is installed).
+- **app_mariadb** — the same form on a **MariaDB** server, with an in-app
+  setup tutorial (copy-paste Docker command) when no server is reachable. Needs
+  `RMariaDB`.
+- **app_shinymanager** — a support desk with per-user CRUD across two tables,
+  driven by an editable rights table (`permissions_form()` /
+  `rights_permissions()`) on top of a `shinymanager` login. Needs `shinymanager`.
+- **app_german** — a fully German UI from one `use_german()` switch (English stays
+  the default), overridable per form.
+- **app_language** — two forms in one app, one German and one English, each
+  given its own `language()` object; buttons, dialogs, validation messages and
+  audit headers follow the form, not the process.
+- **app_shape_map** — records with a fixed, non-editable geometry:
+  `shape_field()` + `attach_shapes()` drawn on a leaflet map via `decode_shape()`.
+  Needs `sf` and `leaflet`.
+- **app_matrix_input** — a cross table as a single field through
+  `register_input()` and `shinyMatrix::matrixInput`. Needs `shinyMatrix`.
+- **app_presentation_german** — a German talk-registration form on three
+  slides inside the add / edit dialog, each with a heading (`slide_labels`).
+  Needs `shinyglide`.
+- **app_highlight** — reactive field/tab highlighting on a two-tab form:
+  `form_server(highlight = list(fields = ...))` red-glows chosen inputs (and
+  their tab) live, and `show_changed` blue-glows edit fields that have changed
+  since the record was added.
+
+Each example is documented in more detail in
+[`inst/examples/README.md`](inst/examples/README.md).
+
+## Contributing
+
+Bug reports, ideas, and pull requests are welcome — see
+[CONTRIBUTING](.github/CONTRIBUTING.md) for the development workflow and
+conventions.

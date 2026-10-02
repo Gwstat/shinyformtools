@@ -1,0 +1,88 @@
+sft_default_messages <- function() {
+  utils::modifyList(sft_builtin_messages(), sft_registered_texts("en")$messages)
+}
+
+sft_builtin_messages <- function() {
+  list(
+    mandatory_missing = "Mandatory fields missing: {fields}.",
+    mandatory_empty = "Mandatory fields are empty: {fields}.",
+    unique = "The value for '{label}' is already taken.",
+    not_a_number = "'{label}' needs a number, not '{value}'.",
+    conditional_required = "Conditional mandatory fields missing: {fields}.",
+    validation_rule_failed = "Validation rule '{rule}' failed.",
+    no_active_fields_for_update = "No active form fields were provided to update.",
+    unique_needs_connection = "A database connection is required for uniqueness validation.",
+    unique_check_failed = "Uniqueness could not be checked: unexpected database result."
+  )
+}
+
+sft_interpolate_text <- function(text, values = list()) {
+  if (is.function(text)) {
+    return(text(values))
+  }
+
+  if (is.null(text)) {
+    return(NA_character_)
+  }
+
+  out <- as.character(text)
+
+  for (name in names(values)) {
+    # A multi-value field (checkbox group, multi-select) interpolates as one
+    # comma-separated string; gsub() would otherwise use only the first
+    # element and warn.
+    out <- gsub(
+      pattern = paste0("{", name, "}"),
+      replacement = paste(as.character(values[[name]]), collapse = ", "),
+      x = out,
+      fixed = TRUE
+    )
+  }
+
+  out
+}
+
+sft_form_messages <- function(form = NULL, messages = list()) {
+  defaults <- sft_default_messages()
+
+  option_messages <- getOption("shinyformtools.messages", list())
+
+  if (!is.list(option_messages)) {
+    option_messages <- list()
+  }
+
+  form_messages <- if (!is.null(form) && !is.null(form$messages)) {
+    form$messages
+  } else {
+    list()
+  }
+
+  # English default <- global option (use_german) <- active language()
+  # <- form() messages <- call arg.
+  layered <- defaults
+
+  for (layer in list(
+    sft_registered_layer("messages", sft_option_language_code()),
+    option_messages,
+    sft_registered_layer("messages", sft_language_code(sft_active_language())),
+    sft_language_part("messages"),
+    form_messages,
+    messages
+  )) {
+    layered <- utils::modifyList(layered, layer)
+  }
+
+  layered
+}
+
+sft_message <- function(form, key, values = list(), messages = list()) {
+  resolved <- sft_form_messages(
+    form = form,
+    messages = messages
+  )
+
+  sft_interpolate_text(
+    text = resolved[[key]],
+    values = values
+  )
+}

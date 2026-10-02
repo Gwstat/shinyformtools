@@ -1,0 +1,886 @@
+sft_empty_migration_actions <- function() {
+  data.frame(
+    action = character(),
+    field_id = character(),
+    db_column = character(),
+    db_type = character(),
+    safe = logical(),
+    details_json = character()
+  )
+}
+
+# Whether the server stores table identifiers folded to lower case, i.e.
+# lower_case_table_names is 1 (the Windows default) or 2 (the macOS default). On
+# such a server a table created as `MyStaff` is stored and listed as `mystaff`.
+sft_folds_table_names <- function(conn) {
+  if (!sft_is_mariadb_connection(conn)) {
+    return(FALSE)
+  }
+
+  setting <- tryCatch(
+    DBI::dbGetQuery(conn, "SELECT @@lower_case_table_names AS folded")$folded[1],
+    error = function(e) NULL
+  )
+
+  if (is.null(setting) || length(setting) != 1L || is.na(setting)) {
+    return(FALSE)
+  }
+
+  # as.character() first because the driver may hand back an integer64.
+  !identical(as.integer(as.character(setting)), 0L)
+}
+
+# Are all of `wanted` present among `existing`?
+#
+# The exact comparison comes first and is the whole story on SQLite, DuckDB and
+# a case-sensitive MySQL-protocol server - it costs nothing extra. Only when a
+# table appears to be missing is the server asked whether it folds identifiers,
+# because that changes what "missing" means: with lower_case_table_names set, a
+# form whose table_name carries an uppercase letter creates `mystaff` and then
+# never finds `MyStaff` again. Reproduced live on MariaDB 11.8 started with
+# --lower-case-table-names=1: the schema probe never went green, so every CRUD
+# call re-ran the migration, the second CREATE UNIQUE INDEX failed with
+# "Duplicate key name [1061]", and the form was unusable - no insert succeeded
+# and fetch_records() returned nothing.
+#
+# The fallback is deliberately gated on the server setting rather than always
+# folding: where identifiers ARE case-sensitive, `Foo` and `foo` are two
+# different tables and must not be conflated.
+sft_tables_present <- function(conn,
+                               wanted,
+                               existing = DBI::dbListTables(conn)) {
+  if (all(wanted %in% existing)) {
+    return(TRUE)
+  }
+
+  if (!sft_folds_table_names(conn)) {
+    return(FALSE)
+  }
+
+  all(tolower(wanted) %in% tolower(existing))
+}
+
+sft_table_exists <- function(conn, table_name) {
+  sft_tables_present(conn, table_name)
+}
+
+# Add a column to an existing table only if it is missing. Used to evolve the
+# shinyformtools system tables themselves, since CREATE TABLE IF NOT EXISTS
+# never adds columns to a table that already exists.
+sft_ensure_column <- function(conn, table_name, column, definition) {
+  info <- sft_table_info(conn, table_name)
+  if (!column %in% info$name) {
+    DBI::dbExecute(
+      conn,
+      paste0(
+        "ALTER TABLE ", sft_quote_identifier(conn, table_name),
+        " ADD COLUMN ", sft_quote_identifier(conn, column), " ", definition
+      )
+    )
+  }
+  invisible(TRUE)
+}
+
+# The system tables whose payload columns hold JSON or free text.
+sft_system_table_names <- function() {
+  c(
+    "sft_forms",
+    "sft_fields",
+    "sft_schema_migrations",
+    "sft_audit_log",
+    "sft_user_preferences"
+  )
+}
+
+# Widen system-table payload columns that an older version of the package
+# created as TEXT.
+#
+# MariaDB caps TEXT at 64KB and, under the strict sql_mode default, ERRORS on
+# overflow instead of truncating. New databases therefore get MEDIUMTEXT from
+# sft_long_text_definition() - but CREATE TABLE IF NOT EXISTS never alters a
+# table that already exists, so every database initialised before that change
+# keeps its 64KB ceiling forever. Reproduced live: a 144KB config_json fails
+# with "Data too long for column 'config_json' at row 1 [1406]". This is the
+# migration step that closes the gap, mirroring sft_ensure_column().
+#
+# Which columns to widen is read from the database rather than listed here. On
+# MariaDB every system-table column the package creates is either VARCHAR(255)
+# (short text) or a long-text payload column, so "DATA_TYPE = 'text'" IS exactly
+# the payload set - and unlike a hardcoded list it cannot drift out of sync with
+# the CREATE TABLE statements above. Idempotent: once widened the columns report
+# 'mediumtext' and no longer match. Internal.
+sft_widen_long_text_columns <- function(conn) {
+  if (!sft_is_mariadb_connection(conn)) {
+    return(invisible(FALSE))
+  }
+
+  tables <- intersect(sft_system_table_names(), DBI::dbListTables(conn))
+
+  if (length(tables) == 0L) {
+    return(invisible(FALSE))
+  }
+
+  narrow <- DBI::dbGetQuery(
+    conn,
+    paste0(
+      "SELECT TABLE_NAME AS table_name, COLUMN_NAME AS column_name ",
+      "FROM information_schema.COLUMNS ",
+      "WHERE TABLE_SCHEMA = DATABASE() ",
+      "  AND DATA_TYPE = 'text' ",
+      "  AND TABLE_NAME IN (",
+      paste(rep("?", length(tables)), collapse = ", "),
+      ")"
+    ),
+    params = as.list(tables)
+  )
+
+  if (nrow(narrow) == 0L) {
+    return(invisible(FALSE))
+  }
+
+  for (i in seq_len(nrow(narrow))) {
+    DBI::dbExecute(
+      conn,
+      paste0(
+        "ALTER TABLE ", sft_quote_identifier(conn, narrow$table_name[i]),
+        " MODIFY COLUMN ", sft_quote_identifier(conn, narrow$column_name[i]),
+        " ", sft_long_text_definition(conn)
+      )
+    )
+  }
+
+  invisible(TRUE)
+}
+
+# `exists` lets a caller that has just listed the tables say so: the existence
+# check is a statement of its own, and on the CRUD hot path (the schema probe)
+# every statement is up to three round trips on MariaDB.
+sft_table_info <- function(conn, table_name, exists = NULL) {
+  if (!isTRUE(exists %||% sft_table_exists(conn, table_name))) {
+    return(
+      data.frame(
+        cid = integer(),
+        name = character(),
+        type = character(),
+        notnull = integer(),
+        dflt_value = character(),
+        pk = integer()
+      )
+    )
+  }
+
+  if (sft_is_mariadb_connection(conn)) {
+    raw <- DBI::dbGetQuery(
+      conn,
+      paste0("SHOW COLUMNS FROM ", sft_quote_identifier(conn, table_name))
+    )
+
+    return(
+      data.frame(
+        cid = seq_len(nrow(raw)) - 1L,
+        name = raw$Field,
+        type = toupper(as.character(raw$Type)),
+        notnull = as.integer(toupper(as.character(raw$Null)) == "NO"),
+        dflt_value = as.character(raw$Default),
+        pk = as.integer(toupper(as.character(raw$Key)) == "PRI"),
+        stringsAsFactors = FALSE
+      )
+    )
+  }
+
+  if (sft_is_duckdb_connection(conn)) {
+    return(
+      DBI::dbGetQuery(
+        conn,
+        paste0("PRAGMA table_info(", sft_sql_literal(conn, table_name), ")")
+      )
+    )
+  }
+
+  DBI::dbGetQuery(
+    conn,
+    paste0("PRAGMA table_info(", sft_quote_identifier(conn, table_name), ")")
+  )
+}
+
+sft_normalize_db_type_for_compare <- function(type) {
+  type <- toupper(trimws(as.character(type %||% "")))
+  type <- sub("\\(.*$", "", type)
+  type <- trimws(type)
+
+  if (type %in% c("CHAR", "CHARACTER", "VARCHAR", "STRING", "TEXT",
+                  "TINYTEXT", "MEDIUMTEXT", "LONGTEXT")) {
+    return("TEXT")
+  }
+
+  if (type %in% c("INT", "INTEGER", "BIGINT", "SMALLINT", "TINYINT")) {
+    return("INTEGER")
+  }
+
+  if (type %in% c("DOUBLE", "DOUBLE PRECISION", "FLOAT", "REAL", "DECIMAL", "NUMERIC")) {
+    return("REAL")
+  }
+
+  if (type %in% c("BOOL", "BOOLEAN")) {
+    return("INTEGER")
+  }
+
+  type
+}
+
+sft_inactive_columns <- function(conn, form_id) {
+  if (!sft_table_exists(conn, "sft_fields")) {
+    return(character())
+  }
+
+  inactive_fields <- DBI::dbGetQuery(
+    conn,
+    "
+    SELECT db_column
+    FROM sft_fields
+    WHERE form_id = ?
+      AND status IN ('retired', 'orphaned')
+    ",
+    params = list(form_id)
+  )
+
+  inactive_fields$db_column
+}
+
+sft_field_id_for_column <- function(form, column_name) {
+  input_fields <- Filter(sft_is_input_field, form$fields)
+
+  matches <- vapply(
+    input_fields,
+    function(field) identical(field$db_column, column_name),
+    logical(1)
+  )
+
+  if (!any(matches)) {
+    return(NA_character_)
+  }
+
+  input_fields[[which(matches)[1L]]]$id
+}
+
+sft_add_migration_action <- function(actions,
+                                     action,
+                                     field_id = NA_character_,
+                                     db_column = NA_character_,
+                                     db_type = NA_character_,
+                                     safe = TRUE,
+                                     details = list()) {
+  row <- data.frame(
+    action = action,
+    field_id = field_id,
+    db_column = db_column,
+    db_type = db_type,
+    safe = safe,
+    details_json = as.character(sft_as_json(details))
+  )
+
+  rbind(actions, row)
+}
+
+#' Fetch the schema migration history for a form
+#'
+#' Returns every schema action the package has applied to a form's table: the
+#' table being created, columns added or retired, indexes created or dropped,
+#' each with the versions it moved between, when it happened and which user
+#' triggered it.
+#'
+#' This is the structural counterpart of [fetch_audit_log()]: the audit log
+#' records changes to the data, this records changes to the shape of it. It
+#' answers questions the current schema cannot, because a database does not
+#' explain itself -- most usefully "where does this column nobody declares come
+#' from?". Retiring a field does not drop its column (that would throw data
+#' away), so a retired column stays behind, and this log is the only record of
+#' why.
+#'
+#' `from_version` is `NA` for the first action against a form, when there is no
+#' version to come from.
+#'
+#' @param form Object created with [form()].
+#' @param conn Optional DBI connection; see [connections].
+#'
+#' @return A data frame with one row per applied schema action, oldest first.
+#' @examples
+#' db <- db_sqlite(tempfile(fileext = ".sqlite"))
+#' contacts <- form(
+#'   form_id = "contacts", table_name = "contacts", db = db,
+#'   fields = list(form_field(id = "name", label = "Name"))
+#' )
+#' conn <- db_connect(db)
+#' init_db(contacts, conn = conn, user = "demo")
+#'
+#' fetch_schema_migrations(contacts, conn = conn)[, c("action", "db_column")]
+#'
+#' db_disconnect(conn)
+#' @export
+fetch_schema_migrations <- function(form, conn = NULL) {
+  if (!inherits(form, "sft_form")) {
+    stop("form must be a form object.", call. = FALSE)
+  }
+
+  conn <- sft_resolve_connection(form, conn)
+
+  # Probe-gated exactly like fetch_audit_log(): reading a history must not
+  # reconcile the schema on every call.
+  sft_ensure_schema(conn, form)
+
+  DBI::dbGetQuery(
+    conn,
+    "
+    SELECT *
+    FROM sft_schema_migrations
+    WHERE form_id = ?
+      AND table_name = ?
+    ORDER BY migration_id
+    ",
+    params = list(form$form_id, form$table_name)
+  )
+}
+
+#' Inspect the database schema for a form
+#'
+#' @param form Object created with [form()].
+#' @param conn A DBI connection.
+#'
+#' @return A list describing the current and expected schema.
+#' @examples
+#' db <- db_sqlite(tempfile(fileext = ".sqlite"))
+#' contacts <- form(
+#'   form_id = "contacts", table_name = "contacts", db = db,
+#'   fields = list(form_field(id = "name", label = "Name", mandatory = TRUE))
+#' )
+#' conn <- db_connect(db)
+#'
+#' # Before the table is created, it reports the expected columns as missing.
+#' inspection <- inspect_schema(contacts, conn)
+#' inspection$table_exists
+#' inspection$missing_columns
+#'
+#' db_disconnect(conn)
+#' @export
+inspect_schema <- function(form, conn) {
+  swapped <- sft_accept_swapped_form_conn(form, conn, "inspect_schema")
+  form <- swapped$form
+  conn <- swapped$conn
+
+  if (!inherits(form, "sft_form")) {
+    stop("form must be a form object.", call. = FALSE)
+  }
+
+  expected_columns <- sft_expected_columns(form, conn = conn)
+  table_exists <- sft_table_exists(conn, form$table_name)
+  table_info <- sft_table_info(conn, form$table_name)
+
+  current_columns <- table_info$name
+  current_types <- table_info$type
+  names(current_types) <- table_info$name
+
+  inactive_columns <- sft_inactive_columns(conn, form$form_id)
+
+  missing_columns <- setdiff(names(expected_columns), current_columns)
+  extra_columns <- setdiff(current_columns, names(expected_columns))
+  unregistered_extra_columns <- setdiff(extra_columns, inactive_columns)
+
+ input_fields <- Filter(sft_is_input_field, form$fields)
+
+comparable_columns <- intersect(
+  vapply(input_fields, function(x) x$db_column, character(1)),
+  current_columns
+)
+
+  type_warnings <- data.frame(
+    db_column = character(),
+    expected_type = character(),
+    current_type = character()
+  )
+
+  for (column_name in comparable_columns) {
+    expected_type <- toupper(expected_columns[[column_name]])
+    current_type <- toupper(current_types[[column_name]])
+
+    expected_type_base <- sft_normalize_db_type_for_compare(
+      strsplit(expected_type, "\\s+")[[1]][1]
+    )
+    current_type_base <- sft_normalize_db_type_for_compare(
+      strsplit(current_type, "\\s+")[[1]][1]
+    )
+
+    if (
+      nzchar(current_type_base) &&
+        !identical(expected_type_base, current_type_base)
+    ) {
+      type_warnings <- rbind(
+        type_warnings,
+        data.frame(
+          db_column = column_name,
+          expected_type = expected_type,
+          current_type = current_type
+        )
+      )
+    }
+  }
+
+  list(
+    table_exists = table_exists,
+    table_info = table_info,
+    expected_columns = expected_columns,
+    current_columns = current_columns,
+    missing_columns = missing_columns,
+    extra_columns = extra_columns,
+    inactive_columns = inactive_columns,
+    unregistered_extra_columns = unregistered_extra_columns,
+    type_warnings = type_warnings
+  )
+}
+
+#' Plan a database schema migration
+#'
+#' @param form Object created with [form()].
+#' @param conn A DBI connection.
+#'
+#' @return A migration plan object.
+#' @examples
+#' db <- db_sqlite(tempfile(fileext = ".sqlite"))
+#' contacts <- form(
+#'   form_id = "contacts", table_name = "contacts", db = db,
+#'   fields = list(form_field(id = "name", label = "Name", mandatory = TRUE))
+#' )
+#' conn <- db_connect(db)
+#'
+#' # On a fresh database the plan contains a single create_table action.
+#' plan <- plan_migration(contacts, conn)
+#' plan$actions$action
+#'
+#' db_disconnect(conn)
+#' @export
+plan_migration <- function(form, conn) {
+  swapped <- sft_accept_swapped_form_conn(form, conn, "plan_migration")
+  form <- swapped$form
+  conn <- swapped$conn
+
+  if (!inherits(form, "sft_form")) {
+    stop("form must be a form object.", call. = FALSE)
+  }
+
+  inspection <- inspect_schema(form, conn)
+  actions <- sft_empty_migration_actions()
+
+  # A field renamed only in case (phone -> Phone) plans a new column the
+  # database already has under the old spelling; ADD COLUMN then failed on
+  # every call with a raw error.
+  case_clash <- inspection$missing_columns[
+    tolower(inspection$missing_columns) %in% tolower(inspection$current_columns)
+  ]
+  if (length(case_clash) > 0L) {
+    stored <- inspection$current_columns[
+      tolower(inspection$current_columns) %in% tolower(case_clash)
+    ]
+    stop(
+      "Table '", form$table_name, "' has the column(s) ", paste(stored, collapse = ", "),
+      ", which the form spells ", paste(case_clash, collapse = ", "),
+      ". Databases treat names that differ only in case as one column: keep the ",
+      "stored spelling, for example with form_field(db_column = \"", stored[1], "\").",
+      call. = FALSE
+    )
+  }
+
+  if (!isTRUE(inspection$table_exists)) {
+    actions <- sft_add_migration_action(
+      actions = actions,
+      action = "create_table",
+      field_id = NA_character_,
+      db_column = form$table_name,
+      db_type = NA_character_,
+      safe = TRUE,
+      details = list(
+        table_name = form$table_name,
+        columns = inspection$expected_columns
+      )
+    )
+
+    return(
+      structure(
+        list(
+          form = form,
+          inspection = inspection,
+          actions = actions
+        ),
+        class = c("sft_migration_plan", "list")
+      )
+    )
+  }
+
+  for (column_name in inspection$missing_columns) {
+    column_definition <- inspection$expected_columns[[column_name]]
+
+    if (identical(column_name, "sft_id")) {
+      actions <- sft_add_migration_action(
+        actions = actions,
+        action = "manual_add_system_id",
+        field_id = NA_character_,
+        db_column = column_name,
+        db_type = column_definition,
+        safe = FALSE,
+        details = list(
+          reason = "Adding an autoincrement primary key to an existing SQLite table requires a manual table rebuild."
+        )
+      )
+
+      next
+    }
+
+    actions <- sft_add_migration_action(
+      actions = actions,
+      action = "add_column",
+      field_id = sft_field_id_for_column(form, column_name),
+      db_column = column_name,
+      db_type = column_definition,
+      safe = TRUE,
+      details = list(
+        column = column_name,
+        definition = column_definition
+      )
+    )
+  }
+
+  for (column_name in inspection$unregistered_extra_columns) {
+    actions <- sft_add_migration_action(
+      actions = actions,
+      action = "retire_column",
+      field_id = NA_character_,
+      db_column = column_name,
+      db_type = NA_character_,
+      safe = TRUE,
+      details = list(
+        column = column_name,
+        behavior = "Column remains in the database and is registered as retired/orphaned metadata."
+      )
+    )
+  }
+
+  index_diff <- sft_index_diff(conn, form)
+
+  for (index in index_diff$missing) {
+    actions <- sft_add_migration_action(
+      actions = actions,
+      action = "create_index",
+      field_id = NA_character_,
+      db_column = index$name,
+      db_type = NA_character_,
+      safe = TRUE,
+      details = list(index_name = index$name, columns = index$columns)
+    )
+  }
+
+  for (name in index_diff$obsolete) {
+    actions <- sft_add_migration_action(
+      actions = actions,
+      action = "drop_index",
+      field_id = NA_character_,
+      db_column = name,
+      db_type = NA_character_,
+      safe = TRUE,
+      details = list(index_name = name)
+    )
+  }
+
+  # A range slider column an older version created as a number is widened to
+  # text by apply_migration() (and init_db()), losing nothing: not a type
+  # change the user has to handle.
+  type_warnings <- inspection$type_warnings
+  if (nrow(type_warnings) > 0L) {
+    widened <- sft_range_slider_narrow_columns(conn, form)
+    type_warnings <- type_warnings[!type_warnings$db_column %in% widened, , drop = FALSE]
+  }
+
+  if (nrow(type_warnings) > 0L) {
+    for (i in seq_len(nrow(type_warnings))) {
+      actions <- sft_add_migration_action(
+        actions = actions,
+        action = "type_warning",
+        field_id = sft_field_id_for_column(
+          form,
+          type_warnings$db_column[i]
+        ),
+        db_column = type_warnings$db_column[i],
+        db_type = type_warnings$expected_type[i],
+        safe = FALSE,
+        details = list(
+          expected_type = type_warnings$expected_type[i],
+          current_type = type_warnings$current_type[i],
+          behavior = "Type changes require manual migration."
+        )
+      )
+    }
+  }
+
+  structure(
+    list(
+      form = form,
+      inspection = inspection,
+      actions = actions
+    ),
+    class = c("sft_migration_plan", "list")
+  )
+}
+
+# The form version the database is on right now, i.e. the one a migration is
+# coming FROM. Readable until sft_register_form_schema() writes the new version,
+# which happens after the action loop. NA when the form has never been
+# registered (first contact: there is no version to come from).
+sft_stored_form_version <- function(conn, form) {
+  if (!sft_table_exists(conn, "sft_forms")) {
+    return(NA_integer_)
+  }
+
+  row <- DBI::dbGetQuery(
+    conn,
+    "SELECT active_version FROM sft_forms WHERE form_id = ?",
+    params = list(form$form_id)
+  )
+
+  if (nrow(row) == 0L) {
+    return(NA_integer_)
+  }
+
+  as.integer(row$active_version[1])
+}
+
+sft_log_schema_migration <- function(conn, form, action_row, user = NULL) {
+  columns <- c(
+    "form_id",
+    "table_name",
+    "from_version",
+    "to_version",
+    "action",
+    "field_id",
+    "db_column",
+    "details_json",
+    "applied_at",
+    "applied_by"
+  )
+
+  values <- list(
+    form$form_id,
+    form$table_name,
+    sft_stored_form_version(conn, form),
+    form$version,
+    action_row$action,
+    sft_db_param(action_row$field_id),
+    sft_db_param(action_row$db_column),
+    action_row$details_json,
+    sft_now(),
+    sft_db_param(user)
+  )
+
+  sft_sql_insert(conn, "sft_schema_migrations", columns, values, id_column = "migration_id")
+
+  invisible(TRUE)
+}
+
+# Apply the safe actions of a migration plan, then register the resulting
+# schema. Factored out of apply_migration so it can run either directly or
+# inside a transaction depending on whether the backend has transactional DDL.
+sft_run_migration_actions <- function(conn, form, actions, user = NULL) {
+  for (i in seq_len(nrow(actions))) {
+    action_row <- actions[i, , drop = FALSE]
+
+    if (identical(action_row$action, "create_table")) {
+      expected_columns <- sft_expected_columns(form, conn = conn)
+
+      DBI::dbExecute(
+        conn,
+        sft_create_table_sql(
+          conn = conn,
+          table_name = form$table_name,
+          columns = expected_columns
+        )
+      )
+
+      for (index in sft_expected_indexes(form, conn)) {
+        sft_create_unique_index(conn, form, index)
+      }
+    }
+
+    if (identical(action_row$action, "add_column")) {
+      DBI::dbExecute(
+        conn,
+        paste0(
+          "ALTER TABLE ",
+          sft_quote_identifier(conn, form$table_name),
+          " ADD COLUMN ",
+          sft_column_definition(
+            conn = conn,
+            column_name = action_row$db_column,
+            definition = action_row$db_type
+          )
+        )
+      )
+    }
+
+    if (identical(action_row$action, "retire_column")) {
+      # No SQL is executed here. The column remains in the database.
+      # The metadata registration below records it as inactive/orphaned.
+      invisible(TRUE)
+    }
+
+    if (identical(action_row$action, "create_index")) {
+      index <- Find(
+        function(candidate) identical(candidate$name, action_row$db_column),
+        sft_expected_indexes(form, conn)
+      )
+      if (!is.null(index)) {
+        sft_create_unique_index(conn, form, index)
+      }
+    }
+
+    if (identical(action_row$action, "drop_index")) {
+      sft_drop_index(conn, form$table_name, action_row$db_column)
+    }
+
+    sft_log_schema_migration(
+      conn = conn,
+      form = form,
+      action_row = action_row,
+      user = user
+    )
+  }
+
+  orphaned_columns <- actions$db_column[actions$action == "retire_column"]
+
+  sft_register_form_schema(
+    conn = conn,
+    form = form,
+    orphaned_columns = orphaned_columns,
+    user = user
+  )
+
+  invisible(TRUE)
+}
+
+#' Apply a safe database schema migration
+#'
+#' @param form Object created with [form()].
+#' @param conn A DBI connection.
+#' @param plan Optional migration plan from [plan_migration()].
+#' @param user Optional user name for schema migration logs.
+#'
+#' @return Invisibly returns the migration plan.
+#' @examples
+#' db <- db_sqlite(tempfile(fileext = ".sqlite"))
+#' contacts <- form(
+#'   form_id = "contacts", table_name = "contacts", db = db,
+#'   fields = list(form_field(id = "name", label = "Name", mandatory = TRUE))
+#' )
+#' conn <- db_connect(db)
+#'
+#' # Apply the safe actions (here: create the table).
+#' apply_migration(contacts, conn)
+#'
+#' # A second plan now has nothing left to do.
+#' nrow(plan_migration(contacts, conn)$actions)
+#'
+#' db_disconnect(conn)
+#' @export
+apply_migration <- function(form,
+                                conn,
+                                plan = NULL,
+                                user = NULL) {
+  swapped <- sft_accept_swapped_form_conn(form, conn, "apply_migration")
+  form <- swapped$form
+  conn <- swapped$conn
+
+  if (is.null(plan)) {
+    plan <- plan_migration(form, conn)
+  }
+
+  if (!inherits(plan, "sft_migration_plan")) {
+    stop("plan must be an sft_migration_plan object.", call. = FALSE)
+  }
+
+  init_system_tables(conn)
+  sft_widen_range_slider_columns(conn, form)
+
+  actions <- plan$actions
+
+  unsafe_actions <- actions[!actions$safe, , drop = FALSE]
+
+  if (nrow(unsafe_actions) > 0L) {
+    stop(
+      "Migration contains unsafe/manual actions: ",
+      paste(unique(unsafe_actions$action), collapse = ", "),
+      ".",
+      call. = FALSE
+    )
+  }
+
+  if (nrow(actions) == 0L) {
+    sft_register_form_schema(conn, form, user = user)
+    return(invisible(plan))
+  }
+
+  # DuckDB refuses CREATE INDEX in a transaction that has updated rows, so
+  # the data a new unique index needs is prepared first, outside it. Inside,
+  # the same preparation then finds nothing left to change.
+  if (sft_is_duckdb_connection(conn) && sft_table_exists(conn, form$table_name)) {
+    for (name in actions$db_column[actions$action == "create_index"]) {
+      index <- Find(function(candidate) identical(candidate$name, name), sft_expected_indexes(form, conn))
+      if (!is.null(index)) {
+        sft_prepare_unique_index_data(conn, form, index)
+      }
+    }
+  }
+
+  if (sft_supports_transactional_ddl(conn)) {
+    # Apply the whole plan atomically, so a failure midway rolls back instead of
+    # leaving a half-migrated schema. A plain transaction (not
+    # sft_db_with_transaction) is used because migration failures are not
+    # retryable id/version conflicts.
+    DBI::dbWithTransaction(
+      conn,
+      sft_run_migration_actions(conn, form, actions, user = user)
+    )
+  } else {
+    # MariaDB implicitly commits each DDL statement, so a transaction cannot
+    # roll the plan back; apply directly.
+    sft_run_migration_actions(conn, form, actions, user = user)
+  }
+
+  invisible(plan)
+}
+
+#' Print a migration plan
+#'
+#' @param x A migration plan from [plan_migration()].
+#' @param ... Ignored.
+#'
+#' @return Invisibly returns `x`.
+#' @examples
+#' db <- db_sqlite(tempfile(fileext = ".sqlite"))
+#' contacts <- form(
+#'   form_id = "contacts", table_name = "contacts", db = db,
+#'   fields = list(form_field(id = "name", label = "Name", mandatory = TRUE))
+#' )
+#' conn <- db_connect(db)
+#'
+#' plan <- plan_migration(contacts, conn)
+#' print(plan)
+#'
+#' db_disconnect(conn)
+#' @export
+print.sft_migration_plan <- function(x, ...) {
+  cat("<sft_migration_plan>\n")
+  cat("  form_id:    ", x$form$form_id, "\n", sep = "")
+  cat("  table_name: ", x$form$table_name, "\n", sep = "")
+  cat("  actions:    ", nrow(x$actions), "\n", sep = "")
+
+  if (nrow(x$actions) > 0L) {
+    print(x$actions)
+  }
+
+  invisible(x)
+}

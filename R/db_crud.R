@@ -1,0 +1,727 @@
+# Shared front matter for the CRUD entry points: validate the form, resolve the
+# connection, and ensure the schema exists; returns the resolved connection.
+# `envir` is forwarded to sft_resolve_connection so that, when this helper opens
+# an owned connection, its db_disconnect() on.exit is registered in the calling
+# entry point's frame (not this helper's) and runs when that function returns.
+sft_prepare_mutation <- function(form, conn, user = NULL, envir = parent.frame()) {
+  if (!inherits(form, "sft_form")) {
+    stop("form must be a form object.", call. = FALSE)
+  }
+
+  conn <- sft_resolve_connection(form, conn, envir = envir)
+
+  sft_ensure_schema(conn, form, user = user)
+
+  conn
+}
+
+# Shared tail for the mutating CRUD operations: re-read the affected record
+# (including its soft-deleted state), write the audit-log entry, and return the
+# new record. Used as the last expression inside the transaction block, so its
+# return value becomes the operation's result.
+#
+# `changed_fields` names the columns the operation WROTE. With
+# `actual_changes_only` they are reduced to the ones whose stored value really
+# differs afterwards: the edit form submits every field on every save, so
+# without it each update claimed to have changed all of them, and the conflict
+# view credited the last saver with columns somebody else had changed. Old and
+# new row are both read from the database, so the comparison is exact - an
+# edit that only touches whitespace still counts.
+sft_finalize_mutation <- function(conn,
+                                  form,
+                                  record_id,
+                                  action,
+                                  old_data,
+                                  changed_fields,
+                                  user = NULL,
+                                  reason = NULL,
+                                  actual_changes_only = FALSE) {
+  new_record <- sft_get_record(
+    conn = conn,
+    form = form,
+    record_id = record_id,
+    include_deleted = TRUE
+  )
+
+  if (isTRUE(actual_changes_only)) {
+    changed_fields <- intersect(
+      changed_fields,
+      sft_changed_fields(old_data, new_record)
+    )
+  }
+
+  write_audit_log(
+    conn = conn,
+    form = form,
+    action = action,
+    record_id = new_record$sft_id[1],
+    record_uuid = new_record$sft_uuid[1],
+    old_data = old_data,
+    new_data = new_record,
+    changed_fields = changed_fields,
+    changed_by = user,
+    reason = reason
+  )
+
+  new_record
+}
+
+sft_record_field_values <- function(form,
+                                    record,
+                                    include_missing = FALSE,
+                                    editable_only = FALSE) {
+  if (is.data.frame(record)) {
+    record <- sft_row_to_list(record)
+  }
+
+  fields <- if (isTRUE(editable_only)) {
+    sft_editable_input_fields(form)
+  } else {
+    sft_active_input_fields(form)
+  }
+  values <- list()
+
+  for (field in fields) {
+    if (sft_record_has_value(record, field)) {
+      value <- sft_field_db_value(
+        field = field,
+        value = sft_record_get_value(record, field)
+      )
+      # Unique fields: store empty input as NULL so the composite unique index
+      # (db_column, sft_unique_slot) treats it as distinct, matching the
+      # application check which exempts empty values from uniqueness.
+      if (isTRUE(field$unique) && sft_is_empty_value(value)) {
+        value <- NA
+      }
+      values[[field$db_column]] <- value
+    } else if (isTRUE(include_missing)) {
+      values[[field$db_column]] <- NA_character_
+    }
+  }
+
+  values
+}
+
+# Decode a stored row back to input-shaped values for validation, so update
+# and restore validate the same shapes insert does. Without this the record
+# went through sft_field_db_value() twice: a multi-value field became JSON of
+# JSON, the friendly unique pre-check never matched, and a rule that read
+# `values$tags` saw a JSON string on update but a vector on insert. NA stays
+# NA (sft_ui_value() would turn it into NULL and drop the element, which the
+# mandatory check would then read as "missing" instead of "empty").
+sft_decode_record_values <- function(form, record) {
+  for (field in sft_active_input_fields(form)) {
+    column <- field$db_column
+
+    if (!column %in% names(record)) {
+      next
+    }
+
+    decoded <- sft_ui_value(field, record[[column]])
+    record[[column]] <- if (is.null(decoded)) NA else decoded
+  }
+
+  record
+}
+
+sft_get_record <- function(conn,
+                           form,
+                           record_id = NULL,
+                           record_uuid = NULL,
+                           include_deleted = FALSE) {
+  if (is.null(record_id) && is.null(record_uuid)) {
+    stop("record_id or record_uuid must be supplied.", call. = FALSE)
+  }
+
+  sft_check_record_uuid_supported(form, record_uuid)
+
+  if (!is.null(record_id)) {
+    sql <- paste0(
+      "SELECT * FROM ",
+      sft_quote_identifier(conn, form$table_name),
+      " WHERE sft_id = ?"
+    )
+
+    params <- list(record_id)
+  } else {
+    sql <- paste0(
+      "SELECT * FROM ",
+      sft_quote_identifier(conn, form$table_name),
+      " WHERE sft_uuid = ?"
+    )
+
+    params <- list(record_uuid)
+  }
+
+  if (!isTRUE(include_deleted)) {
+    sql <- paste0(sql, " AND sft_is_deleted = 0")
+  }
+
+  out <- DBI::dbGetQuery(conn, sql, params = params)
+
+  if (nrow(out) == 0L) {
+    stop("Record not found.", call. = FALSE)
+  }
+
+  if (nrow(out) > 1L) {
+    stop("Record lookup returned more than one row.", call. = FALSE)
+  }
+
+  out
+}
+
+#' Fetch form records
+#'
+#' @param form Object created with [form()].
+#' @param conn Optional DBI connection; see [connections].
+#' @param include_deleted Logical. Whether soft-deleted records are included.
+#'   `"only"` returns just the soft-deleted records, filtered by the database.
+#'   Any other value (`"all"`, `NA`) counts as `FALSE`.
+#'
+#' @return A data frame.
+#' @examples
+#' db <- db_sqlite(tempfile(fileext = ".sqlite"))
+#' contacts <- form(
+#'   form_id = "contacts", table_name = "contacts", db = db,
+#'   fields = list(
+#'     form_field(id = "name", label = "Name", mandatory = TRUE),
+#'     form_field(id = "email", label = "Email", unique = TRUE)
+#'   )
+#' )
+#' conn <- db_connect(db)
+#' init_db(contacts, conn = conn, user = "demo")
+#' insert_record(contacts, list(name = "Ada", email = "ada@example.org"),
+#'               conn = conn, user = "demo")
+#' fetch_records(contacts, conn = conn)
+#' db_disconnect(conn)
+#' @export
+fetch_records <- function(form,
+                              conn = NULL,
+                              include_deleted = FALSE) {
+  conn <- sft_prepare_mutation(form, conn)
+
+  sql <- paste0(
+    "SELECT * FROM ",
+    sft_quote_identifier(conn, form$table_name)
+  )
+
+  if (identical(include_deleted, "only")) {
+    sql <- paste0(sql, " WHERE sft_is_deleted = 1")
+  } else if (!isTRUE(include_deleted)) {
+    sql <- paste0(sql, " WHERE sft_is_deleted = 0")
+  }
+
+  sql <- paste0(sql, " ORDER BY sft_id")
+
+  DBI::dbGetQuery(conn, sql)
+}
+
+# The body of insert_record() without the transaction, so that a caller
+# writing several records (upsert_records) can run them in ONE transaction.
+# Every caller must hold an open transaction on `conn`.
+sft_insert_record_tx <- function(conn, form, record, user = NULL, reason = NULL) {
+  validate_record(
+    form = form,
+    record = record,
+    conn = conn,
+    require_all_mandatory = TRUE
+  )
+
+  now <- sft_now()
+
+  field_values <- sft_record_field_values(
+    form = form,
+    record = record,
+    include_missing = FALSE
+  )
+
+  explicit_sft_id <- if (sft_requires_explicit_sft_id(conn)) {
+    sft_next_sft_id(conn, form$table_name)
+  } else {
+    NULL
+  }
+
+  system_values <- c(
+    if (sft_form_has_uuid(form)) list(sft_uuid = uuid::UUIDgenerate()),
+    list(
+      sft_form_version = form$version,
+      sft_created_at = now,
+      sft_created_by = sft_db_param(user),
+      sft_updated_at = now,
+      sft_updated_by = sft_db_param(user),
+      sft_is_deleted = 0L,
+      sft_unique_slot = 0L
+    )
+  )
+
+  if (!is.null(explicit_sft_id)) {
+    system_values <- c(
+      list(sft_id = explicit_sft_id),
+      system_values
+    )
+  }
+
+  values <- c(system_values, field_values)
+
+  sft_sql_insert(conn, form$table_name, names(values), values)
+
+  new_id <- explicit_sft_id %||% sft_last_insert_id(conn)
+
+  # sft_easy_id derives from the id the database just assigned, so it can only
+  # be written once that id is known - hence the follow-up UPDATE. Skipped
+  # entirely when the form does not store one.
+  if (sft_form_has_easy_id(form)) {
+    DBI::dbExecute(
+      conn,
+      paste0(
+        "UPDATE ",
+        sft_quote_identifier(conn, form$table_name),
+        " SET sft_easy_id = ? WHERE sft_id = ?"
+      ),
+      params = list(paste0(new_id, "-", sft_random_letters()), new_id)
+    )
+  }
+
+  sft_finalize_mutation(
+    conn = conn,
+    form = form,
+    record_id = new_id,
+    action = "insert",
+    old_data = NULL,
+    # The id DuckDB needs explicitly is not a change the user made; the other
+    # backends never listed it.
+    changed_fields = setdiff(names(values), "sft_id"),
+    user = user,
+    reason = reason
+  )
+}
+
+#' Insert a form record
+#'
+#' @param form Object created with [form()].
+#' @param record Named list or one-row data frame.
+#' @param conn Optional DBI connection; see [connections].
+#' @param user Optional user identifier.
+#' @param reason Optional reason for audit log.
+#'
+#' @return The inserted record as a one-row data frame.
+#' @examples
+#' db <- db_sqlite(tempfile(fileext = ".sqlite"))
+#' contacts <- form(
+#'   form_id = "contacts", table_name = "contacts", db = db,
+#'   fields = list(
+#'     form_field(id = "name", label = "Name", mandatory = TRUE),
+#'     form_field(id = "email", label = "Email", unique = TRUE)
+#'   )
+#' )
+#' conn <- db_connect(db)
+#' init_db(contacts, conn = conn, user = "demo")
+#' insert_record(contacts, list(name = "Ada", email = "ada@example.org"),
+#'               conn = conn, user = "demo")
+#' db_disconnect(conn)
+#' @export
+insert_record <- function(form,
+                              record,
+                              conn = NULL,
+                              user = NULL,
+                              reason = NULL) {
+  conn <- sft_prepare_mutation(form, conn, user = user)
+
+  sft_db_with_transaction(
+    conn,
+    sft_insert_record_tx(conn, form, record, user = user, reason = reason)
+  )
+}
+
+# Columns of the form's active input fields whose stored value differs between
+# two versions of the same record row. Used by the edit-conflict check in
+# update_record(): value-based (via sft_values_differ), so a no-op save by
+# another user (same values, newer sft_updated_at) is not reported as a
+# conflict, and timestamp resolution does not matter.
+sft_conflicting_columns <- function(form, expected_record, current_record) {
+  as_record_list <- function(record) {
+    if (is.data.frame(record)) sft_row_to_list(record) else as.list(record)
+  }
+
+  expected <- as_record_list(expected_record)
+  current <- as_record_list(current_record)
+
+  columns <- character()
+
+  for (field in sft_active_input_fields(form)) {
+    column <- field$db_column
+
+    if (sft_values_differ(current[[column]], expected[[column]])) {
+      columns <- c(columns, column)
+    }
+  }
+
+  columns
+}
+
+# Classed condition signalled by update_record() when expected_record no longer
+# matches the stored row. Carries the fresh row and the changed columns so a
+# caller (e.g. the Shiny module's conflict view) can react without re-fetching.
+# The message deliberately does not match sft_is_retryable_conflict(): a stale
+# edit must surface, not be retried.
+sft_edit_conflict_condition <- function(current_record, columns) {
+  structure(
+    class = c("sft_edit_conflict", "error", "condition"),
+    list(
+      message = paste0(
+        "The record was changed by someone else while it was being edited. ",
+        "Changed columns: ", paste(columns, collapse = ", "), "."
+      ),
+      call = NULL,
+      current_record = current_record,
+      columns = columns
+    )
+  )
+}
+
+# Optimistic-locking check of update_record(): stop with an sft_edit_conflict
+# when the stored record no longer looks the way the editor saw it. Runs inside
+# the transaction, so no writer can slip in between this comparison and the
+# UPDATE.
+sft_check_edit_conflict <- function(form, expected_record, current_record) {
+  if (is.null(expected_record)) {
+    return(invisible(TRUE))
+  }
+
+  conflict_columns <- sft_conflicting_columns(
+    form = form,
+    expected_record = expected_record,
+    current_record = current_record
+  )
+
+  if (length(conflict_columns) > 0L) {
+    stop(
+      sft_edit_conflict_condition(
+        current_record = current_record,
+        columns = conflict_columns
+      )
+    )
+  }
+
+  invisible(TRUE)
+}
+
+# What update_record() will write: the caller's `values` reduced to editable
+# fields and encoded for storage. Refuses a mandatory field that was supplied
+# empty, and an update that names no editable field at all.
+sft_update_field_values <- function(form, values) {
+  editable_fields <- sft_editable_input_fields(form)
+  editable_names <- c(
+    vapply(editable_fields, function(field) field$id, character(1)),
+    vapply(editable_fields, function(field) field$db_column, character(1))
+  )
+
+  if (is.data.frame(values)) {
+    values <- sft_row_to_list(values)
+  }
+
+  values <- as.list(values)
+  values <- values[intersect(names(values), editable_names)]
+
+  empty_supplied_mandatory <- sft_supplied_empty_mandatory_fields(
+    form = form,
+    record = values
+  )
+
+  if (length(empty_supplied_mandatory) > 0L) {
+    stop(sft_validation_error(list(sft_issue(
+      fields = empty_supplied_mandatory,
+      severity = "error",
+      message = sft_message(
+        form = form,
+        key = "mandatory_empty",
+        values = list(fields = paste(empty_supplied_mandatory, collapse = ", "))
+      ),
+      source = "mandatory"
+    ))))
+  }
+
+  field_values <- sft_record_field_values(
+    form = form,
+    record = values,
+    include_missing = FALSE,
+    editable_only = TRUE
+  )
+
+  if (length(field_values) == 0L) {
+    stop(
+      sft_message(
+        form = form,
+        key = "no_active_fields_for_update"
+      ),
+      call. = FALSE
+    )
+  }
+
+  field_values
+}
+
+# Validate the record as it will look after the update: the stored row with the
+# new values laid over it, decoded back to input shapes (see
+# sft_decode_record_values). `on_edit_missing_required` decides what a
+# mandatory field that is empty in an OLD record means: "require" refuses,
+# "warn" warns and saves, "ignore" saves.
+sft_validate_update <- function(form, conn, old_record, field_values) {
+  # Before decoding: the decoder turns text in a number field into NA, and
+  # the text would then be stored (SQLite) or hit a raw driver error.
+  number_issues <- sft_number_issues(form, field_values)
+  if (length(number_issues) > 0L) {
+    stop(sft_validation_error(number_issues))
+  }
+
+  merged_record <- sft_row_to_list(old_record)
+
+  for (column_name in names(field_values)) {
+    merged_record[[column_name]] <- field_values[[column_name]]
+  }
+
+  merged_record <- sft_decode_record_values(form, merged_record)
+  require_all <- identical(form$on_edit_missing_required, "require")
+
+  if (!require_all && identical(form$on_edit_missing_required, "warn")) {
+    missing <- sft_missing_mandatory_fields(form, merged_record)
+
+    if (length(missing) > 0L) {
+      warning(
+        sft_message(
+          form = form,
+          key = "mandatory_missing",
+          values = list(fields = paste(missing, collapse = ", "))
+        ),
+        call. = FALSE
+      )
+    }
+  }
+
+  validate_record(
+    form = form,
+    record = merged_record,
+    conn = conn,
+    record_id = old_record$sft_id[1],
+    require_all_mandatory = require_all
+  )
+}
+
+# The body of update_record() without the transaction; see sft_insert_record_tx.
+sft_update_record_tx <- function(conn,
+                                 form,
+                                 values,
+                                 record_id = NULL,
+                                 record_uuid = NULL,
+                                 user = NULL,
+                                 reason = NULL,
+                                 expected_record = NULL) {
+  old_record <- sft_get_record(
+    conn = conn,
+    form = form,
+    record_id = record_id,
+    record_uuid = record_uuid,
+    include_deleted = FALSE
+  )
+
+  sft_check_edit_conflict(form, expected_record, current_record = old_record)
+
+  # A field whose `editable` is a function is decided for `user` here, as the
+  # module does before calling in: unresolved, isTRUE(<function>) is FALSE and
+  # the field was dropped from every update, even for a user it allows.
+  field_values <- sft_update_field_values(sft_resolve_editable(form, user), values)
+  sft_validate_update(form, conn, old_record, field_values)
+
+  now <- sft_now()
+
+  update_values <- c(
+    field_values,
+    list(
+      # sft_form_version is intentionally left untouched: it is creation
+      # provenance, not a marker of the last write.
+      sft_updated_at = now,
+      sft_updated_by = sft_db_param(user)
+    )
+  )
+
+  DBI::dbExecute(
+    conn,
+    sft_sql_update_by_id(conn, form$table_name, names(update_values)),
+    params = c(
+      unname(update_values),
+      list(old_record$sft_id[1])
+    )
+  )
+
+  sft_finalize_mutation(
+    conn = conn,
+    form = form,
+    record_id = old_record$sft_id[1],
+    action = "update",
+    old_data = old_record,
+    changed_fields = names(field_values),
+    user = user,
+    reason = reason,
+    actual_changes_only = TRUE
+  )
+}
+
+#' Update a form record
+#'
+#' @param form Object created with [form()].
+#' @param record_id Optional `sft_id`.
+#' @param record_uuid Optional `sft_uuid`.
+#' @param values Named list of values to update.
+#' @param conn Optional DBI connection; see [connections].
+#' @param user Optional user identifier, for the audit log. A field whose
+#'   `editable` is a function is decided for this user.
+#' @param reason Optional reason for audit log.
+#' @param expected_record Optional one-row data frame (or named list): the
+#'   record as it looked when editing started. When supplied, the update is
+#'   rejected with an error of class `"sft_edit_conflict"` if any input field's
+#'   stored value has changed in the meantime (i.e. another writer saved first),
+#'   so a stale edit cannot silently overwrite newer data. The comparison is
+#'   value-based: a save that changed no field values does not count as a
+#'   conflict. The condition carries the current row (`current_record`) and the
+#'   affected columns (`columns`). Default `NULL` skips the check (previous
+#'   behaviour).
+#'
+#' @return The updated record as a one-row data frame.
+#' @examples
+#' db <- db_sqlite(tempfile(fileext = ".sqlite"))
+#' contacts <- form(
+#'   form_id = "contacts", table_name = "contacts", db = db,
+#'   fields = list(
+#'     form_field(id = "name", label = "Name", mandatory = TRUE),
+#'     form_field(id = "email", label = "Email", unique = TRUE)
+#'   )
+#' )
+#' conn <- db_connect(db)
+#' init_db(contacts, conn = conn, user = "demo")
+#' added <- insert_record(contacts, list(name = "Ada", email = "ada@example.org"),
+#'                        conn = conn, user = "demo")
+#' update_record(contacts, list(email = "ada@new.org"),
+#'               record_id = added$sft_id, conn = conn, user = "demo")
+#' db_disconnect(conn)
+#' @export
+update_record <- function(form,
+                              values,
+                              record_id = NULL,
+                              record_uuid = NULL,
+                              conn = NULL,
+                              user = NULL,
+                              reason = NULL,
+                              expected_record = NULL) {
+  conn <- sft_prepare_mutation(form, conn, user = user)
+
+  sft_db_with_transaction(
+    conn,
+    sft_update_record_tx(
+      conn, form, values,
+      record_id = record_id, record_uuid = record_uuid,
+      user = user, reason = reason, expected_record = expected_record
+    )
+  )
+}
+
+# The body of soft_delete_record() without the transaction; see sft_insert_record_tx.
+sft_soft_delete_record_tx <- function(conn,
+                                      form,
+                                      record_id = NULL,
+                                      record_uuid = NULL,
+                                      user = NULL,
+                                      reason = NULL) {
+  old_record <- sft_get_record(
+    conn = conn,
+    form = form,
+    record_id = record_id,
+    record_uuid = record_uuid,
+    include_deleted = FALSE
+  )
+
+  now <- sft_now()
+
+  DBI::dbExecute(
+    conn,
+    paste0(
+      "UPDATE ",
+      sft_quote_identifier(conn, form$table_name),
+      " SET sft_is_deleted = 1,
+            sft_deleted_at = ?,
+            sft_deleted_by = ?,
+            sft_updated_at = ?,
+            sft_updated_by = ?,
+            sft_unique_slot = ?
+        WHERE sft_id = ?"
+    ),
+    params = list(
+      now,
+      sft_db_param(user),
+      now,
+      sft_db_param(user),
+      old_record$sft_id[1],
+      old_record$sft_id[1]
+    )
+  )
+
+  sft_finalize_mutation(
+    conn = conn,
+    form = form,
+    record_id = old_record$sft_id[1],
+    action = "delete",
+    old_data = old_record,
+    changed_fields = c(
+      "sft_is_deleted",
+      "sft_deleted_at",
+      "sft_deleted_by"
+    ),
+    user = user,
+    reason = reason
+  )
+}
+
+#' Soft-delete a form record
+#'
+#' @param form Object created with [form()].
+#' @param record_id Optional `sft_id`.
+#' @param record_uuid Optional `sft_uuid`.
+#' @param conn Optional DBI connection; see [connections].
+#' @param user Optional user identifier.
+#' @param reason Optional reason for audit log.
+#'
+#' @return The deleted record as a one-row data frame.
+#' @examples
+#' db <- db_sqlite(tempfile(fileext = ".sqlite"))
+#' contacts <- form(
+#'   form_id = "contacts", table_name = "contacts", db = db,
+#'   fields = list(
+#'     form_field(id = "name", label = "Name", mandatory = TRUE),
+#'     form_field(id = "email", label = "Email", unique = TRUE)
+#'   )
+#' )
+#' conn <- db_connect(db)
+#' init_db(contacts, conn = conn, user = "demo")
+#' added <- insert_record(contacts, list(name = "Ada", email = "ada@example.org"),
+#'                        conn = conn, user = "demo")
+#' soft_delete_record(contacts, record_id = added$sft_id,
+#'                    conn = conn, user = "demo", reason = "duplicate")
+#' nrow(fetch_records(contacts, conn = conn))
+#' db_disconnect(conn)
+#' @export
+soft_delete_record <- function(form,
+                                   record_id = NULL,
+                                   record_uuid = NULL,
+                                   conn = NULL,
+                                   user = NULL,
+                                   reason = NULL) {
+  conn <- sft_prepare_mutation(form, conn, user = user)
+
+  sft_db_with_transaction(
+    conn,
+    sft_soft_delete_record_tx(
+      conn, form,
+      record_id = record_id, record_uuid = record_uuid,
+      user = user, reason = reason
+    )
+  )
+}

@@ -1,0 +1,795 @@
+sft_system_column_labels <- function() {
+  tl <- sft_table_labels()
+  cols <- c(
+    "sft_id", "sft_uuid", "sft_easy_id", "sft_form_version",
+    "sft_created_at", "sft_created_by", "sft_updated_at",
+    "sft_updated_by", "sft_deleted_at", "sft_deleted_by", "sft_is_deleted"
+  )
+  out <- vapply(cols, function(key) as.character(tl[[key]]), character(1))
+  names(out) <- cols
+  out
+}
+
+sft_field_column_labels <- function(form) {
+  fields <- sft_active_input_fields(form)
+
+  labels <- vapply(
+    fields,
+    function(field) field$label,
+    character(1)
+  )
+
+  names(labels) <- vapply(
+    fields,
+    function(field) field$db_column,
+    character(1)
+  )
+
+  labels
+}
+
+sft_column_labels <- function(form) {
+  c(
+    sft_system_column_labels(),
+    sft_field_column_labels(form)
+  )
+}
+
+
+sft_default_datetime_format <- function() {
+  "%d.%m.%Y %H:%M"
+}
+
+# The time zone displayed timestamps are rendered in.
+#
+# Defaults to "" - the time zone of the machine running the app, which for a
+# Shiny app is the server. Set `options(shinyformtools.datetime_timezone = ...)`
+# to pin it, either to "UTC" or to any Olson name ("Asia/Tokyo"), which is what
+# a deployment serving several regions wants: everyone then reads the same wall
+# clock instead of the server's.
+sft_datetime_timezone <- function() {
+  value <- getOption("shinyformtools.datetime_timezone", default = "")
+
+  if (!is.character(value) || length(value) != 1L || is.na(value)) {
+    return("")
+  }
+
+  value
+}
+
+# Whether a timestamp string carries a UTC offset, and therefore identifies a
+# moment in time rather than a wall-clock reading.
+#
+# The distinction decides whether the value may be shifted. `sft_now()` writes
+# "...T08:18:03.670+0200", which names an instant: rendering it in another zone
+# is a correct translation. A user's own date field holds "2026-08-01" or a
+# plain "2026-08-01 09:00" with no offset - a wall-clock reading whose zone
+# nobody recorded. Shifting THAT would silently change the value the user typed,
+# so it is formatted back exactly as written.
+sft_has_utc_offset <- function(x) {
+  grepl("(Z|[+-][0-9]{2}:?[0-9]{2})$", trimws(as.character(x)))
+}
+
+# Timestamp spellings a stored value may arrive in, most specific first: the
+# offset-bearing ones must be tried before their offset-less counterparts, or
+# "...T08:18:03+0200" would match "%Y-%m-%dT%H:%M:%S" with the offset ignored
+# and the value would silently lose two hours.
+sft_datetime_parse_formats <- function() {
+  c(
+    "%Y-%m-%d %H:%M:%OS%z",
+    "%Y-%m-%d %H:%M:%S%z",
+    "%Y-%m-%dT%H:%M:%OS%z",
+    "%Y-%m-%dT%H:%M:%S%z",
+    "%Y-%m-%d %H:%M:%OS",
+    "%Y-%m-%d %H:%M:%S",
+    "%Y-%m-%dT%H:%M:%OS",
+    "%Y-%m-%dT%H:%M:%S",
+    "%Y-%m-%d"
+  )
+}
+
+sft_format_datetime_value <- function(x, datetime_format = sft_default_datetime_format()) {
+  if (is.null(x)) {
+    return(x)
+  }
+
+  display_tz <- sft_datetime_timezone()
+
+  if (inherits(x, "POSIXt")) {
+    return(format(x, datetime_format, tz = display_tz))
+  }
+
+  x_chr <- as.character(x)
+  out <- x_chr
+  needs_format <- !is.na(x_chr) & nzchar(x_chr)
+
+  if (!any(needs_format)) {
+    return(out)
+  }
+
+  values <- x_chr[needs_format]
+
+  # Parsing in UTC keeps the arithmetic honest: a value carrying an offset is
+  # converted to the right instant, and one without is taken at face value.
+  #
+  # The formats are applied one at a time rather than handed to as.POSIXct()'s
+  # `tryFormats`, which looks convenient but is all-or-nothing: it picks a
+  # format only if it matches EVERY value, and when none does it THROWS
+  # ("character string is not in a standard unambiguous format") rather than
+  # returning NA - a single unexpected string in a column would take the whole
+  # table down. Applying each format in turn and keeping whatever it resolves
+  # leaves unparseable values as NA, which is what the fallback below always
+  # assumed, and lets one column hold a mix of spellings.
+  parsed <- as.POSIXct(rep(NA_real_, length(values)), origin = "1970-01-01", tz = "UTC")
+
+  # The date/time separator decides which formats can match at all: a format
+  # with a space cannot read "...T..." and one with "T" cannot read "... ..."
+  # (the hour after the separator is a digit). Skipping those is the same
+  # result without parsing the whole column two extra times.
+  separator <- substr(values, 11L, 11L)
+
+  for (format_candidate in sft_datetime_parse_formats()) {
+    unresolved <- is.na(parsed)
+    if (grepl("T", format_candidate, fixed = TRUE)) {
+      unresolved <- unresolved & separator != " "
+    } else if (grepl(" ", format_candidate, fixed = TRUE)) {
+      unresolved <- unresolved & separator != "T"
+    }
+
+    if (!any(is.na(parsed))) {
+      break
+    }
+
+    if (!any(unresolved)) {
+      next
+    }
+
+    parsed[unresolved] <- suppressWarnings(
+      as.POSIXct(strptime(values[unresolved], format_candidate, tz = "UTC"))
+    )
+  }
+
+  # Rendering in UTC returns an offset-less value unchanged, because that is the
+  # zone it was parsed as.
+  # Each value is formatted once, in the zone that applies to it (ifelse()
+  # formatted the whole column in both).
+  with_offset <- sft_has_utc_offset(values)
+  formatted <- values
+  ok <- !is.na(parsed)
+  formatted[ok & with_offset] <- format(parsed[ok & with_offset], datetime_format, tz = display_tz)
+  formatted[ok & !with_offset] <- format(parsed[ok & !with_offset], datetime_format, tz = "UTC")
+
+  out[needs_format] <- formatted
+  out
+}
+
+
+
+# TRUE for the spec rows' default `format = function(value, sep) value`: the
+# column can then be shown as it is, without a call per cell.
+sft_is_identity_format <- function(format) {
+  is.function(format) && identical(body(format), quote(value)) &&
+    identical(names(formals(format)), c("value", "sep"))
+}
+
+sft_format_field_display_columns <- function(data, form, checkbox_labels = FALSE) {
+  if (!is.data.frame(data) || nrow(data) == 0L) {
+    return(data)
+  }
+
+  fields <- sft_active_input_fields(form)
+
+  for (field in fields) {
+    column <- field$db_column
+
+    if (!column %in% names(data)) {
+      next
+    }
+
+    if (isTRUE(checkbox_labels) && sft_is_logical_field(field, data[[column]])) {
+      data[[column]] <- sft_logical_labels(field, data[[column]])
+      next
+    }
+
+    # The spec is looked up once per column, not once per cell: per cell it
+    # was most of the time a records-table refresh took (370 ms for 5000 rows
+    # of six fields), and a refresh blocks every session of the app.
+    spec <- sft_input_spec(field$input_type)
+
+    if (is.null(spec) || sft_is_identity_format(spec$format)) {
+      # Shown as stored: a number stays a number, anything else becomes text.
+      if (!is.numeric(data[[column]])) {
+        data[[column]] <- as.character(data[[column]])
+      }
+    } else {
+      # Each distinct value is formatted once: a column of choices holds a
+      # handful of values over thousands of rows, and formatting every cell
+      # (JSON check per value) was most of a refresh under load.
+      sep <- spec$sep
+      values <- data[[column]]
+      distinct <- unique(values)
+      formatted_distinct <- lapply(distinct, function(value) spec$format(value, sep))
+      formatted <- formatted_distinct[match(values, distinct)]
+
+      # A number stays a number: DT sorts and filters a numeric column as such
+      # (a text column sorts "100" before "35" and gets a text box instead of
+      # a range slider). Only when a field formats its numbers into text (a
+      # registered input's own `format`, say) does the column become text.
+      keeps_number <- is.numeric(data[[column]]) && all(vapply(
+        formatted,
+        function(out) is.null(out) || length(out) == 0L || is.numeric(out),
+        logical(1)
+      ))
+
+      if (!keeps_number) {
+        data[[column]] <- vapply(
+          formatted,
+          function(out) {
+            if (is.null(out) || length(out) == 0L || is.na(out[1L])) {
+              return(NA_character_)
+            }
+
+            as.character(out[1L])
+          },
+          character(1)
+        )
+      }
+    }
+
+    if (isTRUE(field$markdown)) {
+      data[[column]] <- sft_render_markdown(data[[column]])
+    }
+  }
+
+  data
+}
+
+# A field whose stored values decode to TRUE / FALSE (a checkbox, or a
+# registered input that decodes to logical). Decided per value, no switch on
+# the input type.
+sft_is_logical_field <- function(field, values) {
+  decoded <- lapply(values, function(value) sft_ui_value(field, value))
+  known <- !vapply(decoded, is.null, logical(1)) & !is.na(values)
+
+  any(known) && all(vapply(decoded[known], is.logical, logical(1)))
+}
+
+# The yes / no words of the active language for a logical column; NA stays NA.
+sft_logical_labels <- function(field, values) {
+  tl <- sft_table_labels()
+
+  vapply(
+    values,
+    function(value) {
+      decoded <- sft_ui_value(field, value)
+
+      if (is.null(decoded) || is.na(value)) {
+        return(NA_character_)
+      }
+
+      as.character(if (isTRUE(decoded)) tl$flag_yes else tl$flag_no)
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
+}
+
+sft_format_display_data <- function(data, datetime_format = sft_default_datetime_format()) {
+  if (!is.data.frame(data) || nrow(data) == 0L) {
+    return(data)
+  }
+
+  datetime_columns <- grep("(^|_)at$", names(data), value = TRUE)
+
+  for (column in datetime_columns) {
+    data[[column]] <- sft_format_datetime_value(
+      data[[column]],
+      datetime_format = datetime_format
+    )
+  }
+
+  if ("sft_is_deleted" %in% names(data)) {
+    tl <- sft_table_labels()
+    deleted <- data$sft_is_deleted == 1L | as.character(data$sft_is_deleted) == "1"
+    deleted[is.na(deleted)] <- FALSE
+    data$sft_is_deleted <- ifelse(deleted, as.character(tl$flag_yes), as.character(tl$flag_no))
+  }
+
+  data
+}
+
+sft_action_labels <- function() {
+  tl <- sft_table_labels()
+  c(
+    insert = as.character(tl$action_insert),
+    update = as.character(tl$action_update),
+    delete = as.character(tl$action_delete),
+    restore = as.character(tl$action_restore),
+    attach_shape = as.character(tl$action_attach_shape %||% "attach_shape")
+  )
+}
+
+# Relabel keys via a named label map, leaving keys without a mapping unchanged.
+sft_relabel <- function(keys, labels) {
+  replacement <- labels[keys]
+  replacement[is.na(replacement)] <- keys[is.na(replacement)]
+  unname(replacement)
+}
+
+sft_format_action_value <- function(x) {
+  sft_relabel(as.character(x), sft_action_labels())
+}
+
+sft_display_column_labels <- function(form, display_column_labels = NULL) {
+  labels <- sft_column_labels(form)
+
+  if (is.null(display_column_labels)) {
+    return(labels)
+  }
+
+  if (!is.character(display_column_labels) || is.null(names(display_column_labels))) {
+    stop(
+      "display_column_labels must be NULL or a named character vector.",
+      call. = FALSE
+    )
+  }
+
+  if (any(!nzchar(names(display_column_labels)))) {
+    stop(
+      "display_column_labels must have non-empty names.",
+      call. = FALSE
+    )
+  }
+
+  if (any(is.na(display_column_labels))) {
+    stop(
+      "display_column_labels must not contain NA values.",
+      call. = FALSE
+    )
+  }
+
+  labels[names(display_column_labels)] <- display_column_labels
+  labels
+}
+
+sft_apply_column_labels <- function(data, form, display_column_labels = NULL) {
+  labels <- sft_display_column_labels(
+    form = form,
+    display_column_labels = display_column_labels
+  )
+  names(data) <- sft_relabel(names(data), labels)
+
+  data
+}
+
+
+sft_call_display_transform <- function(display_transform, data, context) {
+  args <- list(data = data, context = context)
+  formals_names <- names(formals(display_transform))
+
+  if ("..." %in% formals_names) {
+    return(do.call(display_transform, args))
+  }
+
+  do.call(display_transform, args[intersect(names(args), formals_names)])
+}
+
+sft_apply_display_transform <- function(data,
+                                        display_transform = NULL,
+                                        context = list()) {
+  if (!is.data.frame(data)) {
+    data <- data.frame()
+  }
+
+  if (is.null(display_transform)) {
+    return(data)
+  }
+
+  if (!is.function(display_transform)) {
+    stop("display_transform must be NULL or a function.", call. = FALSE)
+  }
+
+  out <- sft_call_display_transform(
+    display_transform = display_transform,
+    data = data,
+    context = context
+  )
+
+  if (!is.data.frame(out)) {
+    stop("display_transform must return a data frame.", call. = FALSE)
+  }
+
+  if ("sft_id" %in% names(data) && !"sft_id" %in% names(out)) {
+    stop(
+      "display_transform must preserve the sft_id column so table selections can be mapped back to raw records.",
+      call. = FALSE
+    )
+  }
+
+  out
+}
+
+# DT escape argument that escapes every column except the given markdown-column
+# positions (which already hold sanitized HTML). TRUE (escape all) when there are
+# none. Negative indices mean "all columns except these", per DT::datatable.
+sft_table_escape <- function(markdown_positions) {
+  if (length(markdown_positions) == 0L) {
+    return(TRUE)
+  }
+
+  -markdown_positions
+}
+
+sft_dt_options <- function(options = list()) {
+  base <- list(
+    pageLength = 10,
+    scrollX = FALSE,
+    autoWidth = FALSE
+  )
+
+  # German (or any) DataTables chrome (search box, pagination, info line) comes
+  # from the DataTables `language` option, set globally by use_german(). A
+  # per-table `language` in `options` still wins via modifyList below.
+  dt_language <- getOption("shinyformtools.dt_language", NULL)
+  # An active language() REPLACES the global option, even with an empty list:
+  # english() must be able to switch a German process back to DataTables' own
+  # English chrome.
+  if (!is.null(sft_active_language())) {
+    dt_language <- sft_language_part("dt_language")
+  }
+  if (is.list(dt_language) && length(dt_language) > 0L) {
+    base$language <- dt_language
+  }
+
+  utils::modifyList(base, options)
+}
+
+sft_check_table_format <- function(table_format) {
+  if (!is.null(table_format) && !is.function(table_format)) {
+    stop("table_format must be NULL or a function.", call. = FALSE)
+  }
+
+  invisible(table_format)
+}
+
+sft_call_table_format <- function(table_format, table, data, context) {
+  args <- list(table = table, data = data, context = context)
+  formals_names <- names(formals(table_format))
+
+  if ("..." %in% formals_names) {
+    return(do.call(table_format, args))
+  }
+
+  do.call(table_format, args[intersect(names(args), formals_names)])
+}
+
+sft_apply_table_format <- function(table, data, table_format = NULL, context = list()) {
+  if (is.null(table_format)) {
+    return(table)
+  }
+
+  out <- sft_call_table_format(
+    table_format = table_format,
+    table = table,
+    data = data,
+    context = context
+  )
+
+  if (!inherits(out, "datatables")) {
+    stop("table_format must return a DT table widget.", call. = FALSE)
+  }
+
+  out
+}
+
+
+
+sft_records_table_data <- function(data,
+                                   form,
+                                   columns = NULL,
+                                   show_system_columns = FALSE,
+                                   datetime_format = sft_default_datetime_format(),
+                                   display_column_labels = NULL,
+                                   checkbox_labels = FALSE) {
+  if (!inherits(form, "sft_form")) {
+    stop("form must be a form object.", call. = FALSE)
+  }
+
+  if (!is.data.frame(data)) {
+    data <- data.frame()
+  }
+
+  columns <- sft_resolve_record_columns(
+    form = form,
+    data = data,
+    columns = columns,
+    show_system_columns = show_system_columns
+  )
+
+  out <- data[, columns, drop = FALSE]
+  out <- sft_format_field_display_columns(out, form = form, checkbox_labels = checkbox_labels)
+  out <- sft_format_display_data(out, datetime_format = datetime_format)
+  out <- sft_apply_column_labels(
+    data = out,
+    form = form,
+    display_column_labels = display_column_labels
+  )
+
+  # 1-based positions of markdown columns in the (resolved) column order, so the
+  # caller can exclude them from DT escaping. Relabelling preserves order, so the
+  # positions are valid against the labelled output too.
+  attr(out, "sft_markdown_positions") <- which(columns %in% sft_markdown_columns(form))
+
+  out
+}
+
+#' Create a DT table for form records
+#'
+#' @param data Data frame returned by [fetch_records()].
+#' @param form Object created with [form()].
+#' @param columns Optional character vector of columns to display.
+#' @param show_system_columns Logical. Whether extended `sft_` columns are shown.
+#' @param selection DT row selection mode.
+#' @param options Additional DT options.
+#' @param class CSS class passed to [DT::datatable()].
+#' @param datetime_format Format used for displayed timestamps.
+#' @param display_column_labels Optional named character vector with labels for
+#'   additional display-only columns created by a display transform.
+#' @param filter Passed to [DT::datatable()]'s `filter` argument. `"none"`
+#'   (default), `"top"` or `"bottom"` add per-column search controls that adapt
+#'   to each column's type (range slider for numeric columns, a select for
+#'   factors, a text box otherwise).
+#' @param checkbox_labels Logical. Show checkbox fields as the language's
+#'   yes / no labels instead of 0 / 1.
+#'
+#' @return A DT table widget.
+#' @examples
+#' \dontrun{
+#' contacts <- form(
+#'   form_id = "contacts", table_name = "contacts",
+#'   db = db_sqlite(tempfile(fileext = ".sqlite")),
+#'   fields = list(
+#'     form_field(id = "name", label = "Name"),
+#'     form_field(id = "city", label = "City")
+#'   )
+#' )
+#' records <- data.frame(
+#'   name = c("Ada", "Linus"),
+#'   city = c("London", "Helsinki")
+#' )
+#' records_datatable(records, form = contacts)
+#' }
+#' @keywords internal
+records_datatable <- function(data,
+                                  form,
+                                  columns = NULL,
+                                  show_system_columns = FALSE,
+                                  selection = "single",
+                                  options = list(),
+                                  class = "display compact stripe hover nowrap",
+                                  datetime_format = sft_default_datetime_format(),
+                                  display_column_labels = NULL,
+                                  filter = "none",
+                                  checkbox_labels = FALSE) {
+  if (!inherits(form, "sft_form")) {
+    stop("form must be a form object.", call. = FALSE)
+  }
+
+  if (!is.data.frame(data)) {
+    data <- data.frame()
+  }
+
+  out <- sft_records_table_data(
+    data = data,
+    form = form,
+    columns = columns,
+    show_system_columns = show_system_columns,
+    datetime_format = datetime_format,
+    display_column_labels = display_column_labels,
+    checkbox_labels = checkbox_labels
+  )
+
+  escape <- sft_table_escape(attr(out, "sft_markdown_positions"))
+
+  options <- utils::modifyList(
+    list(stateSave = TRUE),
+    options
+  )
+
+  DT::datatable(
+    out,
+    rownames = FALSE,
+    selection = selection,
+    class = class,
+    escape = escape,
+    width = "100%",
+    filter = filter,
+    options = sft_dt_options(options)
+  )
+}
+
+#' Create a DT table for audit log entries
+#'
+#' @param data Data frame returned by [fetch_audit_log()].
+#' @param columns Optional character vector of columns to display.
+#' @param selection DT row selection mode.
+#' @param options Additional DT options.
+#' @param datetime_format Format string for datetime columns, as used by
+#'   [format()]. Defaults to the package datetime format
+#'   (`"%d.%m.%Y %H:%M"`).
+#'
+#' @return A DT table widget.
+#' @examples
+#' \dontrun{
+#' audit <- data.frame(
+#'   action = c("insert", "update"),
+#'   version_no = c(1L, 2L),
+#'   changed_at = Sys.time(),
+#'   changed_by = "demo"
+#' )
+#' audit_datatable(audit)
+#' }
+#' @keywords internal
+audit_datatable <- function(data,
+                                columns = NULL,
+                                selection = "none",
+                                options = list(),
+                                datetime_format = sft_default_datetime_format()) {
+  if (!is.data.frame(data)) {
+    data <- data.frame()
+  }
+
+  if (is.null(columns)) {
+    columns <- sft_default_audit_columns(data)
+  } else {
+    columns <- intersect(columns, names(data))
+  }
+
+  out <- data[, columns, drop = FALSE]
+  out <- sft_format_display_data(out, datetime_format = datetime_format)
+
+  if ("action" %in% names(out)) {
+    out$action <- sft_format_action_value(out$action)
+  }
+
+  tl <- sft_table_labels()
+  audit_labels <- c(
+    log_id = as.character(tl$audit_log_id),
+    record_id = as.character(tl$audit_record_id),
+    record_uuid = as.character(tl$audit_record_uuid),
+    action = as.character(tl$audit_action),
+    version_no = as.character(tl$audit_version_no),
+    changed_at = as.character(tl$audit_changed_at),
+    changed_by = as.character(tl$audit_changed_by),
+    changed_fields_json = as.character(tl$audit_changed_fields),
+    reason = as.character(tl$audit_reason)
+  )
+  names(out) <- sft_relabel(names(out), audit_labels)
+
+  DT::datatable(
+    out,
+    rownames = FALSE,
+    selection = selection,
+    options = sft_dt_options(options)
+  )
+}
+
+sft_audit_snapshot_to_row <- function(json, columns) {
+  out <- as.list(rep(NA_character_, length(columns)))
+  names(out) <- columns
+
+  if (is.null(json) || length(json) == 0L || is.na(json) || !nzchar(json)) {
+    return(out)
+  }
+
+  snapshot <- tryCatch(
+    sft_json_to_record(json),
+    error = function(err) NULL
+  )
+
+  if (is.null(snapshot)) {
+    return(out)
+  }
+
+  for (column in intersect(columns, names(snapshot))) {
+    value <- snapshot[[column]]
+
+    if (is.null(value) || length(value) == 0L) {
+      out[[column]] <- NA_character_
+    } else {
+      out[[column]] <- paste(as.character(value), collapse = ", ")
+    }
+  }
+
+  out
+}
+
+sft_versions_datatable <- function(data,
+                                   form,
+                                   selection = "single",
+                                   options = list(),
+                                   datetime_format = sft_default_datetime_format()) {
+  if (!inherits(form, "sft_form")) {
+    stop("form must be a form object.", call. = FALSE)
+  }
+
+  if (!is.data.frame(data) || nrow(data) == 0L) {
+    return(
+      DT::datatable(
+        data.frame(),
+        rownames = FALSE,
+        selection = "none",
+        options = sft_dt_options(options)
+      )
+    )
+  }
+
+  field_columns <- vapply(
+    sft_active_input_fields(form),
+    function(field) field$db_column,
+    character(1)
+  )
+
+  snapshot_rows <- lapply(
+    data$new_data_json,
+    sft_audit_snapshot_to_row,
+    columns = field_columns
+  )
+
+  snapshot_data <- as.data.frame(
+    do.call(rbind, lapply(snapshot_rows, as.data.frame, stringsAsFactors = FALSE)),
+    stringsAsFactors = FALSE
+  )
+  snapshot_data <- sft_format_field_display_columns(snapshot_data, form = form)
+
+  meta <- data[, intersect(
+    c("changed_by", "changed_at", "version_no", "action", "reason"),
+    names(data)
+  ), drop = FALSE]
+
+  if ("changed_at" %in% names(meta)) {
+    meta$changed_at <- sft_format_datetime_value(
+      meta$changed_at,
+      datetime_format = datetime_format
+    )
+  }
+
+  if ("action" %in% names(meta)) {
+    meta$action <- sft_format_action_value(meta$action)
+  }
+
+  out <- cbind(meta, snapshot_data)
+  out <- sft_apply_column_labels(out, form)
+
+  tl <- sft_table_labels()
+  version_labels <- c(
+    changed_by = as.character(tl$audit_changed_by),
+    changed_at = as.character(tl$audit_changed_at),
+    version_no = as.character(tl$audit_version_no),
+    action = as.character(tl$audit_action),
+    reason = as.character(tl$audit_reason)
+  )
+  names(out) <- sft_relabel(names(out), version_labels)
+
+  # Markdown columns sit inside snapshot_data, after the metadata columns.
+  markdown_positions <- ncol(meta) + which(field_columns %in% sft_markdown_columns(form))
+  escape <- sft_table_escape(markdown_positions)
+
+  options <- utils::modifyList(
+    list(
+      pageLength = 5,
+      scrollX = TRUE,
+      autoWidth = FALSE
+    ),
+    options
+  )
+
+  DT::datatable(
+    out,
+    rownames = FALSE,
+    selection = selection,
+    escape = escape,
+    width = "100%",
+    options = sft_dt_options(options)
+  )
+}

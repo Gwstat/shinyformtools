@@ -1,0 +1,113 @@
+.sft_package_root <- function(path = getwd()) {
+  path <- normalizePath(path, winslash = "/", mustWork = TRUE)
+
+  repeat {
+    description_path <- file.path(path, "DESCRIPTION")
+
+    if (file.exists(description_path)) {
+      description <- readLines(description_path, warn = FALSE)
+
+      if (any(grepl("^Package:\\s*shinyformtools\\s*$", description))) {
+        return(path)
+      }
+    }
+
+    parent <- dirname(path)
+
+    if (identical(parent, path)) {
+      stop("Could not find shinyformtools package root.", call. = FALSE)
+    }
+
+    path <- parent
+  }
+}
+
+#' Get path to a shinyformtools example app
+#'
+#' @param example Example name, with or without `.R`.
+#'
+#' @return Path to the example file.
+#' @export
+example_path <- function(example) {
+  if (!sft_is_scalar_character(example)) {
+    stop("example must be a non-empty character scalar.", call. = FALSE)
+  }
+
+  filename <- if (grepl("\\.R$", example)) {
+    example
+  } else {
+    paste0(example, ".R")
+  }
+
+  installed_path <- system.file(
+    "examples",
+    filename,
+    package = "shinyformtools",
+    mustWork = FALSE
+  )
+
+  if (nzchar(installed_path) && file.exists(installed_path)) {
+    return(installed_path)
+  }
+
+  # Outside the source tree (an installed package) there is no root; the
+  # error below then lists the examples instead of a lookup failure.
+  root <- tryCatch(.sft_package_root(), error = function(err) NULL)
+  dev_path <- if (is.null(root)) "" else file.path(root, "inst", "examples", filename)
+
+  if (nzchar(dev_path) && file.exists(dev_path)) {
+    return(dev_path)
+  }
+
+  stop(
+    "Example not found: ",
+    filename,
+    ". Available examples: ",
+    paste(list_examples(), collapse = ", "),
+    call. = FALSE
+  )
+}
+
+#' List available shinyformtools example apps
+#'
+#' Files whose name starts with an underscore are shared helpers sourced by the
+#' examples (such as the walkthrough scaffolding), not runnable apps, so they
+#' are not listed.
+#'
+#' @return Character vector of example names.
+#' @export
+list_examples <- function() {
+  installed_dir <- system.file(
+    "examples",
+    package = "shinyformtools",
+    mustWork = FALSE
+  )
+
+  dir <- if (nzchar(installed_dir) && dir.exists(installed_dir)) {
+    installed_dir
+  } else {
+    file.path(.sft_package_root(), "inst", "examples")
+  }
+
+  if (!dir.exists(dir)) {
+    return(character())
+  }
+
+  files <- list.files(dir, pattern = "^[^_].*\\.R$")
+
+  sub("\\.R$", "", files)
+}
+
+#' Run a shinyformtools example app
+#'
+#' @param example Example name, with or without `.R`.
+#' @param ... Passed to [shiny::runApp()].
+#'
+#' @return Runs a Shiny app.
+#' @export
+run_example <- function(example, ...) {
+  shiny::runApp(
+    appDir = example_path(example),
+    ...
+  )
+}

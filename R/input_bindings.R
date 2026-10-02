@@ -1,0 +1,935 @@
+sft_supported_input_binding_types <- function() {
+  c("choices", "value", "visibility")
+}
+
+sft_check_input_binding_field <- function(field, name = "field") {
+  if (!is.character(field) || length(field) != 1L || is.na(field) || !nzchar(field)) {
+    stop(name, " must be a non-empty character scalar.", call. = FALSE)
+  }
+
+  invisible(field)
+}
+
+sft_check_input_binding_depends_on <- function(depends_on) {
+  if (is.null(depends_on)) {
+    return(character())
+  }
+
+  if (!is.character(depends_on) || any(is.na(depends_on)) || any(!nzchar(depends_on))) {
+    stop("depends_on must be NULL or a character vector of field ids.", call. = FALSE)
+  }
+
+  unique(depends_on)
+}
+
+sft_check_input_binding_fun <- function(fun, name) {
+  if (!is.function(fun)) {
+    stop(name, " must be a function.", call. = FALSE)
+  }
+
+  invisible(fun)
+}
+
+sft_find_input_field <- function(form, field_id) {
+  fields <- sft_active_input_fields(form)
+
+  for (field in fields) {
+    if (identical(field$id, field_id)) {
+      return(field)
+    }
+  }
+
+  stop("Unknown input binding field: ", field_id, ".", call. = FALSE)
+}
+
+sft_current_input_values <- function(form, input, prefix = "") {
+  fields <- sft_active_input_fields(form)
+  out <- lapply(
+    fields,
+    function(field) {
+      input[[paste0(prefix, field$id)]]
+    }
+  )
+  names(out) <- vapply(fields, function(field) field$id, character(1))
+  out
+}
+
+sft_call_input_binding_fun <- function(fun,
+                                       input,
+                                       context,
+                                       field,
+                                       prefix,
+                                       values,
+                                       choices = NULL,
+                                       current = NULL) {
+  args <- list(
+    input = input,
+    context = context,
+    field = field,
+    prefix = prefix,
+    values = values,
+    choices = choices,
+    current = current
+  )
+
+  formals_names <- names(formals(fun))
+
+  if ("..." %in% formals_names) {
+    return(do.call(fun, args))
+  }
+
+  do.call(fun, args[intersect(names(args), formals_names)])
+}
+
+sft_normalize_choices <- function(choices) {
+  if (is.null(choices)) {
+    return(character())
+  }
+
+  if (is.data.frame(choices)) {
+    if (all(c("value", "label") %in% names(choices))) {
+      values <- as.character(choices$value)
+      labels <- as.character(choices$label)
+      return(stats::setNames(values, labels))
+    }
+
+    if (ncol(choices) == 1L) {
+      values <- as.character(choices[[1L]])
+      return(values)
+    }
+
+    stop(
+      "Choice data frames must contain value and label columns, or exactly one column.",
+      call. = FALSE
+    )
+  }
+
+  if (is.list(choices) && !is.data.frame(choices)) {
+    choices <- unlist(choices, use.names = TRUE)
+  }
+
+  if (length(choices) == 0L) {
+    return(character())
+  }
+
+  choices
+}
+
+sft_choice_values <- function(choices) {
+  if (is.null(choices) || length(choices) == 0L) {
+    return(character())
+  }
+
+  values <- unname(choices)
+  values <- values[!is.na(values)]
+  as.character(values)
+}
+
+sft_first_choice_value <- function(choices) {
+  values <- sft_choice_values(choices)
+
+  if (length(values) == 0L) {
+    return(NULL)
+  }
+
+  values[[1L]]
+}
+
+sft_resolve_choice_selection <- function(selected,
+                                         choices,
+                                         input,
+                                         context,
+                                         field,
+                                         prefix,
+                                         values,
+                                         current) {
+  if (is.function(selected)) {
+    return(sft_call_input_binding_fun(
+      fun = selected,
+      input = input,
+      context = context,
+      field = field,
+      prefix = prefix,
+      values = values,
+      choices = choices,
+      current = current
+    ))
+  }
+
+  if (is.null(selected)) {
+    selected <- "preserve"
+  }
+
+  if (!is.character(selected) || length(selected) != 1L || is.na(selected)) {
+    return(selected)
+  }
+
+  choice_values <- sft_choice_values(choices)
+
+  switch(
+    selected,
+    preserve = {
+      if (!is.null(current) && length(current) > 0L) {
+        current_values <- as.character(current)
+        current_values <- current_values[current_values %in% choice_values]
+
+        if (length(current_values) > 0L) {
+          return(current_values)
+        }
+      }
+
+      sft_first_choice_value(choices)
+    },
+    first = sft_first_choice_value(choices),
+    none = character(),
+    selected
+  )
+}
+
+#' Define dynamic choices for a form input
+#'
+#' Creates an input binding for [form_server()] that updates the choices of
+#' one select-like input whenever the add/edit dialog opens or dependency fields
+#' change. This replaces legacy string-based `observeEvent()` snippets for
+#' dependent choice lists.
+#'
+#' @param field Field id whose choices should be updated.
+#' @param choices Function returning choices. It may declare any of `input`,
+#'   `context`, `field`, `prefix` and `values` as arguments. Return a vector, a
+#'   named vector, or a data frame with `value` and `label` columns.
+#' @param depends_on Optional field ids that trigger recomputation.
+#' @param selected Selection policy. `"preserve"` keeps the current value if it
+#'   remains valid and otherwise selects the first available value. `"first"`
+#'   always selects the first value, and `"none"` clears the selection. A
+#'   function may be supplied for custom logic.
+#' @param update_args Additional arguments passed to the relevant Shiny update
+#'   function, for example `list(server = TRUE, options = list(create = TRUE))`
+#'   for `selectizeInput`.
+#'
+#' @return An input binding object.
+#' @examples
+#' b <- dynamic_choices(
+#'   field = "city",
+#'   depends_on = "country",
+#'   choices = function(values) {
+#'     if (identical(values$country, "DE")) c("Berlin", "Munich") else c("Paris", "Lyon")
+#'   }
+#' )
+#' b$field
+#' b$depends_on
+#' @export
+dynamic_choices <- function(field,
+                                choices,
+                                depends_on = NULL,
+                                selected = "preserve",
+                                update_args = list()) {
+  sft_check_input_binding_field(field)
+  sft_check_input_binding_fun(choices, "choices")
+  depends_on <- sft_check_input_binding_depends_on(depends_on)
+
+  if (!is.list(update_args)) {
+    stop("update_args must be a list.", call. = FALSE)
+  }
+
+  structure(
+    list(
+      type = "choices",
+      field = field,
+      depends_on = depends_on,
+      choices = choices,
+      selected = selected,
+      update_args = update_args
+    ),
+    class = c("sft_input_binding", "list")
+  )
+}
+
+#' Define a dynamic value for a form input
+#'
+#' Creates an input binding for [form_server()] that updates one input value
+#' whenever the add/edit dialog opens or dependency fields change. This is useful
+#' for derived fields such as postal codes from street and house number inputs.
+#'
+#' For a field declared `editable = FALSE` the value is also computed on the
+#' server when the record is saved, so it cannot be set from the client. On
+#' add it is always computed. On edit it is computed only when the edit changes
+#' one of the `depends_on` fields; otherwise the stored value stays, even if
+#' the calculation would give something else today (the formula or the data
+#' it reads may have changed since), and the dialog shows the stored value
+#' too. It is computed from the stored record overlaid with what the user
+#' submitted: a field the user may not edit or does not see counts with its
+#' stored value. Without `depends_on` it is not recomputed on edit. A field
+#' whose `editable` is a function is not recomputed on save; it belongs to the
+#' users it allows.
+#'
+#' @param field Field id whose value should be updated.
+#' @param value Function returning the new value. It may declare any of `input`,
+#'   `context`, `field`, `prefix` and `values` as arguments.
+#' @param depends_on Optional field ids that trigger recomputation.
+#' @param update_args Additional arguments passed to the relevant Shiny update
+#'   function.
+#'
+#' @return An input binding object.
+#' @examples
+#' b <- dynamic_value(
+#'   field = "zip",
+#'   depends_on = "city",
+#'   value = function(values) if (identical(values$city, "Berlin")) "10115" else ""
+#' )
+#' b$field
+#' b$depends_on
+#' @export
+dynamic_value <- function(field,
+                              value,
+                              depends_on = NULL,
+                              update_args = list()) {
+  sft_check_input_binding_field(field)
+  sft_check_input_binding_fun(value, "value")
+  depends_on <- sft_check_input_binding_depends_on(depends_on)
+
+  if (!is.list(update_args)) {
+    stop("update_args must be a list.", call. = FALSE)
+  }
+
+  structure(
+    list(
+      type = "value",
+      field = field,
+      depends_on = depends_on,
+      value = value,
+      update_args = update_args
+    ),
+    class = c("sft_input_binding", "list")
+  )
+}
+
+#' Define dynamic visibility for a form input
+#'
+#' Creates an input binding for [form_server()] that shows or hides one form
+#' field depending on the live values of other inputs. The field's container is
+#' toggled in the add/edit dialog whenever the dialog opens or a dependency field
+#' changes, so a field can "pop up" only when it is relevant.
+#'
+#' The same predicate is re-evaluated server-side on save, where it cannot be
+#' bypassed from the client: when it returns `FALSE` the field's value is not
+#' written. On add the field then stays empty; on edit it keeps its stored
+#' value, because another user may see the field and have filled it. On edit
+#' the predicate judges the stored record overlaid with what the user
+#' submitted, so a field that depends on a field locked for this user is
+#' judged by that field's stored value.
+#'
+#' @param field Field id whose visibility should be controlled.
+#' @param visible Function returning `TRUE` to show the field and `FALSE` to hide
+#'   it. It may declare any of `input`, `context`, `field`, `prefix` and
+#'   `values` as arguments; `values` (the current field values, keyed by field
+#'   id) is the one available both in the dialog and on save, so predicates
+#'   should key off it.
+#' @param depends_on Optional field ids that trigger re-evaluation. Defaults to
+#'   the fields the predicate reacts to; list them so the dialog updates live.
+#'
+#' @return An input binding object.
+#' @examples
+#' b <- dynamic_visibility(
+#'   field = "reason",
+#'   depends_on = "status",
+#'   visible = function(values) identical(values$status, "Rejected")
+#' )
+#' b$field
+#' b$depends_on
+#' @export
+dynamic_visibility <- function(field,
+                                   visible,
+                                   depends_on = NULL) {
+  sft_check_input_binding_field(field)
+  sft_check_input_binding_fun(visible, "visible")
+  depends_on <- sft_check_input_binding_depends_on(depends_on)
+
+  structure(
+    list(
+      type = "visibility",
+      field = field,
+      depends_on = depends_on,
+      visible = visible
+    ),
+    class = c("sft_input_binding", "list")
+  )
+}
+
+sft_validate_input_bindings <- function(input_bindings, form) {
+  if (is.null(input_bindings)) {
+    return(list())
+  }
+
+  if (!is.list(input_bindings)) {
+    stop("input_bindings must be NULL or a list of input binding objects.", call. = FALSE)
+  }
+
+  if (length(input_bindings) == 0L) {
+    return(list())
+  }
+
+  field_ids <- vapply(
+    sft_active_input_fields(form),
+    function(field) field$id,
+    character(1)
+  )
+
+  lapply(
+    input_bindings,
+    function(binding) {
+      if (!inherits(binding, "sft_input_binding")) {
+        stop("All input_bindings entries must be created with dynamic_choices(), dynamic_value() or dynamic_visibility().", call. = FALSE)
+      }
+
+      if (!binding$type %in% sft_supported_input_binding_types()) {
+        stop("Unsupported input binding type: ", binding$type, ".", call. = FALSE)
+      }
+
+      if (!binding$field %in% field_ids) {
+        stop("Unknown input binding field: ", binding$field, ".", call. = FALSE)
+      }
+
+      invalid_dependencies <- setdiff(binding$depends_on, field_ids)
+
+      if (length(invalid_dependencies) > 0L) {
+        stop(
+          "Unknown input binding dependency for field ", binding$field, ": ",
+          paste(invalid_dependencies, collapse = ", "),
+          ".",
+          call. = FALSE
+        )
+      }
+
+      binding
+    }
+  )
+}
+
+sft_update_choices_input <- function(session,
+                                     input_type,
+                                     input_id,
+                                     choices,
+                                     selected = NULL,
+                                     update_args = list()) {
+  # With no choices there is nothing to select, and the message must say so:
+  # a server-side selectize update without a `value` makes Shiny's client
+  # select the first option of an empty list and fail with a script error.
+  if (is.null(selected) && length(sft_choice_values(choices)) == 0L) {
+    selected <- character()
+  }
+
+  args <- c(
+    list(
+      session = session,
+      inputId = input_id,
+      choices = choices,
+      selected = selected
+    ),
+    update_args
+  )
+
+  spec <- sft_input_spec(input_type)
+
+  if (is.null(spec) || is.null(spec$update_choices)) {
+    stop(
+      "Dynamic choices are only supported for input types with a choices ",
+      "update function (selectInput, selectizeInput, radioButtons, ",
+      "checkboxGroupInput, multiInput, sliderTextInput and registered inputs ",
+      "with an update_fun). Field '",
+      input_id,
+      "' uses ",
+      input_type,
+      ".",
+      call. = FALSE
+    )
+  }
+
+  do.call(spec$update_choices, args)
+}
+
+sft_update_value_input <- function(session,
+                                   input_type,
+                                   input_id,
+                                   value,
+                                   update_args = list()) {
+  spec <- sft_input_spec(input_type)
+
+  value_args <- sft_input_value_args(
+    input_type = input_type,
+    value = value
+  )
+
+  # An empty value clears a choice input: without `selected` the update
+  # function would leave the old selection standing. Value inputs keep their
+  # behaviour (an empty value is no update).
+  if (length(value_args) == 0L && !is.null(spec) && identical(spec$value_arg, "selected")) {
+    value_args <- list(selected = character(0))
+  }
+
+  # A type that knows how to empty itself (a grid clears every cell) does so;
+  # sending nothing would leave the old value standing.
+  if (length(value_args) == 0L && !is.null(spec) && is.function(spec$clear)) {
+    return(invisible(spec$clear(session, input_id)))
+  }
+
+  args <- c(
+    list(
+      session = session,
+      inputId = input_id
+    ),
+    value_args,
+    update_args
+  )
+
+
+  if (is.null(spec) || is.null(spec$update_value)) {
+    stop(
+      "Dynamic values are not supported for input type ",
+      input_type,
+      " yet.",
+      call. = FALSE
+    )
+  }
+
+  do.call(spec$update_value, args)
+}
+
+sft_binding_event_key <- function(input, prefix, depends_on, open_input_id) {
+  values <- lapply(
+    paste0(prefix, depends_on),
+    function(input_id) input[[input_id]]
+  )
+  names(values) <- depends_on
+
+  c(
+    list(open = input[[open_input_id]]),
+    values
+  )
+}
+
+sft_run_choice_binding <- function(binding,
+                                   field,
+                                   input,
+                                   session,
+                                   prefix,
+                                   context) {
+  values <- sft_current_input_values(
+    form = context$form,
+    input = input,
+    prefix = prefix
+  )
+
+  current <- input[[paste0(prefix, field$id)]]
+
+  choices <- sft_call_input_binding_fun(
+    fun = binding$choices,
+    input = input,
+    context = context,
+    field = field,
+    prefix = prefix,
+    values = values,
+    current = current
+  )
+  choices <- sft_normalize_choices(choices)
+
+  selected <- sft_resolve_choice_selection(
+    selected = binding$selected,
+    choices = choices,
+    input = input,
+    context = context,
+    field = field,
+    prefix = prefix,
+    values = values,
+    current = current
+  )
+
+  sft_update_choices_input(
+    session = session,
+    input_type = field$input_type,
+    input_id = paste0(prefix, field$id),
+    choices = choices,
+    selected = selected,
+    update_args = binding$update_args
+  )
+}
+
+sft_run_value_binding <- function(binding,
+                                  field,
+                                  input,
+                                  session,
+                                  prefix,
+                                  context) {
+  values <- sft_current_input_values(
+    form = context$form,
+    input = input,
+    prefix = prefix
+  )
+
+  value <- sft_call_input_binding_fun(
+    fun = binding$value,
+    input = input,
+    context = context,
+    field = field,
+    prefix = prefix,
+    values = values,
+    current = input[[paste0(prefix, field$id)]]
+  )
+
+  sft_update_value_input(
+    session = session,
+    input_type = field$input_type,
+    input_id = paste0(prefix, field$id),
+    value = value,
+    update_args = binding$update_args
+  )
+}
+
+sft_binding_is_visible <- function(binding,
+                                    field,
+                                    input,
+                                    prefix,
+                                    context,
+                                    values = NULL) {
+  if (is.null(values)) {
+    values <- sft_current_input_values(
+      form = context$form,
+      input = input,
+      prefix = prefix
+    )
+  }
+
+  isTRUE(sft_call_input_binding_fun(
+    fun = binding$visible,
+    input = input,
+    context = context,
+    field = field,
+    prefix = prefix,
+    values = values,
+    current = values[[field$id]]
+  ))
+}
+
+sft_run_visibility_binding <- function(binding,
+                                       field,
+                                       input,
+                                       session,
+                                       prefix,
+                                       context) {
+  visible <- sft_binding_is_visible(
+    binding = binding,
+    field = field,
+    input = input,
+    prefix = prefix,
+    context = context
+  )
+
+  shinyjs::toggle(
+    id = paste0("sft_field_container_", prefix, field$id),
+    condition = visible
+  )
+}
+
+# Re-evaluate visibility predicates server-side and drop the values of fields
+# that are currently hidden, so a hidden field is not written from the client:
+# on add it stays empty, on edit it keeps its stored value (see the edit path
+# in mod_crud.R for why it is not cleared).
+sft_drop_hidden_field_values <- function(input_bindings, form, values, basis = values,
+                                         context = list(form = form)) {
+  if (is.null(input_bindings) || length(input_bindings) == 0L) {
+    return(values)
+  }
+
+  for (binding in input_bindings) {
+    if (!inherits(binding, "sft_input_binding") ||
+        !identical(binding$type, "visibility")) {
+      next
+    }
+
+    field <- sft_find_input_field(form, binding$field)
+
+    visible <- sft_binding_is_visible(
+      binding = binding,
+      field = field,
+      input = NULL,
+      prefix = "",
+      context = context,
+      # `basis`: the values the predicate judges. On edit that is the stored
+      # record overlaid with what was submitted, because a field this user
+      # may not edit is not submitted, and a predicate reading it would see
+      # it as empty and hide what the user just typed.
+      values = basis
+    )
+
+    if (!visible) {
+      values[[binding$field]] <- NULL
+    }
+  }
+
+  values
+}
+
+# Field ids targeted by a dynamic_value binding.
+sft_value_binding_fields <- function(input_bindings) {
+  if (is.null(input_bindings) || length(input_bindings) == 0L) {
+    return(character(0))
+  }
+
+  bound <- Filter(
+    function(binding) inherits(binding, "sft_input_binding") &&
+      identical(binding$type, "value"),
+    input_bindings
+  )
+
+  vapply(bound, function(binding) binding$field, character(1))
+}
+
+# Re-evaluate dynamic_value bindings server-side for the given (non-editable)
+# fields on save. The dialog fills such derived fields via updateXInput, but
+# the submitted value still arrives from the client; recomputing it here keeps
+# the derived-field pattern working while making the value tamper-proof. A
+# binding that cannot be evaluated without a live session (e.g. one reading
+# `input` directly) keeps the submitted value instead of failing the save.
+sft_recompute_locked_value_bindings <- function(input_bindings,
+                                                form,
+                                                values,
+                                                field_ids,
+                                                context = list(form = form)) {
+  if (is.null(input_bindings) || length(input_bindings) == 0L ||
+      length(field_ids) == 0L) {
+    return(values)
+  }
+
+  for (binding in input_bindings) {
+    if (!inherits(binding, "sft_input_binding") ||
+        !identical(binding$type, "value") ||
+        !binding$field %in% field_ids) {
+      next
+    }
+
+    field <- sft_find_input_field(form, binding$field)
+
+    value <- tryCatch(
+      sft_call_input_binding_fun(
+        fun = binding$value,
+        input = NULL,
+        context = context,
+        field = field,
+        prefix = "",
+        values = values,
+        current = values[[field$id]]
+      ),
+      error = function(err) values[[field$id]]
+    )
+
+    if (is.null(value) || length(value) == 0L) {
+      values[[binding$field]] <- NULL
+    } else {
+      values[[binding$field]] <- value
+    }
+  }
+
+  values
+}
+
+# A field locked for everyone: `editable = FALSE` as declared (a function
+# decides per user and is not locked for everyone).
+sft_is_static_locked <- function(field) {
+  !is.function(field$editable) && !isTRUE(field$editable)
+}
+
+# Did this edit change an input the value binding is computed from? `current`
+# holds the values the record will have (by field id), `stored_record` the
+# record as it was stored. A derived value on an existing record is computed
+# again only then: an edit of anything else leaves it as it is, even if the
+# calculation would give something else today (a changed formula, a changed
+# price list). A binding without `depends_on` is never recomputed on edit.
+sft_derived_inputs_changed <- function(binding, form, current, stored_record) {
+  depends_on <- binding$depends_on
+
+  if (length(depends_on) == 0L || is.null(stored_record) || nrow(stored_record) == 0L) {
+    return(FALSE)
+  }
+
+  stored <- sft_row_to_list(stored_record)
+
+  for (id in depends_on) {
+    field <- Filter(function(f) identical(f$id, id), sft_active_input_fields(form))
+    if (length(field) == 0L) {
+      next
+    }
+    field <- field[[1L]]
+    before <- sft_ui_value(field, stored[[field$db_column]])
+
+    if (sft_values_differ(current[[id]], before)) {
+      return(TRUE)
+    }
+  }
+
+  FALSE
+}
+
+# The record as an edit will leave it, by field id: the stored values,
+# overlaid with what the user submitted. A field the user did not submit
+# (locked or hidden for them) keeps its stored value, never counts as empty.
+sft_edit_overlay <- function(form, values, stored_record) {
+  if (is.null(stored_record) || nrow(stored_record) == 0L) {
+    return(values)
+  }
+
+  stored <- sft_decode_record_values(form, sft_row_to_list(stored_record))
+  merged <- list()
+
+  for (field in sft_active_input_fields(form)) {
+    if (field$id %in% names(values)) {
+      merged[field$id] <- list(values[[field$id]])
+    } else if (field$db_column %in% names(stored)) {
+      value <- stored[[field$db_column]]
+      merged[field$id] <- list(if (length(value) == 1L && is.na(value)) NULL else value)
+    }
+  }
+
+  merged
+}
+
+# Derived fields on EDIT: fields locked for EVERYONE (editable = FALSE in the
+# form as declared, not per user) with a dynamic_value binding, recomputed
+# from the edit overlay. A field whose `editable` is a function stays the
+# business of whoever may edit it. Returns the values with the derived fields
+# set, their ids (update_record() has to be allowed to write them) and the
+# overlay with the new derived values, for the visibility check.
+sft_recompute_derived_on_edit <- function(input_bindings, form, values, stored_record,
+                                          context = list(form = form)) {
+  static_locked <- names(sft_static_locked_input_defaults(form))
+  derived <- intersect(static_locked, sft_value_binding_fields(input_bindings))
+  overlay <- sft_edit_overlay(form, values, stored_record)
+
+  if (length(derived) == 0L) {
+    return(list(values = values, derived = character(), overlay = overlay))
+  }
+
+  # Only where this edit changed an input of the calculation.
+  bindings <- Filter(
+    function(binding) inherits(binding, "sft_input_binding") && identical(binding$type, "value") &&
+      binding$field %in% derived,
+    input_bindings
+  )
+  derived <- unique(vapply(
+    Filter(function(binding) sft_derived_inputs_changed(binding, form, overlay, stored_record), bindings),
+    function(binding) binding$field,
+    character(1)
+  ))
+
+  if (length(derived) == 0L) {
+    return(list(values = values, derived = character(), overlay = overlay))
+  }
+
+  overlay <- sft_recompute_locked_value_bindings(
+    input_bindings = input_bindings,
+    form = form,
+    values = overlay,
+    field_ids = derived,
+    context = context
+  )
+
+  for (id in derived) {
+    values[id] <- list(overlay[[id]])
+  }
+
+  list(values = values, derived = derived, overlay = overlay)
+}
+
+sft_register_one_input_binding <- function(binding,
+                                           form,
+                                           input,
+                                           session,
+                                           context,
+                                           edit_row = function() NULL) {
+  field <- sft_find_input_field(form, binding$field)
+
+  # In the edit dialog a derived value of a locked field keeps what is stored
+  # until an input it is computed from changes: opening the dialog shows the
+  # record as it is, and the save (sft_recompute_derived_on_edit) follows the
+  # same rule, so the dialog never shows a value that would not be saved.
+  keep_stored_on_edit <- identical(binding$type, "value") && sft_is_static_locked(field)
+
+  for (prefix in c("add_", "edit_")) {
+    open_input_id <- if (identical(prefix, "add_")) "open_add" else "open_edit"
+
+    local({
+      local_binding <- binding
+      local_field <- field
+      local_prefix <- prefix
+      local_open_input_id <- open_input_id
+
+      shiny::observeEvent(
+        sft_binding_event_key(
+          input = input,
+          prefix = local_prefix,
+          depends_on = local_binding$depends_on,
+          open_input_id = local_open_input_id
+        ),
+        {
+          if (keep_stored_on_edit && identical(local_prefix, "edit_") &&
+              !sft_derived_inputs_changed(
+                local_binding, form,
+                sft_current_input_values(form = form, input = input, prefix = local_prefix),
+                shiny::isolate(edit_row())
+              )) {
+            return()
+          }
+
+          tryCatch(
+            {
+              run_binding <- switch(
+                local_binding$type,
+                choices = sft_run_choice_binding,
+                value = sft_run_value_binding,
+                visibility = sft_run_visibility_binding,
+                stop("Unsupported input binding type: ", local_binding$type, ".", call. = FALSE)
+              )
+
+              run_binding(
+                binding = local_binding,
+                field = local_field,
+                input = input,
+                session = session,
+                prefix = local_prefix,
+                context = context()
+              )
+            },
+            error = function(err) {
+              shiny::showNotification(
+                conditionMessage(err),
+                type = "error",
+                duration = 8
+              )
+            }
+          )
+        },
+        ignoreInit = TRUE
+      )
+    })
+  }
+
+  invisible(TRUE)
+}
+
+sft_register_input_bindings <- function(input, output, session, state) {
+  input_bindings <- state$input_bindings
+  form <- state$form
+  context <- state$display_context
+  input_bindings <- sft_validate_input_bindings(input_bindings, form)
+
+  for (binding in input_bindings) {
+    sft_register_one_input_binding(
+      binding = binding,
+      form = form,
+      input = input,
+      session = session,
+      context = context,
+      edit_row = state$current_edit_row
+    )
+  }
+
+  invisible(list())
+}
