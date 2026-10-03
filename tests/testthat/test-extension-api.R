@@ -1,5 +1,5 @@
 # The extension API: hooks of register_input(), registered texts, db helpers.
-# The grid and the basket of shinygridtools are built on it.
+# The grid of shinygridtools and the basket of shinycarttools are built on it.
 
 test_that("register_input() hooks run: validate on save, server inside form_server", {
   seen <- new.env()

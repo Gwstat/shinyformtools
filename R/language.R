@@ -184,8 +184,8 @@ language <- function(labels = list(),
         "Unknown ", name, " key", if (length(unknown) > 1L) "s" else "", ": ",
         paste(unknown, collapse = ", "),
         ". See language_keys() for the valid ones. Keys of an extension ",
-        "package are known once it is attached (shinygridtools: grid_*, cart_*, ",
-        "board_*).",
+        "package are known once it is attached (shinygridtools: grid_*; ",
+        "shinycarttools: cart_*, board_*).",
         call. = FALSE
       )
     }

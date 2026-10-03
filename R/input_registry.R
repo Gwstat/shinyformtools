@@ -205,7 +205,7 @@ sft_supported_input_types <- function() {
 
 sft_unsupported_input_type <- function(input_type) {
   if (is.character(input_type) && length(input_type) == 1L && input_type %in% sft_moved_input_types()) {
-    stop(sft_moved_message(paste0("The input type '", input_type, "'")), call. = FALSE)
+    stop(sft_moved_message(paste0("The input type '", input_type, "'"), sft_moved_package(input_type)), call. = FALSE)
   }
 
   stop(

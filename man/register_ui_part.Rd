@@ -19,7 +19,7 @@ module's id, \code{labels} the labels \code{\link[=form_ui]{form_ui()}} resolved
 \description{
 Some switches of \code{\link[=form_ui]{form_ui()}} draw a part that an extension package
 provides: \code{show_board = TRUE} draws the part named \code{"board"} (the basket
-board of \pkg{shinygridtools}). The extension registers the part when it
+board of \pkg{shinycarttools}). The extension registers the part when it
 loads; without one, the switch stops with a message naming the package to
 attach.
 }

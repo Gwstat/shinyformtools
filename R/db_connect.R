@@ -745,7 +745,7 @@ sft_sqlite_lock_waited_out <- function(e, started) {
 # half of this predicate and the prose is the fallback for drivers that omit
 # them. Internal.
 sft_is_retryable_conflict <- function(e) {
-  # A basket lock that waited out its timeout (shinygridtools' cart_input
+  # A basket lock that waited out its timeout (shinycarttools' cart_input
   # raises sft_lock_timeout).
   if (inherits(e, "sft_lock_timeout")) {
     return(TRUE)

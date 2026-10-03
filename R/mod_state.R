@@ -31,7 +31,7 @@ sft_permission_failed <- function(err) {
 }
 
 # The `server` hooks of the form's input types (register_input(), or a
-# registered type such as shinygridtools' cart_input): once per type, with its fields.
+# registered type such as shinycarttools' cart_input): once per type, with its fields.
 sft_register_input_servers <- function(input, output, session, state) {
   fields <- sft_active_input_fields(state$form)
   types <- unique(vapply(fields, function(field) field$input_type, character(1)))

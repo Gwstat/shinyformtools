@@ -73,20 +73,21 @@ permission-aware administrative use cases.
 - **Permissions** — fine-grained `can_*` controls in
   `form_server(permissions = list(...))`, a rights table built with
   `permissions_form()` / `rights_permissions()`, and a `shinymanager` adapter.
-- **Grid entry and basket fields** live in the companion package
-  [shinygridtools](https://github.com/Gwstat/shinygridtools) since 0.9.0:
-  `grid_ui()` / `grid_server()` enter many records at once in a
-  spreadsheet-like grid, `grid_input()` is the grid as a field, and
-  `input_type = "cart_input"` is a basket field with a shared stock and a
-  board (`form_ui(show_board = TRUE)`). Apps that use them attach it with
-  `library(shinygridtools)`; shinyformtools itself does not depend on it. `upsert_records()`, the building block
-  underneath, stays here: several records in one transaction, matched by a
-  key.
+- **Grid entry and basket fields** live in companion packages:
+  [shinygridtools](https://github.com/Gwstat/shinygridtools) enters many
+  records at once in a spreadsheet-like grid (`grid_ui()` / `grid_server()`,
+  `grid_input()`), and
+  [shinycarttools](https://github.com/Gwstat/shinycarttools) adds a basket
+  field with a shared stock and a board (`input_type = "cart_input"`,
+  `form_ui(show_board = TRUE)`). Apps that use them attach the package with
+  `library()`; shinyformtools itself depends on neither. `upsert_records()`,
+  the building block underneath the grid, stays here: several records in
+  one transaction, matched by a key.
 - **Extension API** — `register_input()` takes a `validate` hook (a check
   on every save) and a `server` hook (a module part inside `form_server()`),
   and the helpers an extension needs are exported (`?db_helpers`,
-  `?module_helpers`, `?language_helpers`, ...). shinygridtools is built
-  on it.
+  `?module_helpers`, `?language_helpers`, ...). shinygridtools and
+  shinycarttools are built on it.
 - **Transactions across writes** — `with_transaction(conn, { ... })` makes
   several package writes and your own SQL one transaction: all or nothing,
   retried as a whole when writers collide.

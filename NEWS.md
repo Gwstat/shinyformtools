@@ -1,3 +1,11 @@
+# shinyformtools 0.10.2
+
+* The basket now has a package of its own, shinycarttools; the grid stays in
+  shinygridtools. The old names `cart_input()`, `update_cart_input()` and
+  `cart_catalog()`, an unknown `cart_input` type and
+  `form_ui(show_board = TRUE)` without a registered board now point to
+  shinycarttools. shinyformtools still depends on neither.
+
 # shinyformtools 0.10.1
 
 * Examples and documentation use neutral data. `app_matrix_input` enters the

@@ -9,7 +9,7 @@
 \alias{cart_input}
 \alias{update_cart_input}
 \alias{cart_catalog}
-\title{Moved to shinygridtools}
+\title{Moved to shinygridtools and shinycarttools}
 \usage{
 grid_input(inputId, ...)
 
@@ -29,19 +29,19 @@ cart_catalog(form, ...)
 \item{...}{Ignored.}
 
 \item{id, inputId, session, form}{Ignored; see the functions of the same name
-in \pkg{shinygridtools}.}
+in \pkg{shinygridtools} or \pkg{shinycarttools}.}
 }
 \value{
 Nothing; they always raise an error.
 }
 \description{
 The grid (\code{grid_input()}, \code{update_grid_input()}, \code{grid_ui()},
-\code{grid_server()}) and the basket (\code{cart_input()}, \code{update_cart_input()},
-\code{cart_catalog()}, the board) moved to the package \pkg{shinygridtools} in
-shinyformtools 0.9.0. These names stop with a message saying so. Attach
-\pkg{shinygridtools} with \code{library(shinygridtools)}: its functions of the
-same names are then found first, and it registers the input types
-\code{"grid_input"} and \code{"cart_input"} and the board of
+\code{grid_server()}) moved to the package \pkg{shinygridtools}, the basket
+(\code{cart_input()}, \code{update_cart_input()}, \code{cart_catalog()}, the board) to
+\pkg{shinycarttools}. These names stop with a message saying so. Attach
+the package with \code{library()}: its functions of the same names are then
+found first, and it registers its input type (\code{"grid_input"} or
+\code{"cart_input"}) and, for shinycarttools, the board of
 \code{form_ui(show_board = TRUE)}. Stored values are the same as before.
 }
 \keyword{internal}

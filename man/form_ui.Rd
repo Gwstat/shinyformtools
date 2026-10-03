@@ -94,7 +94,7 @@ user has typed into the table's search box, the matching rows. See
 \code{\link[=export_records]{export_records()}} for the same export from a script.}
 
 \item{show_board}{Logical. For a form with a \code{cart_input} field (from the
-package \pkg{shinygridtools}, which must be attached): show every
+package \pkg{shinycarttools}, which must be attached): show every
 record as a drop target on the left and the stock on the right, above
 the records table. One drag moves one piece, from the stock onto a
 record, from one record to another, or back onto the stock; each move is

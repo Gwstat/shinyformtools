@@ -1,38 +1,43 @@
-# The grid and the basket moved to the package shinygridtools in 0.9.0. It
-# depends on this package, never the other way round: nothing here loads or
-# calls it. The old function names stay for one release and stop with a
-# message saying where they went; attaching shinygridtools puts its functions
-# in front of these.
+# The grid moved to the package shinygridtools in 0.9.0, the basket to
+# shinycarttools (via shinygridtools, 2026-10-03). Both depend on this
+# package, never the other way round: nothing here loads or calls them. The
+# old function names stay for one release and stop with a message saying
+# where they went; attaching the package puts its functions in front of these.
 
 sft_moved_input_types <- function() {
   c("grid_input", "cart_input")
 }
 
-sft_moved_message <- function(what) {
+# Which package each moved name and type lives in now.
+sft_moved_package <- function(name) {
+  if (grepl("cart|board", name)) "shinycarttools" else "shinygridtools"
+}
+
+sft_moved_message <- function(what, pkg = "shinygridtools") {
   paste0(
-    what, " moved to the package shinygridtools with shinyformtools 0.9.0. ",
-    "Install it with remotes::install_github(\"Gwstat/shinygridtools\") ",
-    "and attach it with library(shinygridtools)."
+    what, " moved to the package ", pkg, " (out of shinyformtools since 0.9.0). ",
+    "Install it with remotes::install_github(\"Gwstat/", pkg, "\") ",
+    "and attach it with library(", pkg, ")."
   )
 }
 
 sft_moved_stop <- function(name) {
-  stop(sft_moved_message(paste0("`", name, "()`")), call. = FALSE)
+  stop(sft_moved_message(paste0("`", name, "()`"), sft_moved_package(name)), call. = FALSE)
 }
 
-#' Moved to shinygridtools
+#' Moved to shinygridtools and shinycarttools
 #'
 #' The grid (`grid_input()`, `update_grid_input()`, `grid_ui()`,
-#' `grid_server()`) and the basket (`cart_input()`, `update_cart_input()`,
-#' `cart_catalog()`, the board) moved to the package \pkg{shinygridtools} in
-#' shinyformtools 0.9.0. These names stop with a message saying so. Attach
-#' \pkg{shinygridtools} with `library(shinygridtools)`: its functions of the
-#' same names are then found first, and it registers the input types
-#' `"grid_input"` and `"cart_input"` and the board of
+#' `grid_server()`) moved to the package \pkg{shinygridtools}, the basket
+#' (`cart_input()`, `update_cart_input()`, `cart_catalog()`, the board) to
+#' \pkg{shinycarttools}. These names stop with a message saying so. Attach
+#' the package with `library()`: its functions of the same names are then
+#' found first, and it registers its input type (`"grid_input"` or
+#' `"cart_input"`) and, for shinycarttools, the board of
 #' `form_ui(show_board = TRUE)`. Stored values are the same as before.
 #'
 #' @param id,inputId,session,form Ignored; see the functions of the same name
-#'   in \pkg{shinygridtools}.
+#'   in \pkg{shinygridtools} or \pkg{shinycarttools}.
 #' @param ... Ignored.
 #'
 #' @return Nothing; they always raise an error.

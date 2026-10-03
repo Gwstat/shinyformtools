@@ -1,8 +1,8 @@
 # The extension API: what a package built on shinyformtools (a new input
 # type with its own module, a module over many records) may rely on. Each
 # function is a thin, documented wrapper over an internal helper, so the
-# internals can move while these names stay. The grid and the basket of
-# shinygridtools are built on it.
+# internals can move while these names stay. The grid of shinygridtools and
+# the basket of shinycarttools are built on it.
 
 #' Fields and values of a form
 #'
@@ -328,7 +328,7 @@ sft_registered_texts <- function(lang) {
 #'
 #' Some switches of [form_ui()] draw a part that an extension package
 #' provides: `show_board = TRUE` draws the part named `"board"` (the basket
-#' board of \pkg{shinygridtools}). The extension registers the part when it
+#' board of \pkg{shinycarttools}). The extension registers the part when it
 #' loads; without one, the switch stops with a message naming the package to
 #' attach.
 #'
@@ -356,7 +356,7 @@ register_ui_part <- function(name, fun) {
 sft_ui_part <- function(name) {
   if (!exists(name, envir = .sft_ui_parts, inherits = FALSE)) {
     switch_name <- c(board = "form_ui(show_board = TRUE)")[[name]] %||% paste0("The UI part '", name, "'")
-    stop(sft_moved_message(switch_name), call. = FALSE)
+    stop(sft_moved_message(switch_name, sft_moved_package(name)), call. = FALSE)
   }
   get(name, envir = .sft_ui_parts, inherits = FALSE)
 }

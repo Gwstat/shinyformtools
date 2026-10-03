@@ -80,7 +80,7 @@ sft_number_issues <- function(form, record) {
 }
 
 # Issues from the `validate` hook of input types (register_input(), or a
-# registered type such as shinygridtools' cart_input): once per type, with all of its fields,
+# registered type such as shinycarttools' cart_input): once per type, with all of its fields,
 # so a check can span them (two baskets sharing one stock).
 sft_input_type_issues <- function(form, record, conn = NULL, current_id = NULL) {
   fields <- sft_active_input_fields(form)

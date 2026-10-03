@@ -1,30 +1,32 @@
-# Grid and basket live in shinygridtools, which depends on this package and
-# not the other way round. Here: the old names say where they went, the
+# The grid lives in shinygridtools, the basket in shinycarttools; both depend
+# on this package and not the other way round. Here: the old names say where they went, the
 # extension points it uses work for any package.
 
 test_that("the old names stop and say where the grid and the basket went", {
   expect_error(grid_input("g"), "`grid_input\\(\\)` moved to the package shinygridtools")
   expect_error(grid_server("g"), "library\\(shinygridtools\\)")
-  expect_error(cart_catalog(NULL), "remotes::install_github")
+  expect_error(cart_catalog(NULL), "moved to the package shinycarttools")
+  expect_error(cart_input("c"), "library\\(shinycarttools\\)")
   # A module id comes first, so shiny::testServer() treats it as a module.
   expect_identical(names(formals(grid_server))[1], "id")
   expect_identical(names(formals(grid_ui))[1], "id")
 })
 
 test_that("an unknown moved input type says which package registers it", {
-  expect_error(sft_unsupported_input_type("cart_input"), "input type 'cart_input' moved")
+  expect_error(sft_unsupported_input_type("cart_input"), "input type 'cart_input' moved to the package shinycarttools")
+  expect_error(sft_unsupported_input_type("grid_input"), "moved to the package shinygridtools")
   expect_error(sft_unsupported_input_type("nope"), "Unsupported input_type: nope")
 })
 
-test_that("shinyformtools neither imports, suggests nor loads shinygridtools", {
+test_that("shinyformtools neither imports, suggests nor loads its extensions", {
   desc <- utils::packageDescription("shinyformtools", fields = c("Depends", "Imports", "Suggests", "Remotes"))
-  expect_false(any(grepl("shinygridtools", unlist(desc))))
+  expect_false(any(grepl("shinygridtools|shinycarttools", unlist(desc))))
   dir <- testthat::test_path("..", "..", "R")
   skip_if(!dir.exists(dir), "sources not available")
   code <- unlist(lapply(list.files(dir, full.names = TRUE), readLines, warn = FALSE))
   code <- code[!grepl("^\\s*#", code)]
-  expect_false(any(grepl("(requireNamespace|loadNamespace|getExportedValue|library|require)\\(\\s*\"shinygridtools\"", code)))
-  expect_false(any(grepl("shinygridtools::", code, fixed = TRUE)))
+  expect_false(any(grepl("(requireNamespace|loadNamespace|getExportedValue|library|require)\\(\\s*\"shiny(grid|cart)tools\"", code)))
+  expect_false(any(grepl("shiny(grid|cart)tools::", code)))
 })
 
 test_that("form_ui(show_board = TRUE) draws the part an extension registered", {
@@ -33,7 +35,7 @@ test_that("form_ui(show_board = TRUE) draws the part an extension registered", {
   on.exit(if (had) assign("board", old, envir = .sft_ui_parts) else rm("board", envir = .sft_ui_parts), add = TRUE)
   if (had) rm("board", envir = .sft_ui_parts)
 
-  expect_error(form_ui("m", show_board = TRUE), "form_ui\\(show_board = TRUE\\) moved")
+  expect_error(form_ui("m", show_board = TRUE), "form_ui\\(show_board = TRUE\\) moved to the package shinycarttools")
   expect_false(grepl("test-board", as.character(form_ui("m"))))
 
   register_ui_part("board", function(id, labels) {

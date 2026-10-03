@@ -36,7 +36,7 @@
 #'   user has typed into the table's search box, the matching rows. See
 #'   [export_records()] for the same export from a script.
 #' @param show_board Logical. For a form with a `cart_input` field (from the
-#'   package \pkg{shinygridtools}, which must be attached): show every
+#'   package \pkg{shinycarttools}, which must be attached): show every
 #'   record as a drop target on the left and the stock on the right, above
 #'   the records table. One drag moves one piece, from the stock onto a
 #'   record, from one record to another, or back onto the stock; each move is
@@ -127,7 +127,7 @@ form_ui <- function(id,
   table_style <- sft_resolve_table_style(table_style)
 
   # The board is a UI part an extension registers (register_ui_part());
-  # shinygridtools does when it is attached.
+  # shinycarttools does when it is attached.
   board <- if (isTRUE(show_board)) sft_ui_part("board")
 
   labels <- sft_with_language(language, sft_ui_labels(labels))
