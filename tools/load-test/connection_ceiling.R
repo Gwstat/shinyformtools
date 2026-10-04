@@ -1,6 +1,8 @@
 # Load test, part B: the connection ceiling.
 #
-# form_server() opens one connection per Shiny session per form. This script
+# form_server() opens one connection per Shiny session and database, shared by
+# the session's modules (one per form with
+# options(shinyformtools.share_connections = FALSE)). This script
 # does not measure the number (it is max_connections, by arithmetic) but the
 # FAILURE MODE: what each kind of caller experiences once the server refuses.
 #

@@ -37,6 +37,11 @@ form_fields <- function(form) {
 #' @rdname form_helpers
 #' @export
 find_field <- function(form, id) {
+  # NULL for an unknown id, as documented; the internal lookup stops instead.
+  ids <- vapply(sft_active_input_fields(form), function(field) field$id, character(1))
+  if (!is.character(id) || length(id) != 1L || !id %in% ids) {
+    return(NULL)
+  }
   sft_find_input_field(form, id)
 }
 

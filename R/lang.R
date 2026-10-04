@@ -53,8 +53,7 @@ sft_default_table_labels <- function() {
     changelog_empty = "No changes yet.",
     changelog_more = ", +{n} more",
     # Fallback names of unnamed tabs / wizard slides.
-    tab_default = "Tab {n}",
-    slide_default = "Slide {n}"
+    tab_default = "Tab {n}"
   )
 }
 
@@ -126,10 +125,7 @@ sft_german_builtin_labels <- function() {
     deleted_records_title = "Gel\u00f6schte Datens\u00e4tze",
     deleted_records_intro = "Hier werden gel\u00f6schte Datens\u00e4tze angezeigt. Zum Wiederherstellen einen Datensatz ausw\u00e4hlen und seine Versionen \u00f6ffnen.",
     deleted_records_empty = "Keine gel\u00f6schten Datens\u00e4tze.",
-    open_deleted_versions = "Versionen des gel\u00f6schten Datensatzes anzeigen",
-    column_settings_title = "Spalteneinstellungen",
     column_selection_title = "Spalten",
-    column_settings_label = "Anzuzeigende Spalten",
     column_settings_view = "Ansicht",
     column_selection_view = "Gespeicherte Ansicht",
     column_settings_view_name = "Ansicht speichern als",
@@ -137,7 +133,6 @@ sft_german_builtin_labels <- function() {
     column_settings_load_view = "Ansicht laden",
     column_selection_help = "Spalten frei ausw\u00e4hlen und per Drag-and-drop umordnen. Beim Laden einer gespeicherten Ansicht wird deren Reihenfolge exakt \u00fcbernommen.",
     column_selection_free_help = "Freie Auswahl: links Spalten hinzuf\u00fcgen, rechts entfernen oder per Drag-and-drop umordnen. Gespeicherte Ansichten werden \u00fcber \u201eAnsicht laden\u201c angewendet.",
-    column_settings_help = "Spalten k\u00f6nnen per Drag-and-drop hinzugef\u00fcgt, entfernt und umgeordnet werden. Nicht mehr vorhandene Spalten werden automatisch ignoriert.",
     column_settings_available = "Nicht angezeigt",
     column_settings_selected = "Angezeigt / Reihenfolge",
     column_settings_empty = "Keine Spalten",
@@ -164,7 +159,6 @@ sft_german_builtin_labels <- function() {
     column_settings_not_allowed = "Spalteneinstellungen sind f\u00fcr diesen Benutzer nicht erlaubt.",
     column_selection_not_allowed = "Die Spaltenauswahl ist f\u00fcr diesen Benutzer nicht erlaubt.",
     reset_not_allowed = "Das Zur\u00fccksetzen der Tabelle ist f\u00fcr diesen Benutzer nicht erlaubt.",
-    table_not_allowed = "Das Anzeigen der Datensatztabelle ist f\u00fcr diesen Benutzer nicht erlaubt.",
     deleted_cannot_edit = "Gel\u00f6schte Datens\u00e4tze k\u00f6nnen nicht bearbeitet werden. Bitte \u00fcber \u201eVersionen anzeigen\u201c wiederherstellen.",
     already_deleted = "Datensatz ist bereits gel\u00f6scht.",
     db_unavailable = "Die Datenbank ist gerade nicht erreichbar ({reason}). Es geht nichts verloren: das Formular verbindet sich bei der n\u00e4chsten Aktion neu.",
@@ -176,10 +170,8 @@ sft_german_builtin_labels <- function() {
     choose_version = "Bitte genau eine Version ausw\u00e4hlen.",
     version_unavailable = "Die ausgew\u00e4hlte Version ist nicht mehr verf\u00fcgbar.",
     version_restored = "Version {version} wurde wiederhergestellt.",
-    columns_applied = "Spaltenauswahl angewendet.",
     columns_saved = "Spaltenansicht gespeichert.",
     columns_loaded = "Spaltenansicht geladen.",
-    columns_reset = "Spaltenauswahl auf Standard zur\u00fcckgesetzt.",
     standard_column_view_not_overwritable = "Die Standardansicht kann nicht \u00fcberschrieben werden. Bitte einen neuen Ansichtsnamen w\u00e4hlen.",
     table_refreshed = "Tabellenfilter und -zustand wurden zur\u00fcckgesetzt.",
     conflict_title = "Dieser Datensatz wurde w\u00e4hrend der Bearbeitung ge\u00e4ndert",
@@ -274,8 +266,7 @@ german_table_labels <- function() {
     changelog_title = "\u00c4nderungsverlauf",
     changelog_empty = "Noch keine \u00c4nderungen.",
     changelog_more = ", +{n} weitere",
-    tab_default = "Reiter {n}",
-    slide_default = "Seite {n}"
+    tab_default = "Reiter {n}"
   )
 }
 
@@ -285,8 +276,8 @@ german_table_labels <- function() {
 #' search box, the "Show N entries" length menu, the "Showing 1 to N" info line
 #' and the Previous/Next pagination. These come from DataTables itself (not the R
 #' label layer), so they are supplied as the `language` DT option. [use_german()]
-#' installs it globally; it can also be passed per table via
-#' `table_options = list(language = german_dt_language())`.
+#' installs it globally; it can also be passed per form via
+#' `form_server(table = list(options = list(language = german_dt_language())))`.
 #'
 #' @return A named list suitable for the DataTables `language` option.
 #' @examples
@@ -295,7 +286,7 @@ german_table_labels <- function() {
 #' lang$search
 #' lang$paginate$previous
 #' # Use per table:
-#' # records_datatable(..., table_options = list(language = german_dt_language()))
+#' # form_server("contacts", contacts, table = list(options = list(language = lang)))
 #' }
 #' @keywords internal
 german_dt_language <- function() {

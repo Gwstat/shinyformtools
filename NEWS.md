@@ -1,3 +1,27 @@
+# shinyformtools 0.10.3
+
+* Fixed: `find_field()` returns `NULL` for an unknown field id, as documented;
+  it stopped with "Unknown input binding field". Extensions that check for
+  `NULL` (`shinycarttools::cart_catalog()`) now give their own message.
+* The audit log table lists the changed form fields as words
+  ("team, salary") instead of the stored JSON with every system column, and
+  scrolls sideways instead of running out of its box.
+* Removed eight label keys nothing showed any more: `open_deleted_versions`,
+  `column_settings_title`, `column_settings_label`, `column_settings_help`,
+  `table_not_allowed`, `columns_applied`, `columns_reset` and the table label
+  `slide_default`. A `language()` that sets one of them now names it as
+  unknown.
+* Documentation: `form_ui(show_board =)` describes what it draws (a
+  registered UI part), `german_dt_language()` shows the current way to pass
+  it, the language help explains how registered texts reach `german()`,
+  `english()` and `use_german()`; README and example notes corrected;
+  `shinyMatrix` listed in Suggests for `app_matrix_input`.
+* New tests for the extension helpers (`form_fields()`, `find_field()`,
+  `key_fields()`, `record_value()`, `field_db_value()`, `resolve_editable()`,
+  `module_connection()`, `prepare_write()`, `after_transaction()`,
+  `module_permission()`, `module_editable_fields()`, `apply_edit_rules()`,
+  `ui_labels()`), for `form_from_excel()` and `updateIbanInput()`.
+
 # shinyformtools 0.10.2
 
 * The basket now has a package of its own, shinycarttools; the grid stays in

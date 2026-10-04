@@ -56,7 +56,7 @@ sft_row_key_values <- function(form, fields, row, index) {
 
 # WHERE conditions for stored columns equal to `values` (an empty value
 # matches NULL, and '' in a text column): list(sql, params). Shared by the
-# record lookup and the grid's change stamp.
+# record lookup and records_stamp().
 sft_key_where <- function(conn, form, values) {
   text_columns <- vapply(
     Filter(function(field) identical(toupper(field$db_type %||% "TEXT"), "TEXT"), sft_active_input_fields(form)),

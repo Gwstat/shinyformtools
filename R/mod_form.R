@@ -35,19 +35,12 @@
 #'   what the table holds: the visible columns under their labels and, when the
 #'   user has typed into the table's search box, the matching rows. See
 #'   [export_records()] for the same export from a script.
-#' @param show_board Logical. For a form with a `cart_input` field (from the
-#'   package \pkg{shinycarttools}, which must be attached): show every
-#'   record as a drop target on the left and the stock on the right, above
-#'   the records table. One drag moves one piece, from the stock onto a
-#'   record, from one record to another, or back onto the stock; each move is
-#'   saved at once, with the same stock check and rules as the dialog
-#'   (`can_view_table`, `can_view_record`, `can_edit`, the field's
-#'   `editable`, `editable_fields`; derived fields are recomputed and a
-#'   basket that `dynamic_visibility()` hides is not changed). A search box
-#'   filters the records, and moves made in other sessions show within a few
-#'   seconds. Lines kept on site show hatched and stay where they are. The
-#'   record is named by the form's first text or choice field. Off by
-#'   default.
+#' @param show_board Logical. Draws the UI part an extension registered as
+#'   `"board"` (see [register_ui_part()]) above the records table. The
+#'   package \pkg{shinycarttools} registers its basket board there once it is
+#'   loaded (`library(shinycarttools)`); see `?shinycarttools::cart_board_ui`
+#'   for what the board does. Without a registered board, `TRUE` stops with a
+#'   message naming the package. Off by default.
 #' @param form_layout Where the add/edit forms render. `"modal"` (default) opens
 #'   them in a dialog; `"inline"` renders them in a panel above the records table,
 #'   with add and edit mutually exclusive. [form_server()] picks the layout up
@@ -127,7 +120,7 @@ form_ui <- function(id,
   table_style <- sft_resolve_table_style(table_style)
 
   # The board is a UI part an extension registers (register_ui_part());
-  # shinycarttools does when it is attached.
+  # shinycarttools does when it is loaded.
   board <- if (isTRUE(show_board)) sft_ui_part("board")
 
   labels <- sft_with_language(language, sft_ui_labels(labels))

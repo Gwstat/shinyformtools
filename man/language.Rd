@@ -29,7 +29,9 @@ option.}
 An object of class \code{sft_language}. \code{german()} returns the bundled
 German pack as one such object. \code{english()} returns the English defaults
 spelled out in full, which is what it takes to pin one form to English while
-\code{\link[=use_german]{use_german()}} is active for the rest of the process.
+\code{\link[=use_german]{use_german()}} is active for the rest of the process. Both carry the
+attribute \code{"lang"} (\code{"de"} / \code{"en"}), through which registered texts of
+that language reach them.
 }
 \description{
 All text the package shows comes from four vocabularies: \code{labels} (buttons,
@@ -45,7 +47,11 @@ only - so two sessions of one app can speak different languages.
 Every entry is optional: what a language does not name falls back to the
 global option (if any) and then to the English default. \code{\link[=language_keys]{language_keys()}}
 lists every key with its default text. A \code{labels} or \code{messages} argument
-given to a function directly still wins over the language.
+given to a function directly still wins over the language. Texts an
+extension package registers with \code{\link[=register_texts]{register_texts()}} join the vocabularies
+of their language; they reach a \code{german()} or \code{english()} object, and
+\code{\link[=use_german]{use_german()}}, even when the extension is loaded after the object was
+made.
 }
 \section{Switching the language while the app runs}{
 

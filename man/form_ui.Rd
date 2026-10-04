@@ -93,19 +93,12 @@ what the table holds: the visible columns under their labels and, when the
 user has typed into the table's search box, the matching rows. See
 \code{\link[=export_records]{export_records()}} for the same export from a script.}
 
-\item{show_board}{Logical. For a form with a \code{cart_input} field (from the
-package \pkg{shinycarttools}, which must be attached): show every
-record as a drop target on the left and the stock on the right, above
-the records table. One drag moves one piece, from the stock onto a
-record, from one record to another, or back onto the stock; each move is
-saved at once, with the same stock check and rules as the dialog
-(\code{can_view_table}, \code{can_view_record}, \code{can_edit}, the field's
-\code{editable}, \code{editable_fields}; derived fields are recomputed and a
-basket that \code{dynamic_visibility()} hides is not changed). A search box
-filters the records, and moves made in other sessions show within a few
-seconds. Lines kept on site show hatched and stay where they are. The
-record is named by the form's first text or choice field. Off by
-default.}
+\item{show_board}{Logical. Draws the UI part an extension registered as
+\code{"board"} (see \code{\link[=register_ui_part]{register_ui_part()}}) above the records table. The
+package \pkg{shinycarttools} registers its basket board there once it is
+loaded (\code{library(shinycarttools)}); see \code{?shinycarttools::cart_board_ui}
+for what the board does. Without a registered board, \code{TRUE} stops with a
+message naming the package. Off by default.}
 
 \item{...}{Deprecated arguments, accepted with a warning for one release:
 \code{show_include_deleted} (the legacy include-deleted checkbox; use

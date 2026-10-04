@@ -57,8 +57,9 @@ sft_form_messages <- function(form = NULL, messages = list()) {
     list()
   }
 
-  # English default <- global option (use_german) <- active language()
-  # <- form() messages <- call arg.
+  # English default (with registered English texts) <- registered texts of
+  # the option's language <- global option (use_german) <- registered texts
+  # of the active language <- active language() <- form() messages <- call arg.
   layered <- defaults
 
   for (layer in list(

@@ -33,10 +33,7 @@ sft_builtin_ui_labels <- function() {
     deleted_records_title = "Deleted records",
     deleted_records_intro = "Soft-deleted records are shown here. To restore one, select a record and open its versions.",
     deleted_records_empty = "No deleted records.",
-    open_deleted_versions = "Show versions of the deleted record",
-    column_settings_title = "Column settings",
     column_selection_title = "Columns",
-    column_settings_label = "Columns to display",
     column_settings_view = "View",
     column_selection_view = "Saved view",
     column_settings_view_name = "Save view as",
@@ -44,7 +41,6 @@ sft_builtin_ui_labels <- function() {
     column_settings_load_view = "Load view",
     column_selection_help = "Pick columns freely and reorder them by drag and drop. When a saved view is loaded, its order is applied exactly.",
     column_selection_free_help = "Free selection: add columns on the left, remove them on the right, or reorder by drag and drop. Saved views are applied via 'Load view'.",
-    column_settings_help = "Columns can be added, removed and reordered by drag and drop. Columns that no longer exist are ignored automatically.",
     column_settings_available = "Not shown",
     column_settings_selected = "Shown / order",
     column_settings_empty = "No columns",
@@ -71,7 +67,6 @@ sft_builtin_ui_labels <- function() {
     column_settings_not_allowed = "Column settings are not permitted for this user.",
     column_selection_not_allowed = "Column selection is not permitted for this user.",
     reset_not_allowed = "Resetting the table is not permitted for this user.",
-    table_not_allowed = "Viewing the records table is not permitted for this user.",
     deleted_cannot_edit = "Deleted records cannot be edited. Please restore via Show versions.",
     already_deleted = "Record is already deleted.",
     db_unavailable = "The database cannot be reached right now ({reason}). Nothing is lost: the form connects again on your next action.",
@@ -83,10 +78,8 @@ sft_builtin_ui_labels <- function() {
     choose_version = "Please select exactly one version.",
     version_unavailable = "The selected version is no longer available.",
     version_restored = "Version {version} was restored.",
-    columns_applied = "Column selection applied.",
     columns_saved = "Column view saved.",
     columns_loaded = "Column view loaded.",
-    columns_reset = "Column selection reset to default.",
     standard_column_view_not_overwritable = "The default view cannot be overwritten. Please choose a new view name.",
     table_refreshed = "Table filter and state were reset.",
     conflict_title = "This record was changed while you were editing",
@@ -119,8 +112,9 @@ sft_ui_labels <- function(labels = list()) {
     option_labels <- list()
   }
 
-  # English default <- global option (use_german) <- active language()
-  # <- explicit per-form labels.
+  # English default (with registered English texts) <- registered texts of
+  # the option's language <- global option (use_german) <- registered texts
+  # of the active language <- active language() <- explicit per-form labels.
   layered <- sft_default_ui_labels()
 
   for (layer in list(

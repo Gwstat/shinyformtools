@@ -1,6 +1,6 @@
 ## Test environments
 
-* Local: Windows 11, R 4.6.0.
+* Local: Ubuntu Linux, R 4.5.2 (earlier: Windows 11, R 4.6.0).
 
 External checks are pending and will be run before submission:
 

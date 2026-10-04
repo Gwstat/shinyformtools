@@ -652,6 +652,16 @@ audit_datatable <- function(data,
     out$action <- sft_format_action_value(out$action)
   }
 
+  # The changed fields as a readable list of the form's fields. The stored
+  # JSON also names the system columns every write touches (sft_updated_at,
+  # ...), which said nothing and made the column overflow the table.
+  if ("changed_fields_json" %in% names(out)) {
+    out$changed_fields_json <- vapply(out$changed_fields_json, function(x) {
+      fields <- sft_parse_changed_fields(x)
+      paste(fields[!startsWith(fields, "sft_")], collapse = ", ")
+    }, character(1), USE.NAMES = FALSE)
+  }
+
   tl <- sft_table_labels()
   audit_labels <- c(
     log_id = as.character(tl$audit_log_id),
@@ -670,7 +680,8 @@ audit_datatable <- function(data,
     out,
     rownames = FALSE,
     selection = selection,
-    options = sft_dt_options(options)
+    width = "100%",
+    options = sft_dt_options(utils::modifyList(list(scrollX = TRUE), options))
   )
 }
 

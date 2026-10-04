@@ -58,7 +58,7 @@ Start with **app_crud_basic**; the rest each focus on one capability.
   with free entry, radio buttons, checkbox, checkbox group, multi-input)
   alongside the two non-input field kinds: `html_field()` (static markup in the
   form) and `output_field()` (a reactive output). The `output_field` "live
-  preview" is filled from the server through `modal_header()` — the hook that
+  preview" is filled from the server through the `modal_header` hook of `form_server()`, which
   exposes the form module's `output` — and updates as you type. Multi-value
   choices are stored natively as JSON arrays.
 
@@ -82,7 +82,7 @@ Start with **app_crud_basic**; the rest each focus on one capability.
   leaves it empty, an edited one keeps its stored value. An "Act as" switch demonstrates the per-user behaviour live.
 
 - **app_calculated_columns** — table columns added at render time with
-  `display_transform()`, in two flavours. **Within a row**: a People table
+  the `display_transform` argument of `form_server()`, in two flavours. **Within a row**: a People table
   derives a full name from first/last name and an age from a birthday.
   **From another table**: a Locations table stores only a reference to a person
   (`reference_choices()`) and shows that person's name and city by joining the

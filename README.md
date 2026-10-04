@@ -85,9 +85,11 @@ permission-aware administrative use cases.
   one transaction, matched by a key.
 - **Extension API** — `register_input()` takes a `validate` hook (a check
   on every save) and a `server` hook (a module part inside `form_server()`),
-  and the helpers an extension needs are exported (`?db_helpers`,
-  `?module_helpers`, `?language_helpers`, ...). shinygridtools and
-  shinycarttools are built on it.
+  `register_texts()` adds an extension's labels and messages in English and
+  German, `register_ui_part()` lets it provide a part of `form_ui()`, and the
+  helpers an extension needs are exported (`?db_helpers`, `?module_helpers`,
+  `?language_helpers`, ...). shinygridtools and shinycarttools are built on
+  it.
 - **Transactions across writes** — `with_transaction(conn, { ... })` makes
   several package writes and your own SQL one transaction: all or nothing,
   retried as a whole when writers collide.
@@ -166,8 +168,8 @@ and preferences.
 
 ### Connections
 
-`form_server()` (and `grid_server()` of shinygridtools) opens a database connection for each user
-session and close it when the session ends. All modules of a session that use
+`form_server()` (and `grid_server()` of shinygridtools) opens a database
+connection for each user session and closes it when the session ends. All modules of a session that use
 the same database share that one connection, so a page with several forms
 costs one connection per user, which matters on a server with a connection
 limit (MariaDB allows 151 by default).
@@ -316,7 +318,8 @@ run_example("app_crud_basic")
   `dynamic_value()` (street → house number → suffix → derived ZIP), no
   hand-written observers. Needs `dplyr`.
 - **app_calculated_columns** — render-time derived columns with
-  `display_transform()`, both within a row and joined from another table (live via
+  the `display_transform` argument of `form_server()`, both within a row and
+  joined from another table (live via
   `refresh_triggers`).
 - **app_inline_forms** — `form_layout = "inline"`: the add/edit form sits in a
   panel above the table instead of a modal dialog.

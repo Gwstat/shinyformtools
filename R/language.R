@@ -107,7 +107,11 @@ sft_check_language <- function(language) {
 #' Every entry is optional: what a language does not name falls back to the
 #' global option (if any) and then to the English default. [language_keys()]
 #' lists every key with its default text. A `labels` or `messages` argument
-#' given to a function directly still wins over the language.
+#' given to a function directly still wins over the language. Texts an
+#' extension package registers with [register_texts()] join the vocabularies
+#' of their language; they reach a `german()` or `english()` object, and
+#' [use_german()], even when the extension is loaded after the object was
+#' made.
 #'
 #' @param labels,messages,table_labels Named lists overriding entries of the
 #'   respective vocabulary. Text may contain `{placeholders}` exactly like the
@@ -126,7 +130,9 @@ sft_check_language <- function(language) {
 #' @return An object of class `sft_language`. `german()` returns the bundled
 #'   German pack as one such object. `english()` returns the English defaults
 #'   spelled out in full, which is what it takes to pin one form to English while
-#'   [use_german()] is active for the rest of the process.
+#'   [use_german()] is active for the rest of the process. Both carry the
+#'   attribute `"lang"` (`"de"` / `"en"`), through which registered texts of
+#'   that language reach them.
 #' @seealso [language_keys()], [use_german()]
 #' @examples
 #' # Start from German and rename one button.
@@ -184,7 +190,7 @@ language <- function(labels = list(),
         "Unknown ", name, " key", if (length(unknown) > 1L) "s" else "", ": ",
         paste(unknown, collapse = ", "),
         ". See language_keys() for the valid ones. Keys of an extension ",
-        "package are known once it is attached (shinygridtools: grid_*; ",
+        "package are known once it is loaded (shinygridtools: grid_*; ",
         "shinycarttools: cart_*, board_*).",
         call. = FALSE
       )

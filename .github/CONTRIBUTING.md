@@ -63,9 +63,11 @@ backends:
 - Mutations run inside a transaction and write an audit-log entry; deletes are
   soft only.
 - Keep R source **ASCII** (escape non-ASCII as `\uXXXX`).
-- Every exported function needs an `@examples` block — runnable where feasible,
-  or wrapped in `\dontrun{}` for examples that need a live Shiny session, an
-  external service, or an optional (Suggests) package.
+- Every exported function shows its use: an `@examples` block, runnable where
+  feasible, or, for helper topics that bundle several small functions
+  (`?db_helpers`, `?module_helpers`, ...), a description of each one.
+  Examples that need a live Shiny session, an external service, or an
+  optional (Suggests) package are wrapped in `\dontrun{}`.
 
 ## Pull requests
 

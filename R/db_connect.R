@@ -397,8 +397,8 @@ sft_resolve_connection <- function(form, conn = NULL, envir = parent.frame()) {
 }
 
 # One connection per database and Shiny session, shared by every module of
-# the session that opens its own: form_server() and shinygridtools' grid_server() used to open
-# one each, so a page with six forms cost six connections per user, and a
+# the session that opens its own: form_server() and the grid module (now in
+# shinygridtools) used to open one each, so a page with six forms cost six connections per user, and a
 # MariaDB server with a connection limit refused sessions. Shiny runs one
 # session's observers one at a time, so the modules never use the connection
 # at the same moment and a transaction of one cannot interleave with another.

@@ -14,8 +14,8 @@ Returns the German translation of the DataTables interface strings - the
 search box, the "Show N entries" length menu, the "Showing 1 to N" info line
 and the Previous/Next pagination. These come from DataTables itself (not the R
 label layer), so they are supplied as the \code{language} DT option. \code{\link[=use_german]{use_german()}}
-installs it globally; it can also be passed per table via
-\code{table_options = list(language = german_dt_language())}.
+installs it globally; it can also be passed per form via
+\code{form_server(table = list(options = list(language = german_dt_language())))}.
 }
 \examples{
 \dontrun{
@@ -23,7 +23,7 @@ lang <- german_dt_language()
 lang$search
 lang$paginate$previous
 # Use per table:
-# records_datatable(..., table_options = list(language = german_dt_language()))
+# form_server("contacts", contacts, table = list(options = list(language = lang)))
 }
 }
 \keyword{internal}
