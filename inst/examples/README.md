@@ -112,8 +112,8 @@ Start with **app_crud_basic**; the rest each focus on one capability.
   response" reloads a fresh survey). Requires the optional `shinyglide` package.
 
 - **app_grid_entry** and **app_cart_input** moved out with the grid and the
-  basket: `shinygridtools::run_example("app_grid_entry")` and
-  `shinycarttools::run_example("app_cart_input")`.
+  basket: `run_example("app_grid_entry", package = "shinygridtools")` and
+  `run_example("app_cart_input", package = "shinycarttools")`.
 
 - **app_matrix_input** — a cross table as one field. `register_input()`
   teaches the package `shinyMatrix::matrixInput`; a product x quarter matrix of

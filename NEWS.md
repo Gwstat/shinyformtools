@@ -1,3 +1,12 @@
+# shinyformtools 0.10.4
+
+* `list_examples()`, `example_path()` and `run_example()` take a `package`
+  argument (default `"shinyformtools"`): `run_example("app_grid_entry",
+  package = "shinygridtools")`. The extensions no longer export functions of
+  these names, so attaching several of them masks nothing. Old calls work as
+  before; in `run_example()` the argument comes after `...` and is given by
+  name.
+
 # shinyformtools 0.10.3
 
 * Fixed: `find_field()` returns `NULL` for an unknown field id, as documented;

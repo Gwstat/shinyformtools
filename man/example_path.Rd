@@ -2,16 +2,23 @@
 % Please edit documentation in R/examples.R
 \name{example_path}
 \alias{example_path}
-\title{Get path to a shinyformtools example app}
+\title{Get path to an example app}
 \usage{
-example_path(example)
+example_path(example, package = "shinyformtools")
 }
 \arguments{
 \item{example}{Example name, with or without \code{.R}.}
+
+\item{package}{The package whose examples to use. Default
+\code{"shinyformtools"}; an extension built on it (shinygridtools,
+shinycarttools, ...) ships its examples the same way.}
 }
 \value{
 Path to the example file.
 }
 \description{
-Get path to a shinyformtools example app
+Get path to an example app
+}
+\examples{
+example_path("app_crud_basic")
 }

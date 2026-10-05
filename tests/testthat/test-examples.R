@@ -69,3 +69,39 @@ testthat::test_that("every example marks up its own walkthrough", {
     testthat::expect_gt(length(grep("^#>\\s*STEP:", lines)), 0L)
   }
 })
+
+testthat::test_that("examples of another package are found by its name", {
+  testthat::skip_on_cran()
+  # The default stays shinyformtools, so old calls behave as before.
+  testthat::expect_identical(list_examples(), list_examples("shinyformtools"))
+  testthat::expect_identical(example_path("app_crud_basic"),
+                             example_path("app_crud_basic", package = "shinyformtools"))
+  # Any installed package with inst/examples works the same way.
+  pkg <- file.path(tempfile("lib"), "exmpkg")
+  dir.create(file.path(pkg, "inst", "examples"), recursive = TRUE)
+  writeLines(c("Package: exmpkg", "Version: 0.0.1", "Title: x", "Description: x.",
+               "License: GPL-3", "Maintainer: A B <a@example.org>", "Author: A B"),
+             file.path(pkg, "DESCRIPTION"))
+  writeLines("shiny::shinyApp(shiny::fluidPage(), function(input, output) NULL)",
+             file.path(pkg, "inst", "examples", "app_one.R"))
+  writeLines("# helper", file.path(pkg, "inst", "examples", "_helper.R"))
+  writeLines("", file.path(pkg, "NAMESPACE"))
+  lib <- tempfile("lib")
+  dir.create(lib)
+  utils::install.packages(pkg, lib = lib, repos = NULL, type = "source", quiet = TRUE)
+  withr::with_libpaths(lib, action = "prefix", {
+    testthat::expect_identical(list_examples("exmpkg"), "app_one")
+    testthat::expect_true(file.exists(example_path("app_one", package = "exmpkg")))
+    testthat::expect_error(example_path("app_two", package = "exmpkg"), "Available examples: app_one")
+  })
+  testthat::expect_error(list_examples("noSuchPackage123"), "Package not found")
+})
+
+testthat::test_that("run_example() passes package by name and the rest to runApp()", {
+  seen <- NULL
+  testthat::local_mocked_bindings(runApp = function(appDir, ...) seen <<- list(appDir = appDir, ...),
+                                  .package = "shiny")
+  run_example("app_crud_basic", port = 1234)
+  testthat::expect_identical(seen$appDir, example_path("app_crud_basic"))
+  testthat::expect_identical(seen$port, 1234)
+})

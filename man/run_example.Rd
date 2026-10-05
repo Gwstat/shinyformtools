@@ -2,18 +2,27 @@
 % Please edit documentation in R/examples.R
 \name{run_example}
 \alias{run_example}
-\title{Run a shinyformtools example app}
+\title{Run an example app}
 \usage{
-run_example(example, ...)
+run_example(example, ..., package = "shinyformtools")
 }
 \arguments{
 \item{example}{Example name, with or without \code{.R}.}
 
 \item{...}{Passed to \code{\link[shiny:runApp]{shiny::runApp()}}.}
+
+\item{package}{The package whose examples to use, by name (it comes after
+\code{...}). Default \code{"shinyformtools"}.}
 }
 \value{
 Runs a Shiny app.
 }
 \description{
-Run a shinyformtools example app
+Run an example app
+}
+\examples{
+\dontrun{
+run_example("app_crud_basic")
+run_example("app_grid_entry", package = "shinygridtools")
+}
 }

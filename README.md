@@ -303,6 +303,10 @@ list_examples()
 run_example("app_crud_basic")
 ```
 
+The packages built on shinyformtools ship their examples the same way; name
+the package: `list_examples("shinygridtools")`,
+`run_example("app_grid_entry", package = "shinygridtools")`.
+
 - **app_crud_basic** — the smallest complete app: one `form()` drives the schema,
   the add/edit/delete dialogs, the records table, soft-delete with restore, and
   the audit log. **Start here.**

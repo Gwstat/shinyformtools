@@ -2,9 +2,14 @@
 % Please edit documentation in R/examples.R
 \name{list_examples}
 \alias{list_examples}
-\title{List available shinyformtools example apps}
+\title{List available example apps}
 \usage{
-list_examples()
+list_examples(package = "shinyformtools")
+}
+\arguments{
+\item{package}{The package whose examples to use. Default
+\code{"shinyformtools"}; an extension built on it (shinygridtools,
+shinycarttools, ...) ships its examples the same way.}
 }
 \value{
 Character vector of example names.
@@ -13,4 +18,7 @@ Character vector of example names.
 Files whose name starts with an underscore are shared helpers sourced by the
 examples (such as the walkthrough scaffolding), not runnable apps, so they
 are not listed.
+}
+\examples{
+list_examples()
 }
