@@ -1,8 +1,9 @@
 # The grid moved to the package shinygridtools in 0.9.0, the basket to
 # shinycarttools (via shinygridtools, 2026-10-03). Both depend on this
 # package, never the other way round: nothing here loads or calls them. The
-# old function names stay for one release and stop with a message saying
-# where they went; attaching the package puts its functions in front of these.
+# old function names stay for good and stop with a message saying where they
+# went; attaching the package puts its functions in front of these, and the
+# input types "grid_input" and "cart_input" then work in every form.
 
 sft_moved_input_types <- function() {
   c("grid_input", "cart_input")

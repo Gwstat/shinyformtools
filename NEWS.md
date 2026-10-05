@@ -6,6 +6,10 @@
   these names, so attaching several of them masks nothing. Old calls work as
   before; in `run_example()` the argument comes after `...` and is given by
   name.
+* The placeholders `grid_input()`, `cart_input()`, `grid_server()` and the
+  others stay: without shinygridtools or shinycarttools they say which
+  package to attach. With it attached, the input types `"grid_input"` and
+  `"cart_input"` work in every form as before.
 * Fixed: `fetch_record()` returns a soft-deleted record too and `NULL` for an
   unknown id, as documented; it left deleted records out and stopped with
   "Record not found."
