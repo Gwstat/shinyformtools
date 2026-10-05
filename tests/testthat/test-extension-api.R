@@ -66,6 +66,8 @@ test_that("the db helpers find records by key and report the backend", {
   soft_delete_record(f, record_id = 2L, conn = conn)
   expect_identical(fetch_record(f, 2L, conn)$sft_is_deleted, 1L)
   expect_null(fetch_record(f, 99L, conn))
+  expect_error(fetch_record(f, c(1L, 2L), conn), "single sft_id")
+  expect_error(fetch_record(f, NULL, conn), "single sft_id")
   ran <- FALSE
   with_transaction(conn, { after_commit(conn, function() ran <<- TRUE); expect_false(ran); expect_true(in_transaction(conn)) })
   expect_true(ran)

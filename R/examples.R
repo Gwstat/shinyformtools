@@ -23,35 +23,30 @@
   }
 }
 
-# The folder holding the examples of `package`: installed, loaded from source
-# (devtools::load_all()), or the source tree around the working directory.
-sft_examples_dir <- function(package) {
+# The folders that may hold the examples of `package`, best first: the
+# installed package, the package loaded from source (devtools::load_all()),
+# the source tree around the working directory. Empty when the package has
+# none; an error when the package is nowhere.
+sft_examples_dirs <- function(package) {
   if (!sft_is_scalar_character(package)) {
     stop("package must be a non-empty character scalar.", call. = FALSE)
   }
 
   installed_dir <- system.file("examples", package = package, mustWork = FALSE)
-  if (nzchar(installed_dir) && dir.exists(installed_dir)) {
-    return(installed_dir)
-  }
-
-  candidates <- character()
   loaded <- tryCatch(find.package(package, quiet = TRUE), error = function(err) character())
-  if (length(loaded)) candidates <- file.path(loaded[1], "inst", "examples")
   # Outside the source tree (an installed package) there is no root.
   root <- tryCatch(.sft_package_root(package = package), error = function(err) NULL)
-  if (!is.null(root)) candidates <- c(candidates, file.path(root, "inst", "examples"))
 
-  for (dir in candidates) {
-    if (dir.exists(dir)) {
-      return(dir)
-    }
-  }
-
-  if (!length(loaded) && is.null(root)) {
+  if (!nzchar(installed_dir) && !length(loaded) && is.null(root)) {
     stop("Package not found: ", package, ".", call. = FALSE)
   }
-  NULL
+
+  candidates <- c(
+    if (nzchar(installed_dir)) installed_dir,
+    if (length(loaded)) file.path(loaded[1], "inst", "examples"),
+    if (!is.null(root)) file.path(root, "inst", "examples")
+  )
+  unique(candidates[dir.exists(candidates)])
 }
 
 #' Get path to an example app
@@ -76,18 +71,24 @@ example_path <- function(example, package = "shinyformtools") {
     paste0(example, ".R")
   }
 
-  dir <- sft_examples_dir(package)
-  path <- if (is.null(dir)) "" else file.path(dir, filename)
+  dirs <- sft_examples_dirs(package)
+  paths <- file.path(dirs, filename)
+  paths <- paths[file.exists(paths)]
 
-  if (nzchar(path) && file.exists(path)) {
-    return(path)
+  if (length(paths) > 0L) {
+    return(paths[[1L]])
   }
 
+  available <- list_examples(package)
   stop(
     "Example not found: ",
     filename,
-    ". Available examples: ",
-    paste(list_examples(package), collapse = ", "),
+    if (length(available)) {
+      paste0(". Available examples: ", paste(available, collapse = ", "))
+    } else {
+      paste0(". ", package, " ships no examples")
+    },
+    ".",
     call. = FALSE
   )
 }
@@ -105,13 +106,13 @@ example_path <- function(example, package = "shinyformtools") {
 #' list_examples()
 #' @export
 list_examples <- function(package = "shinyformtools") {
-  dir <- sft_examples_dir(package)
+  dirs <- sft_examples_dirs(package)
 
-  if (is.null(dir) || !dir.exists(dir)) {
+  if (length(dirs) == 0L) {
     return(character())
   }
 
-  files <- list.files(dir, pattern = "^[^_].*\\.R$")
+  files <- list.files(dirs[[1L]], pattern = "^[^_].*\\.R$")
 
   sub("\\.R$", "", files)
 }

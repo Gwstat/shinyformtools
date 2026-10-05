@@ -95,6 +95,9 @@ testthat::test_that("examples of another package are found by its name", {
     testthat::expect_error(example_path("app_two", package = "exmpkg"), "Available examples: app_one")
   })
   testthat::expect_error(list_examples("noSuchPackage123"), "Package not found")
+  # An installed package without examples says so.
+  testthat::expect_identical(list_examples("stats"), character())
+  testthat::expect_error(example_path("x", package = "stats"), "stats ships no examples")
 })
 
 testthat::test_that("run_example() passes package by name and the rest to runApp()", {

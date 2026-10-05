@@ -174,6 +174,9 @@ find_records_by_key <- function(form, values, conn) {
 #' @rdname db_helpers
 #' @export
 fetch_record <- function(form, record_id, conn) {
+  if (length(record_id) != 1L || is.na(record_id)) {
+    stop("record_id must be a single sft_id.", call. = FALSE)
+  }
   out <- DBI::dbGetQuery(
     conn,
     paste0("SELECT * FROM ", sft_quote_identifier(conn, form$table_name), " WHERE sft_id = ?"),
