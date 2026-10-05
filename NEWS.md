@@ -6,6 +6,9 @@
   these names, so attaching several of them masks nothing. Old calls work as
   before; in `run_example()` the argument comes after `...` and is given by
   name.
+* Fixed: `fetch_record()` returns a soft-deleted record too and `NULL` for an
+  unknown id, as documented; it left deleted records out and stopped with
+  "Record not found."
 
 # shinyformtools 0.10.3
 

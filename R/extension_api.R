@@ -174,7 +174,12 @@ find_records_by_key <- function(form, values, conn) {
 #' @rdname db_helpers
 #' @export
 fetch_record <- function(form, record_id, conn) {
-  sft_get_record(conn, form, record_id = record_id)
+  out <- DBI::dbGetQuery(
+    conn,
+    paste0("SELECT * FROM ", sft_quote_identifier(conn, form$table_name), " WHERE sft_id = ?"),
+    params = list(record_id)
+  )
+  if (nrow(out) == 0L) NULL else out
 }
 
 #' @rdname db_helpers

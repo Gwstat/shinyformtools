@@ -62,6 +62,10 @@ test_that("the db helpers find records by key and report the backend", {
   update_record(f, list(n = 5), record_id = 1L, conn = conn)
   expect_false(identical(records_stamp(f, list(g = "a"), conn), stamp))
   expect_identical(fetch_record(f, 2L, conn)$g, "b")
+  # As documented: deleted records too, NULL for an unknown id.
+  soft_delete_record(f, record_id = 2L, conn = conn)
+  expect_identical(fetch_record(f, 2L, conn)$sft_is_deleted, 1L)
+  expect_null(fetch_record(f, 99L, conn))
   ran <- FALSE
   with_transaction(conn, { after_commit(conn, function() ran <<- TRUE); expect_false(ran); expect_true(in_transaction(conn)) })
   expect_true(ran)
