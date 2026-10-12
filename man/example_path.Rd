@@ -4,14 +4,15 @@
 \alias{example_path}
 \title{Get path to an example app}
 \usage{
-example_path(example, package = "shinyformtools")
+example_path(example, package = NULL)
 }
 \arguments{
 \item{example}{Example name, with or without \code{.R}.}
 
-\item{package}{The package whose examples to use. Default
-\code{"shinyformtools"}; an extension built on it (shinygridtools,
-shinycarttools, ...) ships its examples the same way.}
+\item{package}{The package whose examples to use. Default: shinyformtools
+and every loaded package built on it (shinygridtools, shinycarttools,
+...), so \code{run_example("app_grid_entry")} works once shinygridtools is
+attached. Name a package when two have an example of the same name.}
 }
 \value{
 Path to the example file.

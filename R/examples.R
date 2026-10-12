@@ -49,18 +49,31 @@ sft_examples_dirs <- function(package) {
   unique(candidates[dir.exists(candidates)])
 }
 
+# shinyformtools and the loaded packages built on it (shinygridtools, ...):
+# where an example is looked up when no package is named.
+sft_example_packages <- function() {
+  builds_on <- function(p) {
+    d <- tryCatch(utils::packageDescription(p, fields = c("Depends", "Imports")),
+                  error = function(e) NULL, warning = function(w) NULL)
+    any(grepl("\\bshinyformtools\\b", unlist(d)))
+  }
+  others <- setdiff(loadedNamespaces(), "shinyformtools")
+  c("shinyformtools", sort(others[vapply(others, builds_on, logical(1))]))
+}
+
 #' Get path to an example app
 #'
 #' @param example Example name, with or without `.R`.
-#' @param package The package whose examples to use. Default
-#'   `"shinyformtools"`; an extension built on it (shinygridtools,
-#'   shinycarttools, ...) ships its examples the same way.
+#' @param package The package whose examples to use. Default: shinyformtools
+#'   and every loaded package built on it (shinygridtools, shinycarttools,
+#'   ...), so `run_example("app_grid_entry")` works once shinygridtools is
+#'   attached. Name a package when two have an example of the same name.
 #'
 #' @return Path to the example file.
 #' @examples
 #' example_path("app_crud_basic")
 #' @export
-example_path <- function(example, package = "shinyformtools") {
+example_path <- function(example, package = NULL) {
   if (!sft_is_scalar_character(example)) {
     stop("example must be a non-empty character scalar.", call. = FALSE)
   }
@@ -71,7 +84,7 @@ example_path <- function(example, package = "shinyformtools") {
     paste0(example, ".R")
   }
 
-  dirs <- sft_examples_dirs(package)
+  dirs <- unlist(lapply(package %||% sft_example_packages(), sft_examples_dirs))
   paths <- file.path(dirs, filename)
   paths <- paths[file.exists(paths)]
 
@@ -86,7 +99,7 @@ example_path <- function(example, package = "shinyformtools") {
     if (length(available)) {
       paste0(". Available examples: ", paste(available, collapse = ", "))
     } else {
-      paste0(". ", package, " ships no examples")
+      paste0(". ", paste(package %||% sft_example_packages(), collapse = ", "), " ships no examples")
     },
     ".",
     call. = FALSE
@@ -105,16 +118,12 @@ example_path <- function(example, package = "shinyformtools") {
 #' @examples
 #' list_examples()
 #' @export
-list_examples <- function(package = "shinyformtools") {
-  dirs <- sft_examples_dirs(package)
-
-  if (length(dirs) == 0L) {
-    return(character())
-  }
-
-  files <- list.files(dirs[[1L]], pattern = "^[^_].*\\.R$")
-
-  sub("\\.R$", "", files)
+list_examples <- function(package = NULL) {
+  names <- lapply(package %||% sft_example_packages(), function(p) {
+    dirs <- sft_examples_dirs(p)
+    if (length(dirs) == 0L) character() else sub("\\.R$", "", list.files(dirs[[1L]], pattern = "^[^_].*\\.R$"))
+  })
+  unique(unlist(names))
 }
 
 #' Run an example app
@@ -122,16 +131,17 @@ list_examples <- function(package = "shinyformtools") {
 #' @inheritParams example_path
 #' @param ... Passed to [shiny::runApp()].
 #' @param package The package whose examples to use, by name (it comes after
-#'   `...`). Default `"shinyformtools"`.
+#'   `...`). Default: shinyformtools and the loaded packages built on it.
 #'
 #' @return Runs a Shiny app.
 #' @examples
 #' \dontrun{
 #' run_example("app_crud_basic")
-#' run_example("app_grid_entry", package = "shinygridtools")
+#' library(shinygridtools)
+#' run_example("app_grid_entry")
 #' }
 #' @export
-run_example <- function(example, ..., package = "shinyformtools") {
+run_example <- function(example, ..., package = NULL) {
   shiny::runApp(
     appDir = example_path(example, package = package),
     ...

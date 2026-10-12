@@ -80,7 +80,8 @@ testthat::test_that("examples of another package are found by its name", {
   pkg <- file.path(tempfile("lib"), "exmpkg")
   dir.create(file.path(pkg, "inst", "examples"), recursive = TRUE)
   writeLines(c("Package: exmpkg", "Version: 0.0.1", "Title: x", "Description: x.",
-               "License: GPL-3", "Maintainer: A B <a@example.org>", "Author: A B"),
+               "License: GPL-3", "Maintainer: A B <a@example.org>", "Author: A B",
+               "Imports: shinyformtools"),
              file.path(pkg, "DESCRIPTION"))
   writeLines("shiny::shinyApp(shiny::fluidPage(), function(input, output) NULL)",
              file.path(pkg, "inst", "examples", "app_one.R"))
@@ -93,6 +94,12 @@ testthat::test_that("examples of another package are found by its name", {
     testthat::expect_identical(list_examples("exmpkg"), "app_one")
     testthat::expect_true(file.exists(example_path("app_one", package = "exmpkg")))
     testthat::expect_error(example_path("app_two", package = "exmpkg"), "Available examples: app_one")
+    # Loaded, a package built on shinyformtools needs no name.
+    testthat::expect_false("app_one" %in% list_examples())
+    loadNamespace("exmpkg")
+    on.exit(unloadNamespace("exmpkg"), add = TRUE)
+    testthat::expect_true(all(c("app_crud_basic", "app_one") %in% list_examples()))
+    testthat::expect_identical(example_path("app_one"), example_path("app_one", package = "exmpkg"))
   })
   testthat::expect_error(list_examples("noSuchPackage123"), "Package not found")
   # An installed package without examples says so.

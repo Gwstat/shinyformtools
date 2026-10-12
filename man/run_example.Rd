@@ -4,7 +4,7 @@
 \alias{run_example}
 \title{Run an example app}
 \usage{
-run_example(example, ..., package = "shinyformtools")
+run_example(example, ..., package = NULL)
 }
 \arguments{
 \item{example}{Example name, with or without \code{.R}.}
@@ -12,7 +12,7 @@ run_example(example, ..., package = "shinyformtools")
 \item{...}{Passed to \code{\link[shiny:runApp]{shiny::runApp()}}.}
 
 \item{package}{The package whose examples to use, by name (it comes after
-\code{...}). Default \code{"shinyformtools"}.}
+\code{...}). Default: shinyformtools and the loaded packages built on it.}
 }
 \value{
 Runs a Shiny app.
@@ -23,6 +23,7 @@ Run an example app
 \examples{
 \dontrun{
 run_example("app_crud_basic")
-run_example("app_grid_entry", package = "shinygridtools")
+library(shinygridtools)
+run_example("app_grid_entry")
 }
 }

@@ -1,11 +1,12 @@
 # shinyformtools 0.10.4
 
-* `list_examples()`, `example_path()` and `run_example()` take a `package`
-  argument (default `"shinyformtools"`): `run_example("app_grid_entry",
-  package = "shinygridtools")`. The extensions no longer export functions of
-  these names, so attaching several of them masks none of these. Old calls work as
-  before; in `run_example()` the argument comes after `...` and is given by
-  name.
+* `list_examples()`, `example_path()` and `run_example()` also find the
+  examples of the loaded packages built on shinyformtools: after
+  `library(shinygridtools)`, `run_example("app_grid_entry")` runs its app.
+  A new argument `package` names one package (in `run_example()` after
+  `...`, given by name). The extensions no longer export functions of these
+  names, so attaching several of them masks none of these. Old calls work
+  as before.
 * The placeholders `grid_input()`, `cart_input()`, `grid_server()` and the
   others stay: without shinygridtools or shinycarttools they say which
   package to attach. With it attached, the input types `"grid_input"` and

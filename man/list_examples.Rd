@@ -4,12 +4,13 @@
 \alias{list_examples}
 \title{List available example apps}
 \usage{
-list_examples(package = "shinyformtools")
+list_examples(package = NULL)
 }
 \arguments{
-\item{package}{The package whose examples to use. Default
-\code{"shinyformtools"}; an extension built on it (shinygridtools,
-shinycarttools, ...) ships its examples the same way.}
+\item{package}{The package whose examples to use. Default: shinyformtools
+and every loaded package built on it (shinygridtools, shinycarttools,
+...), so \code{run_example("app_grid_entry")} works once shinygridtools is
+attached. Name a package when two have an example of the same name.}
 }
 \value{
 Character vector of example names.
