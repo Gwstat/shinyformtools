@@ -117,6 +117,26 @@ remotes::install_github("Gwstat/shinyformtools")
 library(shiny)
 library(shinyformtools)
 
+contacts <- form("contacts", fields = list(form_field("name"), form_field("phone")))
+
+ui <- fluidPage(form_ui("contacts"))
+server <- function(input, output, session) form_server("contacts", contacts)
+
+shinyApp(ui, server)
+```
+
+A records table with add, edit and delete dialogs, stored in
+`form_data.sqlite`. The table, audit log, and supporting system tables are
+created on first contact; no manual migration step is required.
+
+### A fuller example
+
+Labels, a mandatory field, a date input, and a database file of its own:
+
+```r
+library(shiny)
+library(shinyformtools)
+
 contacts <- form(
   form_id = "contacts",
   table_name = "contacts",
@@ -138,9 +158,6 @@ server <- function(input, output, session) {
 
 shinyApp(ui, server)
 ```
-
-The table, audit log, and supporting system tables are created on first contact;
-no manual migration step is required.
 
 ## Backends
 

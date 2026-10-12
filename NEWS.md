@@ -7,6 +7,7 @@
   `...`, given by name). The extensions no longer export functions of these
   names, so attaching several of them masks none of these. Old calls work
   as before.
+* README starts with a three-line app.
 * The placeholders `grid_input()`, `cart_input()`, `grid_server()` and the
   others stay: without shinygridtools or shinycarttools they say which
   package to attach. With it attached, the input types `"grid_input"` and
